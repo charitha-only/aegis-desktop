@@ -1,5 +1,11 @@
 use crate::window::{NativeWindowPolicy, WindowConfig};
 
+fn smoke_enabled() -> bool {
+    std::env::var("GITHUB_ACTIONS").as_deref() == Ok("true")
+        && std::env::var("RUNNER_ENVIRONMENT").as_deref() == Ok("github-hosted")
+        && std::env::var("AEGIS_NATIVE_SMOKE").as_deref() == Ok("1")
+}
+
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::Error>> {
     use winit::{
@@ -15,8 +21,20 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
         window: Option<Window>,
         webview: Option<wry::WebView>,
         error: Option<String>,
+        proxy: winit::event_loop::EventLoopProxy<bool>,
+        smoke: bool,
+        ready: bool,
     }
-    impl ApplicationHandler for App {
+    impl ApplicationHandler<bool> for App {
+        fn user_event(&mut self, event_loop: &ActiveEventLoop, ready: bool) {
+            if ready {
+                self.ready = true;
+                println!("AEGIS_NATIVE_SMOKE_READY");
+            } else {
+                self.error = Some("Native fixture document did not load before timeout".into());
+            }
+            event_loop.exit();
+        }
         fn resumed(&mut self, event_loop: &ActiveEventLoop) {
             if self.window.is_some() {
                 return;
@@ -34,10 +52,17 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
                         .with_visible(false),
                 )?;
                 let policy = self.policy.clone();
+                let proxy = self.proxy.clone();
+                let smoke = self.smoke;
                 let webview = wry::WebViewBuilder::new()
                     .with_url(&self.url)
                     .with_incognito(true)
                     .with_devtools(false)
+                    .with_document_title_changed_handler(move |title| {
+                        if smoke && title == "Aegis Native Smoke Fixture" {
+                            let _ = proxy.send_event(true);
+                        }
+                    })
                     .with_navigation_handler(move |target| policy.allows_navigation(&target))
                     .with_new_window_req_handler(|_, _| wry::NewWindowResponse::Deny)
                     .with_permission_handler(|_| wry::PermissionResponse::Deny)
@@ -76,8 +101,16 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
         }
     }
     let policy = NativeWindowPolicy::new(url, config)?;
-    let event_loop = EventLoop::new()?;
+    let event_loop = EventLoop::<bool>::with_user_event().build()?;
     event_loop.set_control_flow(ControlFlow::Wait);
+    let smoke = smoke_enabled();
+    if smoke {
+        let proxy = event_loop.create_proxy();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(20));
+            let _ = proxy.send_event(false);
+        });
+    }
     let mut app = App {
         url: url.into(),
         config: config.clone(),
@@ -85,10 +118,16 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
         window: None,
         webview: None,
         error: None,
+        proxy: event_loop.create_proxy(),
+        smoke,
+        ready: false,
     };
     event_loop.run_app(&mut app)?;
     if let Some(error) = app.error {
         return Err(error.into());
+    }
+    if smoke && !app.ready {
+        return Err("Native window closed before fixture readiness".into());
     }
     Ok(())
 }
@@ -100,6 +139,9 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
     let policy = NativeWindowPolicy::new(url, config)?;
     let url = url.to_owned();
     let config = config.clone();
+    let smoke = smoke_enabled();
+    let ready = std::rc::Rc::new(std::cell::Cell::new(false));
+    let loaded = ready.clone();
     let app = gtk::Application::builder()
         .application_id("org.aegis.desktop")
         .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
@@ -114,6 +156,21 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
             .enable_developer_extras(false)
             .build();
         view.set_settings(&settings);
+        if smoke {
+            let app = app.downgrade();
+            let ready = loaded.clone();
+            view.connect_load_changed(move |view, event| {
+                if event == webkit6::LoadEvent::Finished
+                    && view.title().as_deref() == Some("Aegis Native Smoke Fixture")
+                {
+                    ready.set(true);
+                    println!("AEGIS_NATIVE_SMOKE_READY");
+                    if let Some(app) = app.upgrade() {
+                        app.quit();
+                    }
+                }
+            });
+        }
         view.connect_permission_request(|_, request| {
             request.deny();
             true
@@ -157,9 +214,20 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
         view.load_uri(&url);
         window.present();
     });
+    if smoke {
+        let app = app.downgrade();
+        gtk::glib::timeout_add_local_once(std::time::Duration::from_secs(20), move || {
+            if let Some(app) = app.upgrade() {
+                app.quit();
+            }
+        });
+    }
     let result = app.run_with_args::<&str>(&[]);
     if result != gtk::glib::ExitCode::SUCCESS {
         return Err("Native GTK application failed".into());
+    }
+    if smoke && !ready.get() {
+        return Err("Native fixture document did not load before timeout".into());
     }
     Ok(())
 }

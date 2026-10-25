@@ -19,10 +19,21 @@ jobs:
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
         with:
           toolchain: stable
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
       - name: Install GTK4 and WebKit6 development libraries
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+          sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev xvfb dbus-x11
       - name: Compile and test native feature without opening a desktop window
         run: cargo test --locked --manifest-path src-core/Cargo.toml --features native-desktop
+      - name: Build native debug runtime for GUI fixture
+        run: cargo build --locked --manifest-path src-core/Cargo.toml --features native-desktop
+      - name: Boot actual native window and close after fixture loads
+        if: runner.os != 'Linux'
+        run: node aegis-cli/bin/native-smoke.js
+      - name: Boot actual GTK4 window in disposable virtual display
+        if: runner.os == 'Linux'
+        run: dbus-run-session -- xvfb-run -a node aegis-cli/bin/native-smoke.js
