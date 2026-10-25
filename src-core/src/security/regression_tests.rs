@@ -670,3 +670,47 @@ fn ipc_restart_ignores_colliding_saved_profiles() {
     );
     assert!(call("profile_switch", serde_json::json!({"profileId":"Work"})).success);
 }
+
+#[test]
+fn ipc_window_capabilities_do_not_advertise_unimplemented_controls() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let security = Arc::new(SecurityEngine::new(CapabilityManifest::default(), d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload: serde_json::Value| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "session-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    let response = call("window_list", serde_json::json!({}));
+    assert!(response.success);
+    let capabilities = &response.data.as_ref().unwrap()["capabilities"];
+    for unsupported in ["modal", "kiosk", "alwaysOnTop", "customSize"] {
+        assert_eq!(
+            capabilities[unsupported], false,
+            "{unsupported} is not implemented by the external-browser backend"
+        );
+    }
+}

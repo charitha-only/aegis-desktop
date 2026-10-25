@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+- Report unimplemented modal, kiosk, always-on-top and custom-size controls as unavailable in the external-browser backend; cover the IPC capability response with a regression test.
 - Reject custom profiles that share a storage directory with an existing profile, including the built-in private vault and case-insensitive aliases. Ignore colliding saved profile entries on startup.
 - Add IPC regression coverage for profile storage identities and a native Windows/Linux/macOS core-test, release-build and UI-build workflow.
 - Record the general-purpose framework roadmap and distinguish planned cross-platform capabilities from validated support.

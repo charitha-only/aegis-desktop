@@ -767,10 +767,10 @@ impl IpcRouter {
                         "spawnMethods": ["window_spawn", "window_dialog"],
                         "platformHint": std::env::consts::OS,
                         "capabilities": {
-                            "modal": true,
-                            "kiosk": true,
-                            "alwaysOnTop": true,
-                            "customSize": true,
+                            "modal": false,
+                            "kiosk": false,
+                            "alwaysOnTop": false,
+                            "customSize": false,
                             "customUrl": true
                         }
                     }),
