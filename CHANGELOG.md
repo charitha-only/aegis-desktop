@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+- Add a portable app-data location API for Windows, Linux and macOS, with deterministic public-interface tests for platform locations, unsafe app IDs and relative roots. Use it during packaged startup while preserving the existing Windows location.
+- Validate local window URL authority/port and reject unsupported modal/kiosk/always-on-top/transparent requests before launching the external-browser backend.
 - Report unimplemented modal, kiosk, always-on-top and custom-size controls as unavailable in the external-browser backend; cover the IPC capability response with a regression test.
 - Reject custom profiles that share a storage directory with an existing profile, including the built-in private vault and case-insensitive aliases. Ignore colliding saved profile entries on startup.
 - Add IPC regression coverage for profile storage identities and a native Windows/Linux/macOS core-test, release-build and UI-build workflow.

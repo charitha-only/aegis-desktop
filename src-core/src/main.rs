@@ -6,6 +6,7 @@ mod ipc;
 mod network;
 mod p2p_market;
 mod package_pipeline;
+mod platform;
 mod plugin;
 mod profile;
 mod secrets;
@@ -121,12 +122,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let base_dir = if packaged {
-        let data = std::env::var_os("LOCALAPPDATA")
-            .ok_or("LOCALAPPDATA is required for packaged application data")?;
         let app_name = app_dir.file_name().ok_or("Missing app name")?;
-        let dir = std::path::PathBuf::from(data)
-            .join("AegisDesktop")
-            .join(app_name);
+        let dir = platform::app_data_dir(app_name.to_str().ok_or("Invalid application ID")?)?;
         fs::create_dir_all(&dir)?;
         dir
     } else {

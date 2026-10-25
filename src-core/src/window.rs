@@ -120,14 +120,9 @@ impl WindowManager {
     }
     pub fn spawn_window(
         url: &str,
-        _config: &WindowConfig,
+        config: &WindowConfig,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        if !url.starts_with("http://127.0.0.1:") && !url.starts_with("http://localhost:") {
-            return Err("Only local HTTP app windows are supported".into());
-        }
-        if url.chars().any(|c| c.is_control() || c == '"' || c == ' ') {
-            return Err("Invalid window URL".into());
-        }
+        Self::validate_request(url, config)?;
         #[cfg(target_os = "windows")]
         {
             let mut found = false;
@@ -158,10 +153,66 @@ impl WindowManager {
         }
         Ok(format!("external-browser-{}", std::process::id()))
     }
+
+    /// Validate without launching a browser or interacting with the desktop.
+    pub fn validate_request(url: &str, config: &WindowConfig) -> Result<(), String> {
+        if config.modal || config.kiosk || config.always_on_top || config.transparent {
+            return Err(
+                "Requested window controls are unsupported by the external-browser backend".into(),
+            );
+        }
+        if url
+            .chars()
+            .any(|c| c.is_control() || c.is_whitespace() || c == '"' || c == '\\')
+        {
+            return Err("Invalid window URL".into());
+        }
+        let authority = url
+            .strip_prefix("http://")
+            .ok_or("Only local HTTP app windows are supported")?
+            .split(['/', '?', '#'])
+            .next()
+            .unwrap_or("");
+        let port = authority
+            .strip_prefix("127.0.0.1:")
+            .or_else(|| authority.strip_prefix("localhost:"))
+            .ok_or("Only local HTTP app windows are supported")?;
+        if port.is_empty()
+            || !port.bytes().all(|c| c.is_ascii_digit())
+            || port.parse::<u16>().ok().filter(|p| *p != 0).is_none()
+        {
+            return Err("Invalid local window port".into());
+        }
+        Ok(())
+    }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn window_request_validation_is_safe_without_launching_a_browser() {
+        let config = WindowConfig::default();
+        assert!(WindowManager::validate_request("http://127.0.0.1:48291/", &config).is_ok());
+        assert!(
+            WindowManager::validate_request("http://localhost:5173/?view=app", &config).is_ok()
+        );
+        for url in [
+            "https://example.com",
+            "http://127.0.0.1:1234@example.com/",
+            "http://localhost:0/",
+            "http://localhost:65536/",
+            "http://localhost:abc/",
+            "http://127.0.0.1:80\\example.com/",
+        ] {
+            assert!(
+                WindowManager::validate_request(url, &config).is_err(),
+                "{url}"
+            );
+        }
+        let mut modal = config;
+        modal.modal = true;
+        assert!(WindowManager::validate_request("http://localhost:5173", &modal).is_err());
+    }
     #[test]
     fn truthful_runtime() {
         let r = WindowManager::detect_runtime();
