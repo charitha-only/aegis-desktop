@@ -1,5 +1,11 @@
 # Native backend evaluation: unresolved release gate
 
+## Updated implementation
+
+The replacement preview uses Wry with default features disabled and Winit with only raw-window-handle support on Windows/macOS, plus a separate GTK4/WebKit6 Linux adapter. The complete replacement lockfile passes the current RustSec scan with zero known vulnerabilities and no warnings; no advisory exceptions were introduced. The earlier dependency gate is resolved by selection rather than an audit waiver. See NATIVE_DESKTOP.md for usage and the remaining compile/GUI acceptance gates.
+
+## Earlier rejected prototype
+
 Evaluated Wry 0.57.1 and Tao 0.37.2 for an optional main-thread embedded window. A local prototype used a waiting event loop, local-origin navigation restrictions, and denied popups/downloads/new permission requests. The prototype is not included in the released source.
 
 The resolved Linux dependency chain selected glib 0.18.5. RustSec reports RUSTSEC-2024-0429, an unsound VariantStrIter implementation in versions below 0.20.0. It also reported the unmaintained proc-macro-error package (RUSTSEC-2024-0370). The audit policy rejects these warnings; it was not relaxed to admit the prototype. The default framework lockfile remains free of these proposed dependencies.

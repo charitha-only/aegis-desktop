@@ -105,6 +105,45 @@ pub struct WindowRecord {
 // ─── Multi-Window & WebKit Manager ─────────────────────────────────────────
 
 pub struct WindowManager;
+
+#[derive(Clone)]
+pub struct NativeWindowPolicy {
+    initial: String,
+}
+
+impl NativeWindowPolicy {
+    pub fn new(url: &str, config: &WindowConfig) -> Result<Self, String> {
+        WindowManager::validate_request(url, config)?;
+        if config.width == 0
+            || config.height == 0
+            || config.width > 16384
+            || config.height > 16384
+            || config.title.len() > 1024
+            || config.title.contains('\0')
+            || config.devtools_enabled
+        {
+            return Err(
+                "Invalid native window size/title or unsupported developer tools request".into(),
+            );
+        }
+        Ok(Self {
+            initial: url.to_owned(),
+        })
+    }
+
+    pub fn allows_navigation(&self, target: &str) -> bool {
+        let origin = |url: &str| {
+            url.strip_prefix("http://")
+                .unwrap_or("")
+                .split(['/', '?', '#'])
+                .next()
+                .unwrap_or("")
+                .to_owned()
+        };
+        WindowManager::validate_request(target, &WindowConfig::default()).is_ok()
+            && origin(&self.initial) == origin(target)
+    }
+}
 impl WindowManager {
     pub fn detect_runtime() -> WebviewRuntimeInfo {
         WebviewRuntimeInfo {
@@ -189,6 +228,30 @@ impl WindowManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_policy_restricts_navigation_and_rejects_unsupported_settings() {
+        let config = WindowConfig::default();
+        let policy = NativeWindowPolicy::new("http://127.0.0.1:48291/", &config).unwrap();
+        assert!(policy.allows_navigation("http://127.0.0.1:48291/settings"));
+        for target in [
+            "http://127.0.0.1:48292/",
+            "https://example.com/",
+            "file:///private",
+            "javascript:void(0)",
+            "http://127.0.0.1:48291@example.com/",
+        ] {
+            assert!(!policy.allows_navigation(target), "{target}");
+        }
+        let mut invalid = config.clone();
+        invalid.width = 0;
+        assert!(NativeWindowPolicy::new("http://localhost:5173", &invalid).is_err());
+        invalid = config.clone();
+        invalid.devtools_enabled = true;
+        assert!(NativeWindowPolicy::new("http://localhost:5173", &invalid).is_err());
+        invalid = config;
+        invalid.modal = true;
+        assert!(NativeWindowPolicy::new("http://localhost:5173", &invalid).is_err());
+    }
     #[test]
     fn window_request_validation_is_safe_without_launching_a_browser() {
         let config = WindowConfig::default();

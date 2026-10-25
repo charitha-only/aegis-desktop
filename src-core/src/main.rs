@@ -4,6 +4,8 @@ mod bundler;
 mod crash;
 mod ipc;
 mod network;
+#[cfg(feature = "native-desktop")]
+mod native_window;
 mod p2p_market;
 mod package_pipeline;
 mod platform;
@@ -201,7 +203,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 3. Parse CLI arguments
     // --spawn-window flag: launch UI Window
-    if args.iter().any(|arg| arg == "--spawn-window") {
+    if args.iter().any(|arg| arg == "--spawn-window" || arg == "--native-window") {
         let win_cfg = WindowConfig {
             title: win_title,
             width: win_width,
@@ -217,7 +219,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             "http://localhost:5173".into()
         };
-        let _ = WindowManager::spawn_window(&ui_url, &win_cfg);
+        if args.iter().any(|arg| arg == "--native-window") {
+            #[cfg(feature = "native-desktop")]
+            {
+                std::thread::spawn(move || server.run());
+                return native_window::run(&ui_url, &win_cfg);
+            }
+            #[cfg(not(feature = "native-desktop"))]
+            return Err("Rebuild with --features native-desktop to use --native-window".into());
+        }
+        WindowManager::spawn_window(&ui_url, &win_cfg)?;
     }
 
     // 4. Run Loopback IPC Server
