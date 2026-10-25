@@ -46,7 +46,7 @@ interface AuditLog {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter'>('security');
   const [connected, setConnected] = useState(false);
   const [nonce, setNonce] = useState<string | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
@@ -103,6 +103,24 @@ export default function App() {
   const [wasmInputPayload, setWasmInputPayload] = useState('{"algorithm": "sha256-vector", "data": "Aegis Zero Trust 2026"}');
   const [wasmExecResult, setWasmExecResult] = useState<any>(null);
   const [wasmLoading, setWasmLoading] = useState(false);
+
+  // Biometric Enclave State (v0.15)
+  const [enclaveStatus, setEnclaveStatus] = useState<any>(null);
+  const [enclaveAuthResult, setEnclaveAuthResult] = useState<any>(null);
+  const [enclaveLoading, setEnclaveLoading] = useState(false);
+
+  // Encrypted IPC Stream State (v0.15)
+  const [streamPlaintext, setStreamPlaintext] = useState('Aegis v0.15 — Zero-Trust Encrypted IPC payload 🔐');
+  const [streamCiphertext, setStreamCiphertext] = useState('');
+  const [streamTag, setStreamTag] = useState('');
+  const [streamDecryptResult, setStreamDecryptResult] = useState<any>(null);
+  const [streamLoading, setStreamLoading] = useState(false);
+
+  // Local Crash Reporter State (v0.15)
+  const [crashEntries, setCrashEntries] = useState<any[]>([]);
+  const [crashKind, setCrashKind] = useState('assertion');
+  const [crashMessage, setCrashMessage] = useState('Simulated sandbox assertion violation in module wasm-crypto-accelerator');
+  const [crashLoading, setCrashLoading] = useState(false);
 
   // Vault State (v0.11 Zero-Knowledge Encryption)
   const [vaultFileName, setVaultFileName] = useState('confidential_notes.vault');
@@ -306,6 +324,82 @@ export default function App() {
     setWasmLoading(false);
   };
 
+  // v0.15 Handlers
+  const refreshEnclaveStatus = async () => {
+    setEnclaveLoading(true);
+    const res = await aegis.enclaveStatus();
+    if (res.success && res.data) {
+      setEnclaveStatus(res.data);
+      addLog('INFO', 'enclave_status', `Biometric Enclave: ${res.data.platform} — ${res.data.available ? 'Available' : 'Unavailable'}`);
+    } else {
+      addLog('BLOCKED', 'enclave_status', res.error || 'Enclave status failed');
+    }
+    setEnclaveLoading(false);
+  };
+
+  const handleEnclaveAuth = async () => {
+    setEnclaveLoading(true);
+    const res = await aegis.enclaveAuthenticate('Aegis Desktop identity verification');
+    if (res.success && res.data) {
+      setEnclaveAuthResult(res.data);
+      addLog('SUCCESS', 'enclave_authenticate', `Biometric auth: ${res.data.method} — ${res.data.message}`);
+    } else {
+      addLog('BLOCKED', 'enclave_authenticate', res.error || 'Authentication failed');
+    }
+    setEnclaveLoading(false);
+  };
+
+  const handleStreamEncrypt = async () => {
+    setStreamLoading(true);
+    const res = await aegis.streamEncrypt(streamPlaintext);
+    if (res.success && res.data) {
+      setStreamCiphertext(res.data.ciphertext);
+      setStreamTag(res.data.tag);
+      setStreamDecryptResult(null);
+      addLog('SUCCESS', 'stream_encrypt', `IPC stream encrypted — HMAC tag: ${res.data.tag.substring(0, 16)}...`);
+    } else {
+      addLog('BLOCKED', 'stream_encrypt', res.error || 'Encryption failed');
+    }
+    setStreamLoading(false);
+  };
+
+  const handleStreamDecrypt = async () => {
+    if (!streamCiphertext || !streamTag) return;
+    setStreamLoading(true);
+    const res = await aegis.streamDecrypt(streamCiphertext, streamTag);
+    if (res.success && res.data) {
+      setStreamDecryptResult(res.data);
+      addLog(res.data.verified ? 'SUCCESS' : 'BLOCKED', 'stream_decrypt', res.data.verified ? `HMAC verified & decrypted: "${res.data.plaintext.substring(0, 40)}..."` : 'HMAC tag mismatch — payload rejected');
+    } else {
+      addLog('BLOCKED', 'stream_decrypt', res.error || 'Decryption failed');
+    }
+    setStreamLoading(false);
+  };
+
+  const refreshCrashEntries = async () => {
+    setCrashLoading(true);
+    const res = await aegis.crashList();
+    if (res.success && res.data) {
+      setCrashEntries(res.data.entries || []);
+      addLog('INFO', 'crash_list', `${res.data.total} local crash report(s) — air-gapped, zero-telemetry`);
+    } else {
+      addLog('BLOCKED', 'crash_list', res.error || 'Crash list unavailable');
+    }
+    setCrashLoading(false);
+  };
+
+  const handleRecordCrash = async () => {
+    setCrashLoading(true);
+    const res = await aegis.crashRecord(crashKind, crashMessage);
+    if (res.success && res.data) {
+      addLog('INFO', 'crash_record', `Crash diagnostic persisted: id=${res.data.id}`);
+      refreshCrashEntries();
+    } else {
+      addLog('BLOCKED', 'crash_record', res.error || 'Failed to record crash');
+    }
+    setCrashLoading(false);
+  };
+
   useEffect(() => {
     connectToCore();
   }, []);
@@ -451,7 +545,7 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
-              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.12 ALPHA</span>
+              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.15 BETA</span>
             </div>
             <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Zero-Trust Framework</div>
           </div>
@@ -738,6 +832,50 @@ export default function App() {
           >
             <Cpu style={{ width: '18px', height: '18px', color: '#2dd4bf' }} />
             Wasm VM Sandbox
+          </button>
+
+          <div style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '1px', padding: '8px 12px 4px' }}>v0.15 New</div>
+
+          <button
+            onClick={() => { setActiveTab('enclave'); refreshEnclaveStatus(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'enclave' ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.25), rgba(99, 102, 241, 0.05))' : 'transparent',
+              color: activeTab === 'enclave' ? '#a5b4fc' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Fingerprint style={{ width: '18px', height: '18px', color: '#818cf8' }} />
+            Biometric Enclave
+          </button>
+
+          <button
+            onClick={() => setActiveTab('stream')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'stream' ? 'linear-gradient(90deg, rgba(6, 182, 212, 0.2), rgba(6, 182, 212, 0.05))' : 'transparent',
+              color: activeTab === 'stream' ? '#67e8f9' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Lock style={{ width: '18px', height: '18px', color: '#22d3ee' }} />
+            Encrypted Stream
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('crashReporter'); refreshCrashEntries(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'crashReporter' ? 'linear-gradient(90deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05))' : 'transparent',
+              color: activeTab === 'crashReporter' ? '#fcd34d' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <FileText style={{ width: '18px', height: '18px', color: '#f59e0b' }} />
+            Crash Reporter
           </button>
 
           <div style={{ marginTop: 'auto', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
@@ -2101,6 +2239,282 @@ export default function App() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          )}
+          {/* TAB v0.15-A: BIOMETRIC ENCLAVE */}
+          {activeTab === 'enclave' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  Biometric Enclave
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Hardware-bound platform authentication via Windows Hello (TPM) and Apple Secure Enclave.
+                  Keys never leave the device; all operations happen inside the trusted execution environment.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                {/* Status Card */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <Fingerprint style={{ width: '20px', height: '20px', color: '#818cf8' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Enclave Status</h3>
+                  </div>
+
+                  <button
+                    onClick={refreshEnclaveStatus}
+                    disabled={enclaveLoading}
+                    style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '13px', marginBottom: '16px' }}
+                  >
+                    {enclaveLoading ? '⏳ Probing...' : '🔍 Query Enclave'}
+                  </button>
+
+                  {enclaveStatus && (
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {[
+                        { label: 'Platform', value: enclaveStatus.platform },
+                        { label: 'Backend', value: enclaveStatus.backend },
+                        { label: 'Available', value: enclaveStatus.available ? '✅ Yes' : '❌ No' },
+                        { label: 'Authenticated', value: enclaveStatus.authenticated ? '🟢 Active' : '🔴 Not Authenticated' },
+                      ].map(({ label, value }) => (
+                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '12px', color: '#64748b' }}>{label}</span>
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: '#e2e8f0', fontFamily: 'monospace' }}>{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Auth Card */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <ShieldCheck style={{ width: '20px', height: '20px', color: '#34d399' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Authenticate via Enclave</h3>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px', lineHeight: '1.6' }}>
+                    Triggers a hardware-bound biometric or PIN challenge. The Rust backend communicates directly
+                    with the OS secure enclave — no secret ever touches user-space memory.
+                  </p>
+                  <button
+                    onClick={handleEnclaveAuth}
+                    disabled={enclaveLoading}
+                    style={{ width: '100%', background: 'linear-gradient(135deg, #6366f1, #a855f7)', border: 'none', color: '#fff', padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', marginBottom: '16px' }}
+                  >
+                    {enclaveLoading ? '⏳ Authenticating...' : '🔐 Trigger Biometric Auth'}
+                  </button>
+
+                  {enclaveAuthResult && (
+                    <div style={{ padding: '14px', background: enclaveAuthResult.success ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${enclaveAuthResult.success ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`, borderRadius: '8px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: enclaveAuthResult.success ? '#34d399' : '#f87171', marginBottom: '6px' }}>
+                        {enclaveAuthResult.success ? '✅ AUTHENTICATED' : '❌ REJECTED'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Method: <code style={{ color: '#a5b4fc' }}>{enclaveAuthResult.method}</code></div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{enclaveAuthResult.message}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '10px', padding: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#818cf8', fontWeight: 600, marginBottom: '8px' }}>🔐 Security Guarantee</div>
+                <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.7' }}>
+                  Biometric Enclave keys are sealed by the TPM / Secure Enclave chip. Even if Aegis Core is
+                  fully compromised, an attacker cannot extract the private key — they can only attempt
+                  authentication which requires physical presence and a valid biometric or PIN.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB v0.15-B: ENCRYPTED IPC STREAM */}
+          {activeTab === 'stream' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  Encrypted IPC Stream
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  End-to-end symmetric encryption of every IPC payload. Session keys are derived from the
+                  handshake nonce — each message includes an HMAC-SHA256 authentication tag so tampering is
+                  immediately detected.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+                {/* Encrypt */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <Lock style={{ width: '20px', height: '20px', color: '#22d3ee' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Encrypt Payload</h3>
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px', display: 'block' }}>Plaintext Message</label>
+                    <textarea
+                      value={streamPlaintext}
+                      onChange={(e) => setStreamPlaintext(e.target.value)}
+                      rows={3}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '10px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '13px', resize: 'vertical', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleStreamEncrypt}
+                    disabled={streamLoading || !streamPlaintext}
+                    style={{ background: 'linear-gradient(135deg, #0891b2, #0e7490)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                  >
+                    {streamLoading ? '⏳ Encrypting...' : '🔒 Encrypt via Rust Core'}
+                  </button>
+
+                  {streamCiphertext && (
+                    <div style={{ marginTop: '16px', padding: '14px', background: 'rgba(0,0,0,0.4)', borderRadius: '8px', border: '1px solid rgba(6,182,212,0.2)' }}>
+                      <div style={{ fontSize: '11px', color: '#22d3ee', marginBottom: '6px', fontWeight: 600 }}>Encrypted Ciphertext (hex)</div>
+                      <code style={{ fontSize: '11px', color: '#94a3b8', wordBreak: 'break-all', display: 'block', marginBottom: '10px' }}>{streamCiphertext}</code>
+                      <div style={{ fontSize: '11px', color: '#22d3ee', marginBottom: '6px', fontWeight: 600 }}>HMAC-SHA256 Auth Tag</div>
+                      <code style={{ fontSize: '11px', color: '#34d399', wordBreak: 'break-all', display: 'block' }}>{streamTag}</code>
+                    </div>
+                  )}
+                </div>
+
+                {/* Decrypt */}
+                {streamCiphertext && (
+                  <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: '12px', padding: '22px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                      <Eye style={{ width: '20px', height: '20px', color: '#22d3ee' }} />
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Decrypt & Verify HMAC</h3>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px' }}>
+                      Rust Core verifies the HMAC-SHA256 tag before decrypting. Any bit-flip in the ciphertext or tag will cause a hard rejection.
+                    </p>
+                    <button
+                      onClick={handleStreamDecrypt}
+                      disabled={streamLoading}
+                      style={{ background: 'linear-gradient(135deg, #047857, #065f46)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', marginBottom: '14px' }}
+                    >
+                      {streamLoading ? '⏳ Verifying...' : '🔓 Decrypt & Verify Tag'}
+                    </button>
+
+                    {streamDecryptResult && (
+                      <div style={{ padding: '14px', background: streamDecryptResult.verified ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${streamDecryptResult.verified ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`, borderRadius: '8px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: streamDecryptResult.verified ? '#34d399' : '#f87171', marginBottom: '8px' }}>
+                          {streamDecryptResult.verified ? '✅ HMAC VERIFIED — Payload Authentic' : '❌ HMAC MISMATCH — Payload Rejected'}
+                        </div>
+                        {streamDecryptResult.verified && (
+                          <div style={{ fontSize: '13px', color: '#e2e8f0', fontFamily: 'monospace', background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: '6px' }}>
+                            {streamDecryptResult.plaintext}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB v0.15-C: LOCAL CRASH REPORTER */}
+          {activeTab === 'crashReporter' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  Local Crash Reporter
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Air-gapped, zero-telemetry diagnostic capture. Panics and assertion violations are persisted
+                  locally to <code style={{ color: '#fbbf24' }}>./sandbox/crashes/</code> — no data ever leaves the device.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                {/* Record Crash */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <AlertTriangle style={{ width: '20px', height: '20px', color: '#f59e0b' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Record Diagnostic</h3>
+                  </div>
+
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ fontSize: '12px', color: '#64748b', marginBottom: '5px', display: 'block' }}>Crash Kind</label>
+                    <select
+                      value={crashKind}
+                      onChange={(e) => setCrashKind(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 10px', borderRadius: '6px', color: '#f1f5f9', fontSize: '13px' }}
+                    >
+                      <option value="assertion">Assertion Violation</option>
+                      <option value="panic">Rust Panic</option>
+                      <option value="oom">Out of Memory</option>
+                      <option value="ipc_error">IPC Protocol Error</option>
+                      <option value="sandbox_escape">Sandbox Escape Attempt</option>
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ fontSize: '12px', color: '#64748b', marginBottom: '5px', display: 'block' }}>Message / Stack Trace</label>
+                    <textarea
+                      value={crashMessage}
+                      onChange={(e) => setCrashMessage(e.target.value)}
+                      rows={4}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '10px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', resize: 'vertical', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleRecordCrash}
+                    disabled={crashLoading}
+                    style={{ width: '100%', background: 'linear-gradient(135deg, #b45309, #92400e)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                  >
+                    {crashLoading ? '⏳ Recording...' : '📋 Persist Crash Diagnostic'}
+                  </button>
+                </div>
+
+                {/* Crash List */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <FileText style={{ width: '20px', height: '20px', color: '#f59e0b' }} />
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Crash Log</h3>
+                    </div>
+                    <button
+                      onClick={refreshCrashEntries}
+                      disabled={crashLoading}
+                      style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', color: '#fcd34d', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}
+                    >
+                      {crashLoading ? '⏳' : '↻ Refresh'}
+                    </button>
+                  </div>
+
+                  {crashEntries.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '30px 0', color: '#64748b', fontSize: '13px' }}>
+                      <CheckCircle2 style={{ width: '32px', height: '32px', color: '#34d399', margin: '0 auto 10px', display: 'block' }} />
+                      No crash reports. System nominal.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
+                      {crashEntries.map((entry: any) => (
+                        <div key={entry.id} style={{ padding: '10px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.1)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <code style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 700 }}>{entry.kind}</code>
+                            <span style={{ fontSize: '10px', color: '#64748b' }}>{entry.timestamp}</span>
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}>{entry.message}</div>
+                          <div style={{ fontSize: '10px', color: '#475569', marginTop: '4px' }}>ID: {entry.id}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: '10px', padding: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 600, marginBottom: '8px' }}>🛡️ Privacy Guarantee</div>
+                <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.7' }}>
+                  All crash diagnostics are stored exclusively at <code style={{ color: '#fcd34d' }}>./sandbox/crashes/</code>.
+                  There are no outbound network calls, no telemetry endpoints, and no crash-upload background threads.
+                  Aegis Desktop never sends any diagnostic data off-device.
+                </div>
               </div>
             </div>
           )}

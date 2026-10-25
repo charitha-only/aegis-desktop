@@ -11,9 +11,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### 🚀 Planned Features & Enhancements
 - [ ] **macOS & Linux Native WebKit:** Full native webview integration via `wry` and `tao` (replacing Edge App Mode fallback).
-- [ ] **Biometric Enclave Integration:** Windows Hello & Apple TouchID native secure enclave key storage.
-- [ ] **Encrypted IPC Transport:** End-to-end ChaCha20-Poly1305 encrypted loopback socket channel.
-- [ ] **Automated Crash Reporter (Local-Only):** Zero-telemetry crash dump analyzer inside isolated sandbox.
+- [ ] **Remote Attestation:** TPM-backed remote attestation proofs for enterprise zero-trust network policies.
+- [ ] **Capability Marketplace:** Signed plugin registry with cryptographic provenance verification.
+- [ ] **GPU-accelerated Wasm JIT:** WGPU-backed JIT tier for compute-intensive Wasm workloads.
+
+---
+
+## 🚀 [v0.15.0] - 2026-10-25
+> **The Biometric Enclave, Encrypted IPC Stream & Local Crash Reporter Release**
+
+### ✨ Highlights & New Features
+- **Biometric Enclave (`src-core/src/security/enclave.rs`):**
+  - Hardware-bound platform authentication via Windows Hello (TPM) and Apple Secure Enclave (SEP).
+  - Private keys are permanently sealed inside the TEE — they never enter user-space memory.
+  - IPC commands: `enclave_status`, `enclave_authenticate`.
+  - Full React UI panel with live status query and biometric challenge trigger.
+- **Encrypted IPC Stream (`src-core/src/ipc/encrypted_stream.rs`):**
+  - Symmetric session-key encryption derived from the per-handshake nonce.
+  - Every payload carries an HMAC-SHA256 authentication tag; any bit-flip causes an immediate hard rejection.
+  - IPC commands: `stream_encrypt`, `stream_decrypt`.
+  - Full React UI panel demonstrating the encrypt → transmit → verify → decrypt round-trip.
+- **Local Crash Reporter (`src-core/src/crash.rs`):**
+  - Air-gapped, zero-telemetry diagnostic capture of Rust panics and assertion violations.
+  - Persists structured reports to `./sandbox/crashes/` — **no outbound network calls ever**.
+  - IPC commands: `crash_list`, `crash_record`.
+  - Full React UI panel with kind selector, message editor, and scrollable crash log viewer.
+- **Agent Skills Integration (`.agents/skills/`):**
+  - 27 engineering and productivity skills from `mattpocock/skills` integrated.
+  - v0.15.0 architectural decisions formally recorded in `docs/adr/0001-enclave-encrypted-ipc-crash-reporter.md`.
+  - Domain vocabulary expanded in `GLOSSARY.md` (Biometric Enclave, Encrypted IPC Stream, Local Crash Reporter, Session Nonce).
+
+### 🔐 Security Improvements
+- All v0.15 subsystems pass through the existing Zero-Trust capability engine (nonce verification + rate limiter).
+- `BiometricEnclave` uses `Mutex`-protected state to prevent concurrent authentication races.
+- `CrashReporter` writes to a sandboxed subdirectory, preventing crash logs from leaking outside the app boundary.
+
+### 🛠️ Internal Changes
+- `src-core/src/security/mod.rs` — exported `BiometricEnclave`.
+- `src-core/src/ipc/mod.rs` — exported `EncryptedStream`.
+- `src-core/src/ipc/router.rs` — registered 6 new IPC routes.
+- `src-core/src/main.rs` — initialized `BiometricEnclave` and `CrashReporter` singletons.
+- `src-ui/src/aegis-bridge.ts` — version bumped to v0.15; 6 new typed client methods added.
+- `src-ui/src/App.tsx` — 3 new tab panels; header badge updated to `v0.15 BETA`.
+- `Cargo.toml` + `package.json` — version bumped to `0.15.0`.
 
 ---
 

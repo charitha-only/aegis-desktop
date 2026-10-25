@@ -1,6 +1,11 @@
 /**
- * Aegis Desktop IPC Bridge Client v0.14
+ * Aegis Desktop IPC Bridge Client v0.15
  * Secure typed communication with Rust Backend Core
+ *
+ * v0.15 additions:
+ *  - BiometricEnclave  — hardware-bound platform auth (Windows Hello / Apple SEP)
+ *  - EncryptedStream   — nonce-derived session-key IPC encryption + HMAC
+ *  - CrashReporter     — air-gapped zero-telemetry local crash diagnostics
  */
 
 export interface IpcResponse<T = any> {
@@ -226,6 +231,8 @@ class AegisBridge {
   }
 
   // --- v0.14 Extensions ---
+
+  // --- v0.15 Extensions: Biometric Enclave ---
   public async hardwareKeyList(): Promise<IpcResponse> {
     return this.invoke('hardware_key_list');
   }
@@ -256,6 +263,33 @@ class AegisBridge {
 
   public async wasmExecute(moduleId: string, input: Record<string, any> = {}): Promise<IpcResponse> {
     return this.invoke('wasm_execute', { moduleId, input });
+  }
+
+  // --- v0.15 Extensions: Encrypted IPC Stream ---
+  public async streamEncrypt(plaintext: string): Promise<IpcResponse<{ ciphertext: string; tag: string; nonce_used: string }>> {
+    return this.invoke('stream_encrypt', { plaintext });
+  }
+
+  public async streamDecrypt(ciphertext: string, tag: string): Promise<IpcResponse<{ plaintext: string; verified: boolean }>> {
+    return this.invoke('stream_decrypt', { ciphertext, tag });
+  }
+
+  // --- v0.15 Extensions: Local Crash Reporter ---
+  public async crashList(): Promise<IpcResponse<{ entries: Array<{ id: string; timestamp: string; kind: string; message: string }>; total: number }>> {
+    return this.invoke('crash_list');
+  }
+
+  public async crashRecord(kind: string, message: string): Promise<IpcResponse<{ id: string; persisted: boolean }>> {
+    return this.invoke('crash_record', { kind, message });
+  }
+
+  // --- v0.15 Extensions: Biometric Enclave ---
+  public async enclaveStatus(): Promise<IpcResponse<{ platform: string; available: boolean; authenticated: boolean; backend: string }>> {
+    return this.invoke('enclave_status');
+  }
+
+  public async enclaveAuthenticate(reason: string = 'Aegis Desktop identity verification'): Promise<IpcResponse<{ success: boolean; method: string; message: string }>> {
+    return this.invoke('enclave_authenticate', { reason });
   }
 
   // Security Defense Simulators

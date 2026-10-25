@@ -1,4 +1,5 @@
 mod bundler;
+mod crash;
 mod ipc;
 mod plugin;
 mod profile;
@@ -9,10 +10,11 @@ mod updater;
 mod wasm;
 mod window;
 
+use crash::CrashReporter;
 use ipc::IpcRouter;
 use plugin::{PluginRegistry, register_builtin_plugins};
 use profile::ProfileManager;
-use security::{CapabilityManifest, HandshakeSession, HardwareKeyEngine, OriginValidator, SecurityEngine};
+use security::{BiometricEnclave, CapabilityManifest, HandshakeSession, HardwareKeyEngine, OriginValidator, SecurityEngine};
 use server::CoreServer;
 use std::fs;
 use std::path::Path;
@@ -23,7 +25,7 @@ use window::{WindowConfig, WindowManager};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("     🛡️  AEGIS DESKTOP CORE v0.14.0 • HIGH-SECURITY RUNTIME  ");
+    println!("     🛡️  AEGIS DESKTOP CORE v0.15.0 • HIGH-SECURITY RUNTIME  ");
     println!("============================================================");
 
     // 1. Locate and parse aegis.config.json
@@ -75,12 +77,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     register_builtin_plugins(&plugin_registry);
 
     // 2c. Initialize Auto-Updater
-    let auto_updater = Arc::new(AutoUpdater::new("0.14.0", &base_dir));
+    let auto_updater = Arc::new(AutoUpdater::new("0.15.0", &base_dir));
 
     // 2d. Initialize v0.14 Subsystems
     let hardware_keys = Arc::new(HardwareKeyEngine::new());
     let profile_manager = Arc::new(ProfileManager::new());
     let wasm_sandbox = Arc::new(WasmSandbox::new());
+
+    // 2e. Initialize v0.15 Subsystems
+    let biometric_enclave = Arc::new(BiometricEnclave::new());
+    let crash_reporter = Arc::new(CrashReporter::new(&base_dir));
 
     let router = Arc::new(IpcRouter::new(
         Arc::clone(&security_engine),
@@ -90,6 +96,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         hardware_keys,
         profile_manager,
         wasm_sandbox,
+        biometric_enclave,
+        crash_reporter,
     ));
 
     // 2. Bind the Secure Loopback Bridge

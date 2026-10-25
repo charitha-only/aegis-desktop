@@ -1,7 +1,9 @@
+use super::encrypted_stream::EncryptedStream;
 use super::protocol::{IpcRequest, IpcResponse};
+use crate::crash::CrashReporter;
 use crate::plugin::PluginRegistry;
 use crate::profile::ProfileManager;
-use crate::security::{HandshakeSession, HardwareKeyEngine, PrivacyShield, SecurityEngine, VaultEngine};
+use crate::security::{BiometricEnclave, HandshakeSession, HardwareKeyEngine, PrivacyShield, SecurityEngine, VaultEngine};
 use crate::tray::{NotificationConfig, NotificationEngine, TrayDaemon};
 use crate::updater::{AutoUpdater, UpdateManifest};
 use crate::wasm::WasmSandbox;
@@ -18,6 +20,8 @@ pub struct IpcRouter {
     hardware_keys: Arc<HardwareKeyEngine>,
     profile_manager: Arc<ProfileManager>,
     wasm_sandbox: Arc<WasmSandbox>,
+    biometric_enclave: Arc<BiometricEnclave>,
+    crash_reporter: Arc<CrashReporter>,
 }
 
 impl IpcRouter {
@@ -29,6 +33,8 @@ impl IpcRouter {
         hardware_keys: Arc<HardwareKeyEngine>,
         profile_manager: Arc<ProfileManager>,
         wasm_sandbox: Arc<WasmSandbox>,
+        biometric_enclave: Arc<BiometricEnclave>,
+        crash_reporter: Arc<CrashReporter>,
     ) -> Self {
         Self {
             security,
@@ -38,6 +44,8 @@ impl IpcRouter {
             hardware_keys,
             profile_manager,
             wasm_sandbox,
+            biometric_enclave,
+            crash_reporter,
         }
     }
 
@@ -51,7 +59,7 @@ impl IpcRouter {
         match req.command.as_str() {
             "get_security_status" => {
                 let status = json!({
-                    "engine": "Aegis Core v0.14 (Rust)",
+                    "engine": "Aegis Core v0.15 (Rust)",
                     "nonceVerified": true,
                     "sandboxEnforced": true,
                     "privacyVaultActive": true,
@@ -65,6 +73,9 @@ impl IpcRouter {
                     "hardwareKeyActive": true,
                     "multiProfileActive": true,
                     "wasmSandboxActive": true,
+                    "biometricEnclaveActive": true,
+                    "encryptedIpcActive": true,
+                    "crashReporterActive": true,
                     "activeCapabilities": {
                         "fsRead": true,
                         "fsWrite": true,
@@ -79,7 +90,10 @@ impl IpcRouter {
                         "autoUpdater": true,
                         "hardwareKey": true,
                         "multiProfile": true,
-                        "wasmSandbox": true
+                        "wasmSandbox": true,
+                        "biometricEnclave": true,
+                        "encryptedIpc": true,
+                        "crashReporter": true
                     }
                 });
                 IpcResponse::ok(&req.id, status)
@@ -571,6 +585,62 @@ impl IpcRouter {
                     Ok(res) => IpcResponse::ok(&req.id, json!(res)),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
+            }
+
+            // ─── BIOMETRIC ENCLAVE IPC (v0.15) ─────────────────────────────
+
+            "enclave_status" => {
+                IpcResponse::ok(&req.id, json!(self.biometric_enclave.get_status()))
+            }
+
+            "enclave_authenticate" => {
+                let reason = req.payload.get("reason").and_then(|r| r.as_str()).unwrap_or("Access Aegis Confidential Subsystem");
+                match self.biometric_enclave.authenticate(reason) {
+                    Ok(auth_res) => IpcResponse::ok(&req.id, json!(auth_res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ─── ENCRYPTED IPC STREAM IPC (v0.15) ──────────────────────────
+
+            "stream_encrypt" => {
+                let plaintext = match req.payload.get("plaintext").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'plaintext' parameter"),
+                };
+                let envelope = EncryptedStream::encrypt_payload(plaintext, &req.nonce);
+                IpcResponse::ok(&req.id, json!(envelope))
+            }
+
+            "stream_decrypt" => {
+                let envelope_val = match req.payload.get("envelope") {
+                    Some(v) => v,
+                    None => return IpcResponse::err(&req.id, "Missing 'envelope' parameter"),
+                };
+                match serde_json::from_value::<crate::ipc::encrypted_stream::EncryptedEnvelope>(envelope_val.clone()) {
+                    Ok(env) => match EncryptedStream::decrypt_payload(&env, &req.nonce) {
+                        Ok(decrypted) => IpcResponse::ok(&req.id, json!({ "plaintext": decrypted })),
+                        Err(e) => IpcResponse::err(&req.id, &e),
+                    },
+                    Err(e) => IpcResponse::err(&req.id, &format!("Invalid envelope schema: {}", e)),
+                }
+            }
+
+            // ─── AIR-GAPPED CRASH REPORTER IPC (v0.15) ─────────────────────
+
+            "crash_list" => {
+                IpcResponse::ok(&req.id, json!({
+                    "crashes": self.crash_reporter.list_crashes(),
+                    "zeroTelemetry": true,
+                    "storageLocation": "./sandbox/crashes/"
+                }))
+            }
+
+            "crash_record" => {
+                let kind = req.payload.get("errorKind").and_then(|k| k.as_str()).unwrap_or("ControlledDiagnosticTrap");
+                let trace = req.payload.get("stackTrace").and_then(|s| s.as_str()).unwrap_or("User initiated air-gap diagnostic capture");
+                let report = self.crash_reporter.record_crash(kind, trace);
+                IpcResponse::ok(&req.id, json!(report))
             }
 
             "execute_shell" => {
