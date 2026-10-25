@@ -21,6 +21,7 @@ use std::fs;
 use std::sync::Arc;
 
 pub struct IpcRouter {
+    message_dialogs: crate::message_dialog::MessageDialogJobs,
     file_dialogs: crate::file_dialog::FileDialogJobs,
     clipboard: crate::clipboard::TextClipboard,
     security: Arc<SecurityEngine>,
@@ -71,6 +72,9 @@ impl IpcRouter {
         #[cfg(all(not(windows), not(test)))]
         vault_sessions.require_platform_monitor();
         Self {
+            message_dialogs: crate::message_dialog::MessageDialogJobs::new(
+                std::time::Duration::from_secs(120),
+            ),
             file_dialogs: crate::file_dialog::FileDialogJobs::new(std::time::Duration::from_secs(
                 120,
             )),
@@ -807,56 +811,62 @@ impl IpcRouter {
                 IpcResponse::ok(&req.id, json!(info))
             }
 
-            "window_dialog" => {
+            "window_dialog"
+            | "message_dialog_open"
+            | "message_dialog_poll"
+            | "message_dialog_cancel" => {
                 if let Err(error) = self.security.check_dialogs() {
                     return IpcResponse::err(&req.id, &error);
                 }
-
-                let dialog_type = req
-                    .payload
-                    .get("type")
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("info");
-                let message = req
-                    .payload
-                    .get("message")
-                    .and_then(|m| m.as_str())
-                    .unwrap_or("Aegis Native Notification");
-                let title = req
-                    .payload
-                    .get("title")
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("Aegis Security Dialog");
-
-                let icon = match dialog_type {
-                    "info" => "Information",
-                    "warning" => "Warning",
-                    "error" => "Error",
-                    _ => return IpcResponse::err(&req.id, "Unsupported dialog type"),
-                };
-                let platform = match crate::platform::Platform::current() {
-                    Ok(platform) => platform,
-                    Err(error) => return IpcResponse::err(&req.id, &error),
-                };
-                let mut command =
-                    match crate::window::WindowManager::prepare_dialog(platform, title, message) {
-                        Ok(command) => command,
-                        Err(error) => return IpcResponse::err(&req.id, &error),
-                    };
-                command.env("AEGIS_DIALOG_ICON", icon);
-                match command.spawn() {
-                    Ok(mut child) => {
-                        std::thread::spawn(move || {
-                            let _ = child.wait();
+                let profile = self.profile_manager.get_active_profile().id;
+                if req.command == "window_dialog" || req.command == "message_dialog_open" {
+                    let title = req
+                        .payload
+                        .get("title")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Aegis Dialog");
+                    let message = req
+                        .payload
+                        .get("message")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let kind = req
+                        .payload
+                        .get("type")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("info");
+                    let result = crate::message_dialog::MessageRequest::new(title, message, kind)
+                        .and_then(|request| {
+                            self.message_dialogs.start(
+                                &profile,
+                                &request,
+                                crate::message_dialog::native_helper()?,
+                            )
                         });
-                        IpcResponse::ok(
+                    return match result {
+                        Ok(id) => IpcResponse::ok(
                             &req.id,
-                            json!({"dialogType":dialog_type,"title":title,"submitted":true,"deliveryConfirmed":false}),
-                        )
+                            json!({"requestId":id,"status":"pending","dialogType":kind,"title":title,"submitted":true,"deliveryConfirmed":false}),
+                        ),
+                        Err(error) => IpcResponse::err(&req.id, &error),
+                    };
+                }
+                let id = match req.payload.get("requestId").and_then(|v| v.as_str()) {
+                    Some(id) => id,
+                    None => return IpcResponse::err(&req.id, "Missing 'requestId' parameter"),
+                };
+                if req.command == "message_dialog_cancel" {
+                    return match self.message_dialogs.cancel(&profile, id) {
+                        Ok(()) => IpcResponse::ok(&req.id, json!({"status":"cancelled"})),
+                        Err(error) => IpcResponse::err(&req.id, &error),
+                    };
+                }
+                match self.message_dialogs.poll(&profile, id) {
+                    Ok(None) => IpcResponse::ok(&req.id, json!({"status":"pending"})),
+                    Ok(Some(outcome)) => {
+                        IpcResponse::ok(&req.id, serde_json::to_value(outcome).unwrap())
                     }
-                    Err(_) => {
-                        IpcResponse::err(&req.id, "Native dialog helper could not be started")
-                    }
+                    Err(error) => IpcResponse::err(&req.id, &error),
                 }
             }
 
@@ -1150,6 +1160,7 @@ impl IpcRouter {
             "profile_switch" => {
                 self.vault_sessions.lock();
                 self.file_dialogs.invalidate();
+                self.message_dialogs.invalidate();
                 let id = match req.payload.get("profileId").and_then(|i| i.as_str()) {
                     Some(i) => i,
                     None => return IpcResponse::err(&req.id, "Missing 'profileId' parameter"),

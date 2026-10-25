@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.7] - 2026-10-26
+
+- Add optional cross-platform native message helpers and typed open/poll/cancel methods; distinguish submission from acknowledgement and require successful provider exit.
+- Replace the unbounded Windows IPC helper route with profile-scoped, single-slot dialog jobs. The legacy window_dialog alias now requires the native-dialogs feature and returns a request ID to consume/cancel.
+- Fix expired abandoned requests permanently occupying file/dialog slots after page reload; add a failing-then-passing regression.
+- Share bounded job supervision across typed file/message results; preserve the demo layout while reporting truthful submission/acknowledgement and polling results.
+- Add malformed message-helper input checks on all native runners and a real Linux X11 message-window/default-button fixture. Physical/accessibility and Windows/macOS interactive message acceptance remain pending.
+
 ## [v0.25.6] - 2026-10-26
 
 - Add optional native single-file selection through an isolated main-thread helper and default-denied file-dialog capability; declare Rust 1.92 minimum.

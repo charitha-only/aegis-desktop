@@ -32,6 +32,8 @@ export interface AppDirectories {
 }
 
 export interface NativeDialogSubmission {
+  requestId: string;
+  status: 'pending';
   dialogType: 'info' | 'warning' | 'error';
   title: string;
   submitted: true;
@@ -285,6 +287,18 @@ class AegisBridge {
 
   public async showNativeDialog(title: string, message: string, type: 'info' | 'warning' | 'error' = 'info'): Promise<IpcResponse<NativeDialogSubmission>> {
     return this.invoke('window_dialog', { title, message, type });
+  }
+
+  public async openMessageDialog(title: string, message: string, type: 'info' | 'warning' | 'error' = 'info'): Promise<IpcResponse<NativeDialogSubmission>> {
+    return this.invoke('message_dialog_open', {title, message, type});
+  }
+
+  public async pollMessageDialog(requestId: string): Promise<IpcResponse<{status: 'pending' | 'acknowledged'}>> {
+    return this.invoke('message_dialog_poll', {requestId});
+  }
+
+  public async cancelMessageDialog(requestId: string): Promise<IpcResponse<{status: 'cancelled'}>> {
+    return this.invoke('message_dialog_cancel', {requestId});
   }
 
   public async getWindowCapabilities(): Promise<IpcResponse> {

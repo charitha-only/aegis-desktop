@@ -5,6 +5,7 @@ mod clipboard;
 mod crash;
 mod file_dialog;
 mod ipc;
+mod message_dialog;
 #[cfg(feature = "native-desktop")]
 mod native_window;
 mod network;
@@ -43,6 +44,9 @@ use wasm::WasmSandbox;
 use window::{WindowConfig, WindowManager};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if std::env::args().any(|arg| arg == "--message-dialog-helper") {
+        return message_dialog::run_helper().map_err(Into::into);
+    }
     if std::env::args().any(|arg| arg == "--file-picker-helper") {
         return file_dialog::run_helper().map_err(Into::into);
     }

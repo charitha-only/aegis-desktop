@@ -876,15 +876,32 @@ export default function App() {
   };
 
   const handleShowNativeDialog = async (type: 'info' | 'warning' | 'error') => {
-    addLog('INFO', 'window_dialog', `Triggering OS-native ${type.toUpperCase()} modal dialog...`);
+    addLog('INFO', 'window_dialog', `Requesting native ${type.toUpperCase()} dialog...`);
     const res = await aegis.showNativeDialog(
-      `Aegis Desktop [v0.12 Security Alert]`,
-      `This is an authenticated native system notification delivered from the Rust Core engine.\n\nAll capabilities remain locked under Sandboxed policy.`,
+      'Aegis Desktop Message',
+      'This message comes from the local Rust core. Acknowledging it does not grant access to protected data.',
       type
     );
-    if (res.success) {
-      addLog('SUCCESS', 'window_dialog', 'Native system dialog displayed');
+    if (!res.success || !res.data) {
+      addLog('BLOCKED', 'window_dialog', res.error || 'Dialog request failed');
+      return;
     }
+    addLog('INFO', 'window_dialog', 'Dialog request submitted');
+    const requestId = res.data.requestId;
+    for (let attempt = 0; attempt < 120; attempt++) {
+      await new Promise(resolve => window.setTimeout(resolve, 1000));
+      const status = await aegis.pollMessageDialog(requestId);
+      if (!status.success) {
+        addLog('BLOCKED', 'window_dialog', status.error || 'Dialog result unavailable');
+        return;
+      }
+      if (status.data?.status === 'acknowledged') {
+        addLog('SUCCESS', 'window_dialog', 'Dialog acknowledged');
+        return;
+      }
+    }
+    await aegis.cancelMessageDialog(requestId);
+    addLog('BLOCKED', 'window_dialog', 'Dialog acknowledgement timed out');
   };
 
   // UI cleanup reduces retention; JavaScript strings cannot be reliably zeroized.
@@ -1751,7 +1768,7 @@ export default function App() {
                   Multi-Window Manager & Native System Dialogs
                 </h1>
                 <p style={{ fontSize: '13px', color: '#94a3b8' }}>
-                  Control secondary windows, popups, and trigger authenticated OS-native modal dialogs directly through the Rust core engine.
+                  Control secondary windows, popups, and request permission-controlled native message dialogs directly through the Rust core engine.
                 </p>
               </div>
 

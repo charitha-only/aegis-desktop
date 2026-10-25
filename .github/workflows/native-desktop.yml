@@ -31,7 +31,7 @@ jobs:
         timeout-minutes: 8
         run: |
           sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
-          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y libgtk-4-dev libwebkitgtk-6.0-dev xvfb dbus-x11 at-spi2-core apparmor
+          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y libgtk-4-dev libwebkitgtk-6.0-dev xvfb dbus-x11 at-spi2-core apparmor zenity xdotool
       - name: Permit sandbox namespaces for the owned Linux fixture executable
         if: runner.os == 'Linux'
         run: bash scripts/setup-linux-native-ci.sh
@@ -41,6 +41,9 @@ jobs:
         run: cargo build --locked --manifest-path src-core/Cargo.toml --features native-desktop,file-dialog
       - name: Reject malformed file picker helper input without opening a dialog
         run: node aegis-cli/bin/file-dialog-smoke.js
+      - name: Open and acknowledge owned Linux message fixture in virtual display
+        if: runner.os == 'Linux'
+        run: xvfb-run -a dbus-run-session -- node aegis-cli/bin/message-dialog-smoke.js
       - name: Native clipboard roundtrip on disposable desktop
         if: runner.os != 'Linux'
         run: cargo test --locked --manifest-path src-core/Cargo.toml --features native-desktop,file-dialog -- --ignored --exact security::regression_tests::ipc_clipboard_roundtrip_on_disposable_runner

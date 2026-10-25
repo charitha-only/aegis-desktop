@@ -77,14 +77,22 @@ impl Drop for Job {
     }
 }
 
-pub struct FileDialogJobs {
+pub trait DialogOutcome: Sized {
+    fn from_output(output: &[u8]) -> Result<Self, String>;
+}
+
+pub type FileDialogJobs = DialogJobs<FileSelectionOutcome>;
+
+pub struct DialogJobs<T: DialogOutcome> {
+    outcome: std::marker::PhantomData<T>,
     job: Mutex<Option<Job>>,
     timeout: Duration,
 }
 
-impl FileDialogJobs {
+impl<T: DialogOutcome> DialogJobs<T> {
     pub fn new(timeout: Duration) -> Self {
         Self {
+            outcome: std::marker::PhantomData,
             job: Mutex::new(None),
             timeout,
         }
@@ -94,24 +102,30 @@ impl FileDialogJobs {
     pub fn start(
         &self,
         profile: &str,
-        request: &FileSelectionRequest,
+        request: &impl Serialize,
         mut command: Command,
     ) -> Result<String, String> {
         let mut slot = self
             .job
             .lock()
-            .map_err(|_| "File picker state unavailable")?;
+            .map_err(|_| "Native dialog state unavailable")?;
+        if slot
+            .as_ref()
+            .is_some_and(|job| job.started.elapsed() >= self.timeout)
+        {
+            slot.take();
+        }
         if slot.is_some() {
-            return Err("A file picker request already exists; poll or cancel it first".into());
+            return Err("A native dialog request already exists; poll or cancel it first".into());
         }
         let mut random = [0u8; 16];
-        getrandom::getrandom(&mut random).map_err(|_| "File picker identifier unavailable")?;
+        getrandom::getrandom(&mut random).map_err(|_| "Native dialog identifier unavailable")?;
         let child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
-            .map_err(|_| "File picker could not start")?;
+            .map_err(|_| "Native dialog could not start")?;
         let (tx, rx) = mpsc::channel();
         let mut job = Job {
             id: hex::encode(random),
@@ -124,7 +138,7 @@ impl FileDialogJobs {
             .child
             .stdout
             .take()
-            .ok_or("File picker output unavailable")?;
+            .ok_or("Native dialog output unavailable")?;
         std::thread::Builder::new()
             .name("aegis-picker-output".into())
             .spawn(move || {
@@ -132,70 +146,70 @@ impl FileDialogJobs {
                 let result = stdout
                     .take(65537)
                     .read_to_end(&mut output)
-                    .map_err(|_| "File picker output failed".to_string())
+                    .map_err(|_| "Native dialog output failed".to_string())
                     .and_then(|_| {
                         if output.len() > 65536 {
-                            Err("File picker response exceeds limits".into())
+                            Err("Native dialog response exceeds limits".into())
                         } else {
                             Ok(output)
                         }
                     });
                 let _ = tx.send(result);
             })
-            .map_err(|_| "File picker reader could not start")?;
-        let input = serde_json::to_vec(request).map_err(|_| "Invalid file picker request")?;
+            .map_err(|_| "Native dialog reader could not start")?;
+        let input = serde_json::to_vec(request).map_err(|_| "Invalid native dialog request")?;
         job.child
             .stdin
             .take()
-            .ok_or("File picker input unavailable")?
+            .ok_or("Native dialog input unavailable")?
             .write_all(&input)
-            .map_err(|_| "File picker input failed")?;
+            .map_err(|_| "Native dialog input failed")?;
         let id = job.id.clone();
         *slot = Some(job);
         Ok(id)
     }
 
-    pub fn poll(&self, profile: &str, id: &str) -> Result<Option<FileSelectionOutcome>, String> {
+    pub fn poll(&self, profile: &str, id: &str) -> Result<Option<T>, String> {
         let mut slot = self
             .job
             .lock()
-            .map_err(|_| "File picker state unavailable")?;
-        let job = slot.as_mut().ok_or("Unknown file picker request")?;
+            .map_err(|_| "Native dialog state unavailable")?;
+        let job = slot.as_mut().ok_or("Unknown native dialog request")?;
         if job.profile != profile || job.id != id {
-            return Err("Unknown file picker request".into());
+            return Err("Unknown native dialog request".into());
         }
         if job.started.elapsed() >= self.timeout {
             slot.take();
-            return Err("File picker timed out".into());
+            return Err("Native dialog timed out".into());
         }
         let exited = job
             .child
             .try_wait()
-            .map_err(|_| "File picker status unavailable")?;
+            .map_err(|_| "Native dialog status unavailable")?;
         if exited.is_none() {
             return Ok(None);
         }
         let output = match job.output.try_recv() {
             Ok(result) => result,
             Err(mpsc::TryRecvError::Empty) => return Ok(None),
-            Err(_) => Err("File picker output unavailable".into()),
+            Err(_) => Err("Native dialog output unavailable".into()),
         };
         let success = exited.is_some_and(|status| status.success());
         slot.take();
         if !success {
-            return Err("File picker helper failed".into());
+            return Err("Native dialog helper failed".into());
         }
-        FileSelectionOutcome::from_output(&output?).map(Some)
+        T::from_output(&output?).map(Some)
     }
 
     pub fn cancel(&self, profile: &str, id: &str) -> Result<(), String> {
         let mut slot = self
             .job
             .lock()
-            .map_err(|_| "File picker state unavailable")?;
-        let job = slot.as_ref().ok_or("Unknown file picker request")?;
+            .map_err(|_| "Native dialog state unavailable")?;
+        let job = slot.as_ref().ok_or("Unknown native dialog request")?;
         if job.profile != profile || job.id != id {
-            return Err("Unknown file picker request".into());
+            return Err("Unknown native dialog request".into());
         }
         slot.take();
         Ok(())
@@ -234,6 +248,12 @@ impl FileSelectionOutcome {
     }
 }
 
+impl DialogOutcome for FileSelectionOutcome {
+    fn from_output(output: &[u8]) -> Result<Self, String> {
+        FileSelectionOutcome::from_output(output)
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FileSelectionRequest {
@@ -253,6 +273,22 @@ impl FileSelectionRequest {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn abandoned_expired_request_does_not_permanently_block_new_dialogs() {
+        let jobs = super::FileDialogJobs::new(std::time::Duration::from_millis(30));
+        let request = super::FileSelectionRequest::new("fixture").unwrap();
+        let command = || {
+            let mut command = std::process::Command::new("node");
+            command.args(["-e", "setTimeout(()=>{},60000)"]);
+            command
+        };
+        let old = jobs.start("work", &request, command()).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(60));
+        let new = jobs.start("work", &request, command()).unwrap();
+        assert_ne!(old, new);
+        assert!(jobs.poll("work", &old).is_err());
+        jobs.cancel("work", &new).unwrap();
+    }
     #[test]
     fn cancel_and_profile_invalidation_revoke_pending_requests() {
         let jobs = super::FileDialogJobs::new(std::time::Duration::from_secs(5));
@@ -280,7 +316,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(60));
         assert_eq!(
             jobs.poll("work", &id).err().as_deref(),
-            Some("File picker timed out")
+            Some("Native dialog timed out")
         );
         assert!(jobs.poll("work", &id).is_err());
     }

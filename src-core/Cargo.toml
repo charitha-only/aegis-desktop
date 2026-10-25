@@ -1,12 +1,13 @@
 [package]
 name = "aegis-core"
-version = "0.25.6"
+version = "0.25.7"
 edition = "2021"
 rust-version = "1.92"
 
 [features]
 default = []
-file-dialog = ["dep:rfd"]
+native-dialogs = ["dep:rfd"]
+file-dialog = ["native-dialogs"]
 native-desktop = ["dep:wry", "dep:winit", "dep:webkit6", "dep:gtk4"]
 
 [dependencies]

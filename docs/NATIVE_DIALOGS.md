@@ -1,11 +1,25 @@
-# Dialog helper contract
+# Native message-dialog preview
 
-`window_dialog` checks the configured `system.allowDialogs` capability before preparing or spawning a helper. Denied operations do not start a process. Titles are limited to 1024 bytes and messages to 16 KiB; null characters are rejected. Supported kinds are info, warning and error.
+Build with `--features native-dialogs` (also enabled by `file-dialog`). The default build returns an explicit unavailable error. `security.capabilities.system.allowDialogs` must be true; the permission is checked before input processing, spawning, polling or cancellation.
 
-The current provider is a simple Windows message box launched through PowerShell. The script is constant; message/title/icon values travel as environment data rather than being interpolated into executable script. The process starts with its console hidden and is reaped after it exits. This is not an owned parent-window modal API or a mechanism for retrieving the user's response.
+The typed bridge exposes `openMessageDialog(title, message, type)`, `pollMessageDialog(requestId)` and `cancelMessageDialog(requestId)`. Kinds are info, warning and error; title is limited to 1,024 UTF-8 bytes and message to 16 KiB, without NUL. The initial response is `NativeDialogSubmission`: requestId, status pending, submitted true and deliveryConfirmed false. Startup does not establish visible delivery or user acknowledgement.
 
-Success returns `submitted: true` and `deliveryConfirmed: false`. It means helper startup succeeded; it does not prove the operating system displayed the dialog or that the user read it. The bridge exposes this response as `NativeDialogSubmission`. macOS/Linux currently return an unavailable-provider error instead of a false delivered response. Real cross-platform dialog/file-selection adapters remain part of v0.26.
+Poll about once per second. A terminal successful result is `{status: 'acknowledged'}`. Provider nonzero exit, malformed output and timeout are errors; absence of a response is not acknowledgement. This is a UI acknowledgement, not user identity verification or authorization to a vault. Cancel reports that the runtime discarded its request and terminated its owned helper; it does not claim the user pressed Cancel.
 
-Regression coverage verifies command/data separation, input bounds, explicit unavailable providers and capability denial through public interfaces. A Windows-only parser check validates the prepared PowerShell syntax without executing it or opening a dialog, and checks that an invalid-script fixture is rejected. It does not replace interactive dialog acceptance.
+Windows and macOS use rfd native message dialogs on an isolated helper's main thread. Linux replaces that helper with zenity, using literal command arguments, disabled Pango markup and a 120-second provider timeout. Zenity must be installed in the desktop session; missing providers return an asynchronous helper error. The runtime tracks the same Linux PID after replacement, avoiding an untracked zenity child. No shell or caller-provided executable is accepted. There is no native parent-window association, custom buttons or confirmation/Yes-No workflow yet.
 
-Dialog strings are copied into the helper's environment/process memory; do not interpret this injection fix as a guarantee that every sensitive string copy is wiped.
+File and message requests share the tested job implementation with separate slots. One message and one file selection may be outstanding per runtime. IDs contain 128 random bits, are profile-scoped, and terminal results are consumed once. Profile switching cancels pending requests. Timeout polling discards the job, and a subsequent open reclaims an abandoned expired slot (for example after a page reload). The core does not wait for a UI response while holding its dispatcher.
+
+## Migration from v0.25.4
+
+`window_dialog` and `showNativeDialog` remain aliases for message submission, now returning requestId/status in addition to their previous submission fields. They require the optional native-dialogs feature even on Windows; the previous unbounded PowerShell submission route is no longer used by IPC. Callers must poll to consume the result or cancel it before starting another message. The demo follows this lifecycle and reports submission separately from acknowledgement; its layout is unchanged.
+
+## Verification and limits
+
+Public-interface tests cover validation, result types, literal Linux command data, failed-provider rejection and shared job lifecycle. An exit-status negative control confirms that a provider returning plausible acknowledgement output with a failure status cannot succeed. The abandoned-request regression fails before timeout reclamation is applied.
+
+Three-OS native CI compiles the real providers and rejects malformed helper input without opening UI. A separate disposable Linux X11 fixture opens the actual message window and presses its default button. Windows/macOS interactive message acceptance, physical desktops, screen readers, keyboard layouts, scaling and parent-window modality remain separate gates. API/build checks do not certify them.
+
+Text is copied into provider/process memory and Linux command arguments. This API makes no comprehensive memory-wiping or same-account process-inspection guarantee. Avoid displaying secrets merely to confirm an action.
+
+Provider references: https://docs.rs/rfd/0.17.2/rfd/struct.MessageDialog.html and https://gitlab.gnome.org/GNOME/zenity.
