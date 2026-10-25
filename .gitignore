@@ -1,0 +1,38 @@
+# Rust build outputs
+/target/
+**/target/
+**/*.rs.bk
+
+# Node & Frontend dependencies
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Sandbox runtime test files (keep .gitkeep)
+sandbox/*
+!sandbox/.gitkeep
+
+# IDEs & System files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment variables
+.env
+.env.local
+.env.*.local

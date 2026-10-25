@@ -1,0 +1,2 @@
+# This directory serves as the isolated sandbox storage for Aegis Desktop.
+# Files written via the Aegis FS capability will be securely restricted to this folder.

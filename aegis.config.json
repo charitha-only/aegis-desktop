@@ -1,0 +1,39 @@
+{
+  "name": "Aegis Desktop Application",
+  "version": "1.0.0",
+  "description": "High-Security Custom Cross-Platform Desktop Framework",
+  "window": {
+    "title": "Aegis Core • Enterprise Desktop",
+    "width": 1280,
+    "height": 840,
+    "resizable": true,
+    "decorations": true,
+    "transparent": false
+  },
+  "security": {
+    "enableCapabilityCheck": true,
+    "enforceOrigin": true,
+    "allowedOrigins": [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "aegis://localhost"
+    ],
+    "contentSecurityPolicy": "default-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;",
+    "capabilities": {
+      "fs": {
+        "allowRead": ["./sandbox/**", "./app_data/**"],
+        "allowWrite": ["./sandbox/**"],
+        "denyPaths": ["../**", "C:\\Windows\\**", "C:\\Users\\*\\AppData\\Local\\Microsoft\\**"]
+      },
+      "system": {
+        "allowSystemInfo": true,
+        "allowDialogs": true,
+        "allowShellExecution": false
+      },
+      "crypto": {
+        "allowHashing": true,
+        "allowRandomGeneration": true
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "aegis-desktop",
+  "version": "1.0.0",
+  "description": "High-Security Cross-Platform Desktop Application Framework built with Rust and React",
+  "license": "MIT",
+  "scripts": {
+    "setup": "npm install && npm --prefix src-ui install",
+    "dev": "node aegis-cli/bin/aegis.js dev",
+    "dev:ui": "npm --prefix src-ui run dev",
+    "dev:core": "cargo run --manifest-path src-core/Cargo.toml",
+    "build": "node aegis-cli/bin/aegis.js build",
+    "test:security": "node aegis-cli/bin/aegis.js test-security"
+  },
+  "keywords": [
+    "desktop",
+    "framework",
+    "rust",
+    "react",
+    "vite",
+    "security",
+    "zero-trust",
+    "sandbox",
+    "cross-platform"
+  ],
+  "author": "Aegis Desktop Contributors"
+}
