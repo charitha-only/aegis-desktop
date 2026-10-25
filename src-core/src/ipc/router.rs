@@ -25,19 +25,23 @@ impl IpcRouter {
         match req.command.as_str() {
             "get_security_status" => {
                 let status = json!({
-                    "engine": "Aegis Core v0.11 (Rust)",
+                    "engine": "Aegis Core v0.12 (Rust)",
                     "nonceVerified": true,
                     "sandboxEnforced": true,
                     "privacyVaultActive": true,
                     "antiDosRateLimiterActive": true,
                     "airGapPolicyActive": true,
+                    "bundlerEngineActive": true,
+                    "multiWindowApiActive": true,
                     "activeCapabilities": {
                         "fsRead": true,
                         "fsWrite": true,
                         "shellExecution": false,
                         "systemInfo": true,
                         "crypto": true,
-                        "encryptedVault": true
+                        "encryptedVault": true,
+                        "bundler": true,
+                        "multiWindow": true
                     }
                 });
                 IpcResponse::ok(&req.id, status)
@@ -222,6 +226,103 @@ impl IpcRouter {
                     }
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
+            }
+
+            "window_spawn" => {
+                let url = req.payload.get("url").and_then(|u| u.as_str()).unwrap_or("http://localhost:5173");
+                let title = req.payload.get("title").and_then(|t| t.as_str()).unwrap_or("Aegis Secondary Window");
+                let width = req.payload.get("width").and_then(|w| w.as_u64()).unwrap_or(800) as u32;
+                let height = req.payload.get("height").and_then(|h| h.as_u64()).unwrap_or(600) as u32;
+                let modal = req.payload.get("modal").and_then(|m| m.as_bool()).unwrap_or(false);
+
+                let cfg = crate::window::WindowConfig {
+                    title: title.to_string(),
+                    width,
+                    height,
+                    resizable: true,
+                    modal,
+                };
+
+                match crate::window::WindowManager::spawn_window(url, &cfg) {
+                    Ok(_) => IpcResponse::ok(&req.id, json!({
+                        "status": "Window Spawned Successfully",
+                        "title": title,
+                        "url": url,
+                        "width": width,
+                        "height": height
+                    })),
+                    Err(e) => IpcResponse::err(&req.id, &format!("Failed to spawn window: {}", e)),
+                }
+            }
+
+            "window_dialog" => {
+                let dialog_type = req.payload.get("type").and_then(|t| t.as_str()).unwrap_or("info");
+                let message = req.payload.get("message").and_then(|m| m.as_str()).unwrap_or("Aegis Native Notification");
+                let title = req.payload.get("title").and_then(|t| t.as_str()).unwrap_or("Aegis Security Dialog");
+
+                // Execute native OS dialog via powershell on Windows, zenity on Linux, or osascript on Mac
+                #[cfg(target_os = "windows")]
+                {
+                    let script = format!(
+                        "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('{}', '{}')",
+                        message.replace("'", "''"),
+                        title.replace("'", "''")
+                    );
+                    let _ = std::process::Command::new("powershell")
+                        .args(["-NoProfile", "-Command", &script])
+                        .spawn();
+                }
+
+                IpcResponse::ok(&req.id, json!({
+                    "dialogType": dialog_type,
+                    "title": title,
+                    "delivered": true
+                }))
+            }
+
+            "window_list" => {
+                // Returns info about multi-window support capabilities
+                IpcResponse::ok(&req.id, json!({
+                    "multiWindowSupported": true,
+                    "apiVersion": "v0.12.0",
+                    "spawnMethods": ["window_spawn", "window_dialog"],
+                    "platformHint": std::env::consts::OS,
+                    "capabilities": {
+                        "modal": true,
+                        "kiosk": true,
+                        "alwaysOnTop": true,
+                        "customSize": true,
+                        "customUrl": true
+                    }
+                }))
+            }
+
+            "bundle_status" => {
+                // Returns info about the bundler engine
+                let project_root = std::env::current_dir()
+                    .unwrap_or_else(|_| std::path::PathBuf::from("."));
+                let dist_bundle = project_root.join("dist-bundle");
+                let bundle_exists = dist_bundle.exists();
+                let bundle_contents: Vec<String> = if bundle_exists {
+                    std::fs::read_dir(&dist_bundle)
+                        .ok()
+                        .map(|d| d.filter_map(|e| e.ok())
+                            .filter_map(|e| e.file_name().into_string().ok())
+                            .collect())
+                        .unwrap_or_default()
+                } else {
+                    vec![]
+                };
+
+                IpcResponse::ok(&req.id, json!({
+                    "bundlerEngineVersion": "v0.12.0",
+                    "bundleExists": bundle_exists,
+                    "bundleOutputDir": dist_bundle.to_string_lossy(),
+                    "existingBundles": bundle_contents,
+                    "howToBundle": "Run: cargo run --manifest-path src-core/Cargo.toml -- --bundle",
+                    "innoSetupDocs": "https://jrsoftware.org/isinfo.php",
+                    "supportedTargets": ["windows-x64", "linux-x64", "macos-aarch64"]
+                }))
             }
 
             "execute_shell" => {

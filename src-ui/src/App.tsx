@@ -20,6 +20,7 @@ import {
   Eye,
   EyeOff,
   Flame,
+  AppWindow,
 } from 'lucide-react';
 import {
   aegis,
@@ -39,7 +40,7 @@ interface AuditLog {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'diagnostics' | 'logs'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'diagnostics' | 'logs'>('security');
   const [connected, setConnected] = useState(false);
   const [nonce, setNonce] = useState<string | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
@@ -53,6 +54,9 @@ export default function App() {
   const [fileContent, setFileContent] = useState('Encrypted record verified by Aegis Core Sandbox Engine.');
   const [readResult, setReadResult] = useState<string | null>(null);
 
+  // Bundler State (v0.12)
+  const [bundlerStatus, setBundlerStatus] = useState<any>(null);
+  const [bundlerLoading, setBundlerLoading] = useState(false);
   // Vault State (v0.11 Zero-Knowledge Encryption)
   const [vaultFileName, setVaultFileName] = useState('confidential_notes.vault');
   const [vaultContent, setVaultContent] = useState('TOP_SECRET: Aegis Vault payload encrypted at rest with PBKDF2/SHA-256 and HMAC tags.');
@@ -110,6 +114,16 @@ export default function App() {
     if (res.success && res.data) {
       setSandboxFiles(res.data.entries);
     }
+  };
+
+  const refreshBundlerStatus = async () => {
+    setBundlerLoading(true);
+    const res = await aegis.call('bundle_status', {});
+    if (res.success && res.data) {
+      setBundlerStatus(res.data);
+      addLog('INFO', 'bundle_status', `Bundler engine v${res.data.bundlerEngineVersion} queried`);
+    }
+    setBundlerLoading(false);
   };
 
   useEffect(() => {
@@ -218,6 +232,35 @@ export default function App() {
     }
   };
 
+  // Multi-Window & Native Dialog Handlers (v0.12)
+  const handleSpawnSecondaryWindow = async (modal = false) => {
+    addLog('INFO', 'window_spawn', `Spawning ${modal ? 'Modal' : 'Secondary'} Window via Rust WindowManager...`);
+    const res = await aegis.spawnWindow({
+      url: 'http://localhost:5173',
+      title: modal ? 'Aegis Modal Inspector' : 'Aegis Secondary Secure Window',
+      width: 900,
+      height: 600,
+      modal,
+    });
+    if (res.success) {
+      addLog('SUCCESS', 'window_spawn', 'Native window process spawned successfully');
+    } else {
+      addLog('BLOCKED', 'window_spawn_error', res.error || 'Failed to spawn window');
+    }
+  };
+
+  const handleShowNativeDialog = async (type: 'info' | 'warning' | 'error') => {
+    addLog('INFO', 'window_dialog', `Triggering OS-native ${type.toUpperCase()} modal dialog...`);
+    const res = await aegis.showNativeDialog(
+      `Aegis Desktop [v0.12 Security Alert]`,
+      `This is an authenticated native system notification delivered from the Rust Core engine.\n\nAll capabilities remain locked under Zero-Trust policy.`,
+      type
+    );
+    if (res.success) {
+      addLog('SUCCESS', 'window_dialog', 'Native system dialog displayed');
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', background: 'radial-gradient(circle at 50% 10%, #1e1e38 0%, #0a0b14 100%)' }}>
       {/* Custom Window Titlebar */}
@@ -228,7 +271,7 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
-              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.11 ALPHA</span>
+              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.12 ALPHA</span>
             </div>
             <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Zero-Trust Framework</div>
           </div>
@@ -325,6 +368,50 @@ export default function App() {
           >
             <Lock style={{ width: '18px', height: '18px', color: '#a855f7' }} />
             Privacy & Vault
+          </button>
+
+          <button
+            onClick={() => setActiveTab('window')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              border: 'none',
+              background: activeTab === 'window' ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.05))' : 'transparent',
+              color: activeTab === 'window' ? '#818cf8' : '#94a3b8',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '13px',
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <AppWindow style={{ width: '18px', height: '18px', color: '#38bdf8' }} />
+            Window & Dialogs
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('bundler'); refreshBundlerStatus(); }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              border: 'none',
+              background: activeTab === 'bundler' ? 'linear-gradient(90deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.05))' : 'transparent',
+              color: activeTab === 'bundler' ? '#fde68a' : '#94a3b8',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '13px',
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Zap style={{ width: '18px', height: '18px', color: '#fbbf24' }} />
+            Bundler & Packaging
           </button>
 
           <button
@@ -754,7 +841,202 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 4: DIAGNOSTICS & CRYPTO */}
+          {/* TAB 4: MULTI-WINDOW & NATIVE DIALOGS (NEW IN v0.12) */}
+          {activeTab === 'window' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  Multi-Window Manager & Native System Dialogs
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Control secondary windows, popups, and trigger authenticated OS-native modal dialogs directly through the Rust core engine.
+                </p>
+              </div>
+
+              {/* Multi-Window Controls */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AppWindow style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                    Spawn Native Secondary Windows
+                  </h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px' }}>
+                    Aegis can launch isolated browser process windows for secondary screens, sub-dashboards, or modal dialogues.
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => handleSpawnSecondaryWindow(false)}
+                      style={{ background: '#0284c7', border: 'none', color: '#fff', padding: '10px 16px', borderRadius: '6px', fontWeight: 500, fontSize: '13px', cursor: 'pointer' }}
+                    >
+                      Spawn Secondary Window (800x600)
+                    </button>
+                    <button
+                      onClick={() => handleSpawnSecondaryWindow(true)}
+                      style={{ background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#7dd3fc', padding: '10px 16px', borderRadius: '6px', fontWeight: 500, fontSize: '13px', cursor: 'pointer' }}
+                    >
+                      Spawn Modal Window
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertTriangle style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
+                    Trigger OS-Native System Dialogs
+                  </h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px' }}>
+                    Trigger native OS message boxes (Windows WPF / MessageBox) outside the browser viewport.
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => handleShowNativeDialog('info')}
+                      style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#93c5fd', padding: '10px 14px', borderRadius: '6px', fontWeight: 500, fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      ℹ️ Info Dialog
+                    </button>
+                    <button
+                      onClick={() => handleShowNativeDialog('warning')}
+                      style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#fde68a', padding: '10px 14px', borderRadius: '6px', fontWeight: 500, fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      ⚠️ Warning Dialog
+                    </button>
+                    <button
+                      onClick={() => handleShowNativeDialog('error')}
+                      style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', padding: '10px 14px', borderRadius: '6px', fontWeight: 500, fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      ⛔ Security Alert Dialog
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4b: BUNDLER & PACKAGING (NEW IN v0.12) */}
+          {activeTab === 'bundler' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  One-Click Native Bundler & Installer Packager
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Package your Aegis application into a portable standalone directory and generate a Windows native
+                  <code style={{ color: '#fde68a', background: 'rgba(251,191,36,0.1)', padding: '1px 6px', borderRadius: '4px', margin: '0 4px' }}>.exe</code>
+                  installer script via InnoSetup — zero manual configuration required.
+                </p>
+              </div>
+
+              {/* How-To Steps */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(251, 191, 36, 0.2)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#fde68a', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Zap style={{ width: '18px', height: '18px', color: '#fbbf24' }} />
+                  How to Bundle in 3 Steps
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                  {[
+                    { step: '01', title: 'Build Rust Core', cmd: 'cd src-core && cargo build --release', desc: 'Compiles the Rust binary to a native executable (aegis-core.exe).' },
+                    { step: '02', title: 'Build Frontend', cmd: 'cd src-ui && npm run build', desc: 'Vite bundles the React app into optimized static HTML/JS/CSS.' },
+                    { step: '03', title: 'Run Bundler', cmd: 'cargo run -- --bundle', desc: 'Aegis packages both into dist-bundle/ and generates the InnoSetup .iss script.' },
+                  ].map(item => (
+                    <div key={item.step} style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '10px', padding: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 800, color: 'rgba(251,191,36,0.2)', lineHeight: 1 }}>{item.step}</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#f1f5f9', marginTop: '8px', marginBottom: '6px' }}>{item.title}</div>
+                      <code style={{ fontSize: '11px', color: '#86efac', background: 'rgba(0,0,0,0.4)', padding: '4px 8px', borderRadius: '4px', display: 'block', marginBottom: '8px' }}>{item.cmd}</code>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.5' }}>{item.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bundler Engine Status */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Database style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
+                      Bundler Engine Status
+                    </h3>
+                    <button
+                      onClick={refreshBundlerStatus}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                    >
+                      <RefreshCw style={{ width: '14px', height: '14px' }} />
+                    </button>
+                  </div>
+
+                  {bundlerLoading ? (
+                    <div style={{ color: '#64748b', fontSize: '13px' }}>Querying Rust Core...</div>
+                  ) : bundlerStatus ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Engine Version</span>
+                        <span style={{ fontSize: '12px', color: '#fde68a', fontWeight: 600 }}>{bundlerStatus.bundlerEngineVersion}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Bundle Output Exists</span>
+                        <span style={{ fontSize: '12px', color: bundlerStatus.bundleExists ? '#34d399' : '#94a3b8', fontWeight: 600 }}>
+                          {bundlerStatus.bundleExists ? '✅ Yes' : '⬜ Not yet built'}
+                        </span>
+                      </div>
+                      <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                        <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>Supported Targets</div>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {(bundlerStatus.supportedTargets || []).map((t: string) => (
+                            <span key={t} style={{ fontSize: '10px', background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '2px 8px', borderRadius: '10px' }}>{t}</span>
+                          ))}
+                        </div>
+                      </div>
+                      {bundlerStatus.existingBundles?.length > 0 && (
+                        <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>Existing Bundles in dist-bundle/</div>
+                          {bundlerStatus.existingBundles.map((b: string) => (
+                            <div key={b} style={{ fontSize: '12px', color: '#86efac', fontFamily: 'monospace' }}>📁 {b}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ color: '#64748b', fontSize: '13px' }}>Click refresh to query bundler status from Rust Core.</div>
+                  )}
+                </div>
+
+                {/* InnoSetup Info Card */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FileCode style={{ width: '16px', height: '16px', color: '#a855f7' }} />
+                    Windows .exe Installer Generation
+                  </h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '14px' }}>
+                    After running the bundler, a <code style={{ color: '#fde68a' }}>dist-bundle/AppName-installer.iss</code> script is auto-generated.
+                    Compile it with <strong style={{ color: '#e2e8f0' }}>Inno Setup Compiler</strong> to produce a native Windows
+                    <code style={{ color: '#fde68a' }}>Setup.exe</code> installer — no Rust or Node required on the end-user machine.
+                  </p>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '12px', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px' }}>Bundle Output Structure</div>
+                    <pre style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.6 }}>{`dist-bundle/
+├── AppName/
+│   ├── aegis-core.exe  ← Rust binary
+│   ├── ui/             ← Built React frontend
+│   ├── sandbox/        ← Isolated storage
+│   ├── aegis.config.json
+│   ├── Launch AppName.bat
+│   └── aegis-bundle.json
+└── AppName-installer.iss ← InnoSetup script`}</pre>
+                  </div>
+                  <a
+                    href="https://jrsoftware.org/isinfo.php"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#818cf8', textDecoration: 'none' }}
+                  >
+                    <ExternalLink style={{ width: '12px', height: '12px' }} />
+                    Download Inno Setup Compiler
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'diagnostics' && (
             <div>
               <div style={{ marginBottom: '24px' }}>

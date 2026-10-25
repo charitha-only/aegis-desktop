@@ -6,15 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## 🔮 [Upcoming Roadmap] - v0.12.0 / v0.20.0
-> **Target Release:** Q4 2026
+## 🔮 [Upcoming Roadmap] - v0.20.0
+> **Target Release:** Q1 2027
 
 ### 🚀 Planned Features & Enhancements
-- [ ] **One-Click Standalone Bundler:** Automatic native `.exe` packaging using InnoSetup / MSI installers without requiring users to install Cargo/Node.
-- [ ] **Native Webview Window Wrappers:** Integration with native OS webview APIs (`wry` / `tao` / WebKit on Linux & macOS).
-- [ ] **Multi-Window Management:** Open secondary secure windows and modal dialogs via `aegis-bridge.ts`.
-- [ ] **Custom Rust Plugin Engine:** Allow developers to easily expose their own custom Rust system functions through capabilities.
-- [ ] **Tray & System Notifications:** Background daemon mode with system tray icon support.
+- [ ] **Custom Rust Plugin Engine:** Allow developers to expose their own Rust system functions through a composable capability manifest.
+- [ ] **Tray & System Notifications:** Background daemon mode with OS system tray icon and notification support.
+- [ ] **macOS & Linux Native WebKit:** Full native webview integration via `wry` and `tao` (replacing Edge App Mode fallback).
+- [ ] **WebSocket IPC Transport:** Low-latency bidirectional real-time event streaming from Rust Core → frontend.
+- [ ] **Auto-Updater (Air-Gapped):** Self-contained update mechanism that verifies signature before applying patches.
+
+---
+
+## 🚀 [v0.12.0] - 2026-10-25
+> **The Standalone Bundler, Installer & Multi-Window Native API Release**
+
+### ✨ Highlights & New Features
+- **One-Click Standalone Native `.exe` Bundler (`src-core/src/bundler.rs`):**
+  - New `BundleEngine` module packages the compiled Rust binary + React `dist/` + `sandbox/` + `aegis.config.json` into a self-contained portable `dist-bundle/<AppName>/` directory.
+  - Auto-generates a Windows **InnoSetup Installer Script** (`.iss`) for producing a native `Setup.exe` installer — no Rust or Node.js required on the end-user machine.
+  - Auto-generates a Windows `.bat` launcher script for running the app directly.
+  - New CLI flag: `cargo run -- --bundle` to trigger the full packaging pipeline.
+  - New npm script: `npm run bundle` — builds Rust release binary + Vite frontend + runs bundler in one command.
+- **Enhanced Multi-Window Manager (`src-core/src/window.rs`):**
+  - Added `WindowRecord` registry for tracking all spawned secondary windows.
+  - New `WindowConfig` fields: `always_on_top` and `kiosk` mode support.
+  - Cross-platform launchers for Windows (Edge App Mode), macOS (Safari/open), and Linux (xdg-open).
+  - Window ID generation for lifecycle management.
+- **New IPC Commands (v0.12):**
+  - `window_list` — Returns multi-window capability manifest and platform hint.
+  - `bundle_status` — Queries the bundler engine state, existing bundles, and supported targets from inside the app.
+- **New "Bundler & Packaging" UI Tab (React Frontend):**
+  - 3-step visual bundling guide with interactive code blocks.
+  - Live bundler engine status card (queries `bundle_status` IPC command).
+  - InnoSetup installer documentation panel with bundle output structure preview.
+  - Direct link to Inno Setup Compiler download.
+- **`aegis-bridge.ts` v0.12 Updates:**
+  - Added `call()` — a generic pass-through method for invoking any custom IPC command.
+  - Added `getWindowCapabilities()` — queries multi-window support manifest.
+  - Updated `SecurityStatus` type with `bundlerEngineActive` and `multiWindowApiActive` fields.
+
+### 🛡️ Security
+- Bundler strictly never exposes host system paths — all bundle paths are derived relative to `project_root`.
+- InnoSetup script uses `PrivilegesRequired=lowest` — no admin escalation required.
+- Bundler output includes the full `aegis.config.json` capability policy, preserving Zero-Trust settings in deployed apps.
+
+### 🐛 Bug Fixes & Improvements
+- `WindowConfig` now includes `always_on_top` and `kiosk` with proper `#[serde(default)]` annotations.
+- `main.rs` now prints `v0.12.0` in the startup banner.
+- `package.json` bumped to `0.12.0` with new `build:release` and `bundle` npm scripts.
 
 ---
 
@@ -86,9 +126,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 | Version | Release Date | Key Changes | Stability |
 | :---: | :---: | :--- | :---: |
-| **[v0.11.0](#-v0110---2026-10-25)** | **2026-10-25** | Zero-Knowledge Encrypted Vault, Anti-DoS Rate Limiter, Air-Gap Privacy Shield | **Alpha (Hardened)** |
+| **[v0.12.0](#-v0120---2026-10-25)** | **2026-10-25** | One-Click Native Bundler & .exe Installer, Multi-Window Manager, `bundle_status` & `window_list` IPC | **Alpha** |
+| **[v0.11.0](#-v0110---2026-10-25)** | **2026-10-25** | Zero-Knowledge Encrypted Vault, Anti-DoS Rate Limiter, Air-Gap Privacy Shield | **Alpha** |
 | **[v0.10.0](#-v0100---2026-10-25)** | **2026-10-25** | Initial Open-Source Release: Rust core, React UI, Sandbox, Attack Simulator | **Alpha** |
-| *v0.12.0* | *Upcoming* | Native standalone `.exe` bundler, Multi-window support, Mac/Linux webviews | *Planned* |
+| *v0.20.0* | *Upcoming (Q1 2027)* | Plugin Engine, Tray Daemon, macOS WebKit, WebSocket IPC, Auto-Updater | *Planned* |
 
 ---
 

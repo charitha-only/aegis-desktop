@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.11-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.11-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.12-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.12-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -33,6 +33,7 @@ Traditional desktop frameworks like Electron bundle an entire Chromium browser a
 * 🛡️ **Zero-Trust Security:** Shell execution is permanently blocked, file access is locked inside an isolated sandbox, and every IPC request is cryptographically authenticated.
 * 🔐 **Encrypted Vault at Rest:** Sensitive records encrypted with 10,000 PBKDF2/SHA-256 iterations & HMAC-SHA256 authentication tags.
 * ⚡ **Anti-DoS Sliding Rate Limiter:** Protects the IPC bridge from local fuzzing and brute-force nonce floods.
+* 📦 **One-Click Standalone Bundler:** Package into a portable `.exe` installer with InnoSetup — zero Rust/Node required on end-user machines.
 * 🌐 **Frontend Agnostic:** Use React, Vue, Svelte, or plain HTML/CSS with seamless type-safe IPC communication to Rust.
 
 ---
@@ -57,15 +58,16 @@ npm run dev
 
 ---
 
-## 📜 Version & Release Notes (`v0.11`)
+## 📜 Version & Release Notes (`v0.12`)
 
-The current active release is **`v0.11` (Alpha - Hardened)**.
+The current active release is **`v0.12` (Alpha)**.
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.11`** | 🟢 **Current Release** | **The Cryptographic Hardening & Privacy Shield Release:** Zero-Knowledge Encrypted Vault at rest (PBKDF2/HMAC), Anti-DoS Sliding Window Rate Limiter (30 req/s), Air-Gap zero-telemetry compliance, and live Attack Simulator enhancements. 👉 [**View Full v0.11 Changelog**](CHANGELOG.md#-v0110---2026-10-25) |
+| **`v0.12`** | 🟢 **Current Release** | **The Standalone Bundler & Multi-Window Release:** One-click native `.exe` bundler & InnoSetup packager, enhanced Multi-Window Manager with window registry, new `bundle_status` & `window_list` IPC commands, and live Bundler UI tab. 👉 [**View Full v0.12 Changelog**](CHANGELOG.md#-v0120---2026-10-25) |
+| **`v0.11`** | ⚪ *Previous Release* | Cryptographic Hardening: Zero-Knowledge Encrypted Vault (PBKDF2/HMAC), Anti-DoS Sliding Window Rate Limiter, Air-Gap privacy shield. 👉 [**View v0.11 Notes**](CHANGELOG.md#-v0110---2026-10-25) |
 | **`v0.10`** | ⚪ *Previous Release* | Initial open-source release with Rust core engine, sandbox filesystem, and React/Vite UI. 👉 [**View v0.10 Notes**](CHANGELOG.md#-v0100---2026-10-25) |
-| **`v0.12`** | 🟡 *Next Roadmap* | One-click standalone native `.exe` bundler, multi-window modal APIs, and macOS/Linux WebKit integration. 👉 [**View Upcoming Roadmap**](CHANGELOG.md#-upcoming-roadmap---v0120--v0200) |
+| **`v0.20`** | 🟡 *Next Roadmap (Q1 2027)* | Plugin Engine, Tray Daemon, macOS WebKit, WebSocket IPC, Auto-Updater. 👉 [**View Upcoming Roadmap**](CHANGELOG.md#-upcoming-roadmap---v0200) |
 
 👉 **[Click here to view all Version Updates, Bug Fixes, and Roadmap in CHANGELOG.md](CHANGELOG.md)**
 
@@ -104,6 +106,11 @@ Aegis is an open-source enterprise desktop architecture engineered with **defens
    - **Agnostic Architecture:** Ships with React 18 + Vite by default, but completely framework-agnostic.
    - Works with **React, Vue, Svelte, Solid, Next.js (SSG), Tailwind, and shadcn/ui**.
    - Built-in **Threat Testing & Attack Simulator** showcasing defensive traps in real time.
+
+4. **One-Click Native Bundler (`src-core/src/bundler.rs`)**
+   - Packages Rust binary + React frontend + config into a portable distribution folder.
+   - Auto-generates InnoSetup `.iss` script for native Windows `Setup.exe` installer.
+   - New `npm run bundle` one-command packaging pipeline.
 
 ---
 

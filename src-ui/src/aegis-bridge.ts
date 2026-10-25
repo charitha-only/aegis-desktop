@@ -1,5 +1,5 @@
 /**
- * Aegis Desktop IPC Bridge Client v0.11
+ * Aegis Desktop IPC Bridge Client v0.12
  * Secure typed communication with Rust Backend Core
  */
 
@@ -17,6 +17,8 @@ export interface SecurityStatus {
   privacyVaultActive?: boolean;
   antiDosRateLimiterActive?: boolean;
   airGapPolicyActive?: boolean;
+  bundlerEngineActive?: boolean;
+  multiWindowApiActive?: boolean;
   activeCapabilities: {
     fsRead: boolean;
     fsWrite: boolean;
@@ -24,6 +26,8 @@ export interface SecurityStatus {
     systemInfo: boolean;
     crypto: boolean;
     encryptedVault?: boolean;
+    bundler?: boolean;
+    multiWindow?: boolean;
   };
 }
 
@@ -168,6 +172,24 @@ class AegisBridge {
 
   public async hashInput(input: string): Promise<IpcResponse<{ algorithm: string; hash: string }>> {
     return this.invoke<{ algorithm: string; hash: string }>('crypto_hash', { input });
+  }
+
+  // Multi-Window & Native Dialog APIs (v0.12)
+  public async spawnWindow(options: { url?: string; title?: string; width?: number; height?: number; modal?: boolean }): Promise<IpcResponse> {
+    return this.invoke('window_spawn', options);
+  }
+
+  public async showNativeDialog(title: string, message: string, type: 'info' | 'warning' | 'error' = 'info'): Promise<IpcResponse> {
+    return this.invoke('window_dialog', { title, message, type });
+  }
+
+  public async getWindowCapabilities(): Promise<IpcResponse> {
+    return this.invoke('window_list');
+  }
+
+  // Generic pass-through call (for new/custom IPC commands)
+  public async call<T = any>(command: string, payload: Record<string, any> = {}): Promise<IpcResponse<T>> {
+    return this.invoke<T>(command, payload);
   }
 
   // Security Defense Simulators

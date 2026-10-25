@@ -1,3 +1,4 @@
+mod bundler;
 mod ipc;
 mod security;
 mod server;
@@ -13,7 +14,7 @@ use window::{WindowConfig, WindowManager};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("     🛡️  AEGIS DESKTOP CORE • HIGH-SECURITY RUNTIME         ");
+    println!("     🛡️  AEGIS DESKTOP CORE v0.12.0 • HIGH-SECURITY RUNTIME  ");
     println!("============================================================");
 
     // 1. Locate and parse aegis.config.json
@@ -78,13 +79,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[Security] Capabilities enforced: Strict Sandbox & Whitelisted Origins.");
     println!("[Security] Nonce generation: Active (Cryptographic Session Validated).");
 
-    // 3. Launch UI Window if --spawn-window flag passed
+    // 3. Parse CLI arguments
     let args: Vec<String> = std::env::args().collect();
+
+    // --bundle flag: run the bundler then exit
+    if args.iter().any(|arg| arg == "--bundle") {
+        println!("[Bundler] 📦  Aegis Bundle Engine v0.12.0 — Packaging application...");
+        let project_root = std::env::current_dir()?;
+        let config_path = project_root.join("aegis.config.json");
+        let bundle_manifest = bundler::load_bundle_manifest(&config_path);
+        match bundler::BundleEngine::bundle(&project_root, &bundle_manifest) {
+            Ok(report) => {
+                println!("[Bundler] ✅  {}", report.message);
+                if let Some(iss) = &report.installer_script_path {
+                    println!("[Bundler] 📋  InnoSetup installer script: {}", iss);
+                    println!("[Bundler] 💡  Compile with Inno Setup Compiler to generate .exe installer.");
+                }
+                println!("[Bundler] 📂  Bundle output: {}", report.output_dir);
+            }
+            Err(e) => eprintln!("[Bundler] ❌  Bundle failed: {}", e),
+        }
+        return Ok(());
+    }
+
+    // --spawn-window flag: launch UI Window
     if args.iter().any(|arg| arg == "--spawn-window") {
         let win_cfg = WindowConfig {
             title: win_title,
             width: win_width,
             height: win_height,
+            resizable: true,
+            modal: false,
+            always_on_top: false,
+            kiosk: false,
         };
         let _ = WindowManager::spawn_window("http://localhost:5173", &win_cfg);
     }
