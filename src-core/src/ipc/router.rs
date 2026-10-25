@@ -21,6 +21,7 @@ use std::fs;
 use std::sync::Arc;
 
 pub struct IpcRouter {
+    clipboard: crate::clipboard::TextClipboard,
     security: Arc<SecurityEngine>,
     session: Arc<HandshakeSession>,
     plugins: Arc<PluginRegistry>,
@@ -69,6 +70,7 @@ impl IpcRouter {
         #[cfg(all(not(windows), not(test)))]
         vault_sessions.require_platform_monitor();
         Self {
+            clipboard: crate::clipboard::TextClipboard::new(),
             vault_sessions,
             dispatch: std::sync::Mutex::new(()),
             security,
@@ -135,6 +137,22 @@ impl IpcRouter {
             return IpcResponse::err(&req.id, "UNAVAILABLE: This integration is disabled until a real provider is configured. No hardware verification, network installation or encrypted transport is claimed.");
         }
         match req.command.as_str() {
+            "clipboard_write_text" => {
+                if let Err(error) = self.security.check_clipboard_write() {
+                    return IpcResponse::err(&req.id, &error);
+                }
+                let text = match req.payload.get("text").and_then(|v| v.as_str()) {
+                    Some(text) => text,
+                    None => return IpcResponse::err(&req.id, "Missing 'text' parameter"),
+                };
+                if text.len() > 65536 {
+                    return IpcResponse::err(&req.id, "Clipboard text exceeds 65536 bytes");
+                }
+                match self.clipboard.write_text(text) {
+                    Ok(()) => IpcResponse::ok(&req.id, json!({"written":true})),
+                    Err(error) => IpcResponse::err(&req.id, &error),
+                }
+            }
             "platform_info" => match crate::platform::Platform::current() {
                 Ok(platform) => IpcResponse::ok(&req.id, platform.capabilities()),
                 Err(error) => IpcResponse::err(&req.id, &error),

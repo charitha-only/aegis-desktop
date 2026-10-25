@@ -13,6 +13,8 @@ pub struct FsCapabilities {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SystemCapabilities {
+    #[serde(default)]
+    pub allow_clipboard_write: bool,
     pub allow_system_info: bool,
     pub allow_dialogs: bool,
     pub allow_shell_execution: bool,
@@ -41,6 +43,7 @@ impl Default for CapabilityManifest {
                 deny_paths: vec!["../".to_string(), "C:\\Windows".to_string()],
             },
             system: SystemCapabilities {
+                allow_clipboard_write: false,
                 allow_system_info: true,
                 allow_dialogs: true,
                 allow_shell_execution: false,
@@ -121,6 +124,14 @@ impl SecurityEngine {
             Ok(())
         } else {
             Err("Security Violation: 'dialogs' capability is disabled".into())
+        }
+    }
+
+    pub fn check_clipboard_write(&self) -> Result<(), String> {
+        if self.manifest.system.allow_clipboard_write {
+            Ok(())
+        } else {
+            Err("Security Violation: 'clipboard_write' capability is disabled".into())
         }
     }
 

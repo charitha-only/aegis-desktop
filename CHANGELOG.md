@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.5] - 2026-10-26
+
+- Add opt-in native text clipboard writes with a default-denied capability, 64 KiB UTF-8 limit, NUL rejection, typed responses and no text in returned errors.
+- Retain the lazy provider for X11 clipboard ownership; expose unavailable providers as errors. Image/HTML/read access and native Wayland data-control are not enabled.
+- Add permission/input regressions and a Unicode native roundtrip restricted to disposable hosted CI. This is not secure secret expiry or clipboard-history protection; see docs/CLIPBOARD.md.
+
 ## [v0.25.4] - 2026-10-26
 
 - Correct compiled/active native capability metadata and bound native CI package-download/job waits without ignoring failed checks.

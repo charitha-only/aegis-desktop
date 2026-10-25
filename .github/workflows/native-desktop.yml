@@ -39,6 +39,12 @@ jobs:
         run: cargo test --locked --manifest-path src-core/Cargo.toml --features native-desktop
       - name: Build native debug runtime for GUI fixture
         run: cargo build --locked --manifest-path src-core/Cargo.toml --features native-desktop
+      - name: Native clipboard roundtrip on disposable desktop
+        if: runner.os != 'Linux'
+        run: cargo test --locked --manifest-path src-core/Cargo.toml --features native-desktop -- --ignored --exact security::regression_tests::ipc_clipboard_roundtrip_on_disposable_runner
+      - name: Native X11 clipboard roundtrip in virtual display
+        if: runner.os == 'Linux'
+        run: xvfb-run -a cargo test --locked --manifest-path src-core/Cargo.toml --features native-desktop -- --ignored --exact security::regression_tests::ipc_clipboard_roundtrip_on_disposable_runner
       - name: Boot actual native window and close after fixture loads
         if: runner.os != 'Linux'
         run: node aegis-cli/bin/native-smoke.js

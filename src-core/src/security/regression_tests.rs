@@ -794,3 +794,162 @@ fn ipc_dialog_permission_denial_precedes_native_helper_work() {
         .unwrap()
         .contains("'dialogs' capability is disabled"));
 }
+
+#[test]
+fn ipc_clipboard_is_denied_by_default_before_provider_access() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let manifest = CapabilityManifest::default();
+
+    let security = Arc::new(SecurityEngine::new(manifest, d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload: serde_json::Value| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "session-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    let response = call(
+        "clipboard_write_text",
+        serde_json::json!({"text":"x".repeat(65537)}),
+    );
+    assert!(!response.success);
+    assert!(response
+        .error
+        .as_deref()
+        .unwrap()
+        .contains("'clipboard_write' capability is disabled"));
+}
+
+#[test]
+fn ipc_clipboard_rejects_oversized_text_before_provider_access() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let mut manifest = CapabilityManifest::default();
+    manifest.system.allow_clipboard_write = true;
+
+    let security = Arc::new(SecurityEngine::new(manifest, d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload: serde_json::Value| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "session-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    let response = call(
+        "clipboard_write_text",
+        serde_json::json!({"text":"x".repeat(65537)}),
+    );
+    assert!(!response.success);
+    assert!(response
+        .error
+        .as_deref()
+        .unwrap()
+        .contains("Clipboard text exceeds 65536 bytes"));
+}
+
+#[test]
+#[ignore = "writes clipboard only on disposable hosted CI"]
+fn ipc_clipboard_roundtrip_on_disposable_runner() {
+    assert_eq!(std::env::var("GITHUB_ACTIONS").as_deref(), Ok("true"));
+    assert_eq!(
+        std::env::var("RUNNER_ENVIRONMENT").as_deref(),
+        Ok("github-hosted")
+    );
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let mut manifest = CapabilityManifest::default();
+    manifest.system.allow_clipboard_write = true;
+
+    let security = Arc::new(SecurityEngine::new(manifest, d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload: serde_json::Value| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "session-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    let response = call(
+        "clipboard_write_text",
+        serde_json::json!({"text":"Aegis clipboard fixture \u{0d85} \u{1f512}\nline two"}),
+    );
+    assert!(response.success, "{:?}", response.error);
+    assert_eq!(response.data.as_ref().unwrap()["written"], true);
+    let mut observer = arboard::Clipboard::new().unwrap();
+    assert_eq!(
+        observer.get_text().unwrap(),
+        "Aegis clipboard fixture \u{0d85} \u{1f512}\nline two"
+    );
+    observer.clear().unwrap();
+}
+
+#[test]
+fn clipboard_rejects_nul_without_accessing_the_os() {
+    assert_eq!(
+        crate::clipboard::TextClipboard::validate_text("a\0b").unwrap_err(),
+        "Clipboard text contains NUL"
+    );
+}

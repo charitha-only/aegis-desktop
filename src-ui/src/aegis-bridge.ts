@@ -286,6 +286,10 @@ class AegisBridge {
     return this.invoke('window_list');
   }
 
+  public async writeClipboardText(text: string): Promise<IpcResponse<{written: true}>> {
+    return this.invoke('clipboard_write_text', {text});
+  }
+
   // Generic pass-through call (for new/custom IPC commands)
   public async call<T = any>(command: string, payload: Record<string, any> = {}): Promise<IpcResponse<T>> {
     return this.invoke<T>(command, payload);

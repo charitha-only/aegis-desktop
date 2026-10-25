@@ -1,6 +1,6 @@
 {
   "name": "Aegis Desktop Application",
-  "version": "0.25.4",
+  "version": "0.25.5",
   "description": "Experimental local desktop application foundation",
   "window": {
     "title": "Aegis Core • Enterprise Desktop",
@@ -37,6 +37,7 @@
       "system": {
         "allowSystemInfo": true,
         "allowDialogs": true,
+        "allowClipboardWrite": false,
         "allowShellExecution": false
       },
       "crypto": {

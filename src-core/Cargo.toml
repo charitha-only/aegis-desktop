@@ -1,6 +1,6 @@
 [package]
 name = "aegis-core"
-version = "0.25.4"
+version = "0.25.5"
 edition = "2021"
 rust-version = "1.89"
 
@@ -9,6 +9,7 @@ default = []
 native-desktop = ["dep:wry", "dep:winit", "dep:webkit6", "dep:gtk4"]
 
 [dependencies]
+arboard = { version = "3.7.0", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tiny_http = "0.12"

@@ -1,6 +1,7 @@
 #![recursion_limit = "256"]
 
 mod bundler;
+mod clipboard;
 mod crash;
 mod ipc;
 mod network;
