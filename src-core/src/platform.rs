@@ -116,7 +116,7 @@ impl Platform {
         serde_json::json!({
             "os": match self { Self::Windows => "windows", Self::Linux => "linux", Self::Macos => "macos" },
             "architecture": std::env::consts::ARCH,
-            "embeddedWebview": false,
+            "embeddedWebview": cfg!(feature = "native-desktop"),
             "lifecycleAdapterCompiled": matches!(self, Self::Windows),
             "installerAdapterCompiled": matches!(self, Self::Windows),
             "osKeyStore": false,

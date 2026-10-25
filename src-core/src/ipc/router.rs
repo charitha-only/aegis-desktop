@@ -231,6 +231,7 @@ impl IpcRouter {
                     "bundlerEngineActive": true,
                     "multiWindowApiActive": true,
                     "nativeWebKitWryActive": false,
+                    "embeddedWindowActive": crate::window::WindowManager::detect_runtime().backend == "NATIVE_EMBEDDED",
                     "integrationStatus": "Hardware authentication, TPM, HSM, GPU, encrypted IPC, updater and P2P are unavailable",
                     "pluginEngineActive": true,
                     "notificationEngineActive": true,

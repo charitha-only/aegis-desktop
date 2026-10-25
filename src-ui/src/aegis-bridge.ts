@@ -35,6 +35,7 @@ export interface SecurityStatus {
   engine: string;
   windowsLifecycleMonitorActive?: boolean;
   windowsSessionAvailable?: boolean;
+  embeddedWindowActive?: boolean;
   nonceVerified: boolean;
   sandboxEnforced: boolean;
   privacyVaultActive?: boolean;
