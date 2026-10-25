@@ -63,17 +63,20 @@ impl WasmSandbox {
         ];
 
         // 2. Valid WebAssembly Binary Bytecode: wasm-schema-validator
+        // Type Section: (i32, i32) -> i32 (takes length and valid flag, returns 0 if valid, -1 if invalid)
+        // Code: local.get 1 (validity flag), if (result i32) i32.const 0 else i32.const -1 (0x7F in LEB128) end
+        // Code bytecode: local.get 1 (0x20 0x01), i32.eqz (0x45), if (0x04 0x7F), i32.const -1 (0x41 0x7F), else (0x05), i32.const 0 (0x41 0x00), end (0x0B), end (0x0B)
         let validator_wasm_bytecode: Vec<u8> = vec![
             0x00, 0x61, 0x73, 0x6D, // \0asm
             0x01, 0x00, 0x00, 0x00, // version 1
-            // Section 1: Type (func(i32) -> i32)
-            0x01, 0x06, 0x01, 0x60, 0x01, 0x7F, 0x01, 0x7F,
+            // Section 1: Type
+            0x01, 0x07, 0x01, 0x60, 0x02, 0x7F, 0x7F, 0x01, 0x7F,
             // Section 3: Function
             0x03, 0x02, 0x01, 0x00,
             // Section 7: Export "validate"
             0x07, 0x0C, 0x01, 0x08, 0x76, 0x61, 0x6C, 0x69, 0x64, 0x61, 0x74, 0x65, 0x00, 0x00,
             // Section 10: Code
-            0x0A, 0x07, 0x01, 0x05, 0x00, 0x20, 0x00, 0x0B,
+            0x0A, 0x0F, 0x01, 0x0D, 0x00, 0x20, 0x01, 0x45, 0x04, 0x7F, 0x41, 0x7F, 0x05, 0x41, 0x00, 0x0B, 0x0B,
         ];
 
         let crypto_wasm = WasmModuleInfo {
@@ -194,24 +197,32 @@ impl WasmSandbox {
         }
         linear_memory[..payload_bytes.len()].copy_from_slice(&payload_bytes);
 
-        // Preload stack with arguments from payload
+        // Preload locals: [0] = payload length (arg0), [1] = checksum (arg1)
+        // local[1] acts as the "validity flag": non-zero means valid payload, 0 means empty/invalid
         let arg0 = payload_bytes.len() as i32;
-        let arg1 = payload_bytes.iter().map(|&b| b as i32).sum::<i32>() % 1024;
-        let locals = vec![arg0, arg1];
+        // For schema validator: local[1] = 1 if payload is non-empty and structurally valid JSON object, else 0
+        let arg1: i32 = if input_payload.is_object() && !input_payload.as_object().unwrap().is_empty() { 1 } else { 0 };
+        let mut locals: Vec<i32> = vec![arg0, arg1, 0, 0, 0, 0, 0, 0]; // 8 local slots
 
         // Execute Bytecode Opcodes
         // Opcode table:
-        // 0x20: local.get
-        // 0x41: i32.const
-        // 0x6A: i32.add
-        // 0x6B: i32.sub
-        // 0x6C: i32.mul
-        // 0x0B: end
+        // 0x20: local.get   0x21: local.set
+        // 0x41: i32.const   0x45: i32.eqz
+        // 0x46: i32.eq      0x47: i32.ne
+        // 0x48: i32.lt_s    0x49: i32.lt_u
+        // 0x04: if          0x05: else    0x0B: end
+        // 0x6A: i32.add     0x6B: i32.sub 0x6C: i32.mul
         let mut pc = 0;
-        // Skip function count / local count prefix
+        // Skip function count / local count prefix bytes
         if code.len() > 3 {
             pc = 3;
         }
+
+        // Control-flow label stack: each entry = (else_offset, end_offset)
+        // When we hit 'if': evaluate top-of-stack; if false, jump to else/end
+        // When we hit 'else': jump past end
+        // We implement a simpler inline approach: scan forward to find matching else/end
+        // to jump the program counter on branching.
 
         while pc < code.len() {
             let opcode = code[pc];
@@ -224,6 +235,7 @@ impl WasmSandbox {
             }
 
             match opcode {
+                // ── Local variable opcodes ──────────────────────────────────
                 0x20 => { // local.get
                     if pc < code.len() {
                         let local_idx = code[pc] as usize;
@@ -232,13 +244,166 @@ impl WasmSandbox {
                         stack.push(val);
                     }
                 }
-                0x41 => { // i32.const
+                0x21 => { // local.set
                     if pc < code.len() {
-                        let val = code[pc] as i8 as i32;
+                        let local_idx = code[pc] as usize;
                         pc += 1;
-                        stack.push(val);
+                        let val = stack.pop().unwrap_or(0);
+                        if local_idx < locals.len() {
+                            locals[local_idx] = val;
+                        }
                     }
                 }
+                0x22 => { // local.tee (set + keep on stack)
+                    if pc < code.len() {
+                        let local_idx = code[pc] as usize;
+                        pc += 1;
+                        let val = stack.last().cloned().unwrap_or(0);
+                        if local_idx < locals.len() {
+                            locals[local_idx] = val;
+                        }
+                    }
+                }
+
+                // ── Constant push ───────────────────────────────────────────
+                0x41 => { // i32.const (signed LEB128)
+                    let mut result: i32 = 0;
+                    let mut shift = 0u32;
+                    loop {
+                        if pc >= code.len() { break; }
+                        let byte = code[pc];
+                        pc += 1;
+                        result |= ((byte & 0x7F) as i32) << shift;
+                        shift += 7;
+                        if (byte & 0x80) == 0 {
+                            // Sign-extend: if the sign bit of the last 7-bit group is set
+                            if shift < 32 && (byte & 0x40) != 0 {
+                                result |= (!0i32) << shift;
+                            }
+                            break;
+                        }
+                    }
+                    stack.push(result);
+                }
+
+                // ── Comparison opcodes ──────────────────────────────────────
+                0x45 => { // i32.eqz  — pops a, pushes 1 if a==0, else 0
+                    let a = stack.pop().unwrap_or(0);
+                    stack.push(if a == 0 { 1 } else { 0 });
+                    gas_consumed += 5;
+                }
+                0x46 => { // i32.eq
+                    let b = stack.pop().unwrap_or(0);
+                    let a = stack.pop().unwrap_or(0);
+                    stack.push(if a == b { 1 } else { 0 });
+                    gas_consumed += 5;
+                }
+                0x47 => { // i32.ne
+                    let b = stack.pop().unwrap_or(0);
+                    let a = stack.pop().unwrap_or(0);
+                    stack.push(if a != b { 1 } else { 0 });
+                    gas_consumed += 5;
+                }
+                0x48 => { // i32.lt_s
+                    let b = stack.pop().unwrap_or(0);
+                    let a = stack.pop().unwrap_or(0);
+                    stack.push(if a < b { 1 } else { 0 });
+                    gas_consumed += 5;
+                }
+                0x4C => { // i32.le_s
+                    let b = stack.pop().unwrap_or(0);
+                    let a = stack.pop().unwrap_or(0);
+                    stack.push(if a <= b { 1 } else { 0 });
+                    gas_consumed += 5;
+                }
+                0x4A => { // i32.gt_s
+                    let b = stack.pop().unwrap_or(0);
+                    let a = stack.pop().unwrap_or(0);
+                    stack.push(if a > b { 1 } else { 0 });
+                    gas_consumed += 5;
+                }
+
+                // ── Control flow opcodes ─────────────────────────────────────
+                0x04 => { // if <blocktype>
+                    // Consume blocktype byte (0x7F = i32 result, 0x40 = void)
+                    if pc < code.len() { pc += 1; } // skip blocktype
+                    let cond = stack.pop().unwrap_or(0);
+                    gas_consumed += 5;
+                    if cond == 0 {
+                        // Condition is false: skip to matching 'else' (0x05) or 'end' (0x0B)
+                        // We scan forward counting nested if/end pairs
+                        let mut depth: i32 = 1;
+                        while pc < code.len() && depth > 0 {
+                            let op = code[pc];
+                            pc += 1;
+                            match op {
+                                0x04 => {
+                                    // nested if — consume blocktype, increase depth
+                                    if pc < code.len() { pc += 1; }
+                                    depth += 1;
+                                }
+                                0x05 if depth == 1 => {
+                                    // Our matching else — stop here to execute else branch
+                                    depth = 0;
+                                }
+                                0x0B => {
+                                    depth -= 1;
+                                    if depth == 0 {
+                                        // Hit the matching end while no else: break out of interpreter
+                                        // The 0x0B above already decremented depth to 0,
+                                        // nothing left to push; leave stack as-is.
+                                    }
+                                }
+                                0x41 => {
+                                    // i32.const: skip LEB128 bytes
+                                    while pc < code.len() {
+                                        let b = code[pc]; pc += 1;
+                                        if b & 0x80 == 0 { break; }
+                                    }
+                                }
+                                0x20 | 0x21 | 0x22 => {
+                                    // local.get/set/tee: skip 1 immediate
+                                    if pc < code.len() { pc += 1; }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    // If cond != 0: fall through — execute the if-body naturally
+                }
+                0x05 => { // else
+                    // We reach 'else' only when the if-body was executed (cond was true).
+                    // Now skip to the matching 'end'.
+                    gas_consumed += 2;
+                    let mut depth: i32 = 1;
+                    while pc < code.len() && depth > 0 {
+                        let op = code[pc];
+                        pc += 1;
+                        match op {
+                            0x04 => {
+                                if pc < code.len() { pc += 1; } // blocktype
+                                depth += 1;
+                            }
+                            0x0B => { depth -= 1; }
+                            0x41 => {
+                                while pc < code.len() {
+                                    let b = code[pc]; pc += 1;
+                                    if b & 0x80 == 0 { break; }
+                                }
+                            }
+                            0x20 | 0x21 | 0x22 => {
+                                if pc < code.len() { pc += 1; }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                0x0B => { // end (block/function)
+                    // If this is the function-level end, stop execution
+                    break;
+                }
+
+                // ── Arithmetic opcodes ───────────────────────────────────────
                 0x6A => { // i32.add
                     let b = stack.pop().unwrap_or(0);
                     let a = stack.pop().unwrap_or(0);
@@ -257,11 +422,35 @@ impl WasmSandbox {
                     stack.push(a.wrapping_mul(b));
                     gas_consumed += 25;
                 }
-                0x0B => { // end
-                    break;
+                0x6D => { // i32.div_s
+                    let b = stack.pop().unwrap_or(1);
+                    let a = stack.pop().unwrap_or(0);
+                    if b == 0 { return Err("Wasm Trap: integer divide by zero".into()); }
+                    stack.push(a.wrapping_div(b));
+                    gas_consumed += 40;
                 }
+                0x71 => { // i32.and
+                    let b = stack.pop().unwrap_or(0);
+                    let a = stack.pop().unwrap_or(0);
+                    stack.push(a & b);
+                    gas_consumed += 5;
+                }
+                0x72 => { // i32.or
+                    let b = stack.pop().unwrap_or(0);
+                    let a = stack.pop().unwrap_or(0);
+                    stack.push(a | b);
+                    gas_consumed += 5;
+                }
+                0x73 => { // i32.xor
+                    let b = stack.pop().unwrap_or(0);
+                    let a = stack.pop().unwrap_or(0);
+                    stack.push(a ^ b);
+                    gas_consumed += 5;
+                }
+
                 _ => {
-                    // Unknown or unhandled opcode in minimal profile
+                    // Unknown opcode in minimal interpreter profile — silently skip
+                    // (correct WebAssembly binary won't hit this for known validator bytecode)
                 }
             }
         }

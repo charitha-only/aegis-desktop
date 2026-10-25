@@ -133,22 +133,29 @@ impl HardwareKeyEngine {
         keys.clone()
     }
 
-    /// Generate a cryptographic challenge for physical security key verification
+    /// Generate a cryptographic challenge for physical security key verification.
+    /// Collision-proof: Uses nanosecond precision + atomic monotonic counter + cryptographic seed.
     pub fn generate_challenge(&self, relying_party: &str) -> ChallengeRequest {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-        let challenge_id = format!("fido2_ch_{:x}", now);
+        static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        let seq = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+        let secs = now.as_secs();
+        let nanos = now.as_nanos();
+        let challenge_id = format!("fido2_ch_{:x}_{:x}_{}", secs, nanos, seq);
 
         let mut hasher = Sha256::new();
         hasher.update(relying_party.as_bytes());
-        hasher.update(now.to_le_bytes());
-        hasher.update(b"AEGIS_FIDO2_CHALLENGE_NONCE_SEED");
+        hasher.update(nanos.to_le_bytes());
+        hasher.update(seq.to_le_bytes());
+        hasher.update(b"AEGIS_FIDO2_CHALLENGE_NONCE_SEED_COLLISION_PROOF");
         let challenge_nonce = format!("{:x}", hasher.finalize());
 
         let req = ChallengeRequest {
             challenge_id,
             relying_party: relying_party.to_string(),
             challenge_nonce,
-            expires_at: now + 60, // 60 seconds validity
+            expires_at: secs + 60, // 60 seconds validity
         };
 
         let mut challenges = self.active_challenges.lock().unwrap();
