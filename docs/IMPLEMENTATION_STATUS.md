@@ -10,7 +10,7 @@ This is the release ledger for the roadmap. A source version does not certify pr
 | 0.26 | In progress; dependency gate unresolved | Embedded-window prototype evaluated but not shipped because its Linux chain selected a RustSec-unsound GLib version. See NATIVE_BACKEND_DECISION.md. Full native APIs/GUI acceptance remain. |
 | 0.27 | Tooling in progress | Core benchmark harness and nearest-rank statistics test implemented; CI measurements added. Full UI/process-tree workloads and physical constrained-device acceptance remain. |
 | 0.28 | Portable tooling in progress | Native portable bundling and isolated packaged-runtime checks added. Native Linux/macOS installers, authenticated update recovery and owner signing/notarization credentials remain. |
-| 0.29 | Planned | CLI/templates, typed APIs and restricted plugins. |
+| 0.29 | Tooling in progress | Source-only create command, help/version, typed platform APIs and clean UI-template build checks added. Plugin restrictions/API stabilization and complete three-OS developer acceptance remain. |
 | 1.0 | External gates remain | Stable API evidence, physical device validation and independent reviewer report/retest required. |
 
 Independent review cannot be self-certified. Missing physical hardware or signing credentials must not be replaced by fabricated passing results. Keep implementing independent work while recording these gates.

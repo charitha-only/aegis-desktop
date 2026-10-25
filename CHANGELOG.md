@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.2] - 2026-10-26
+
+- Add a source-only create command, discoverable help/version and a minimal typed-bridge template without changing the framework demo UI or README.
+- Refuse existing destinations and reject linked/special files, credential-shaped files and generated output before creating a project.
+- Exercise clean locked-dependency UI installation/build and CLI regressions in three-OS CI. Keep native-window/plugin/physical-device release gates explicit.
+- Restrict push-triggered validation to main, retaining PR validation; avoid duplicate expensive installer runs when tagging an already-verified source commit.
+
 ## [v0.25.1] - 2026-10-26
 
 - Add native-host portable directories for Linux/macOS while preserving Windows Inno Setup output. Reject unsupported target claims and remove debug/foreign-binary fallback. Native installers/notarized applications are not claimed.
