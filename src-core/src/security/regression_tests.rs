@@ -547,3 +547,62 @@ fn system_lock_revokes_session_and_requires_fresh_authentication() {
         .unlock("one.vault", &envelope, "platform-test-password")
         .is_err());
 }
+
+#[test]
+fn ipc_profiles_reject_shared_storage_identities() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let security = Arc::new(SecurityEngine::new(CapabilityManifest::default(), d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload: serde_json::Value| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "session-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    assert!(
+        call(
+            "profile_switch",
+            serde_json::json!({"profileId":"private_vault"})
+        )
+        .success
+    );
+    assert!(
+        call(
+            "fs_write_file",
+            serde_json::json!({"path":"private.txt","content":"private profile data"})
+        )
+        .success
+    );
+    let collision = call("profile_create", serde_json::json!({"profileId":"vault"}));
+    assert!(
+        !collision.success,
+        "A custom profile must not alias the built-in private vault directory"
+    );
+    assert!(call("profile_create", serde_json::json!({"profileId":"Work"})).success);
+    assert!(
+        !call("profile_create", serde_json::json!({"profileId":"work"})).success,
+        "Profile identities must remain distinct on case-insensitive filesystems"
+    );
+}

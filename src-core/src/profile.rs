@@ -75,6 +75,10 @@ impl ProfileManager {
                         && cfg.id != "default"
                         && cfg.id != "private_vault"
                         && cfg.sandbox_dir == format!("sandbox_{}", cfg.id)
+                        && !lock.values().any(|existing| {
+                            existing.id.eq_ignore_ascii_case(&cfg.id)
+                                || existing.sandbox_dir.eq_ignore_ascii_case(&cfg.sandbox_dir)
+                        })
                     {
                         lock.insert(cfg.id.clone(), cfg);
                     }
@@ -143,7 +147,7 @@ impl ProfileManager {
         if p.len() >= 32 {
             return Err("Profile quota exceeded".into());
         }
-        if p.contains_key(id) {
+        if p.keys().any(|existing| existing.eq_ignore_ascii_case(id)) {
             return Err(format!("Profile ID '{}' already exists", id));
         }
 
@@ -151,6 +155,11 @@ impl ProfileManager {
             "sandbox_{}",
             id.replace(|c: char| !c.is_alphanumeric(), "_")
         );
+        if p.values()
+            .any(|existing| existing.sandbox_dir.eq_ignore_ascii_case(&sandbox_dir))
+        {
+            return Err("Profile storage directory is already assigned".into());
+        }
         let p_path = self.base_dir.join(&sandbox_dir);
         let _ = fs::create_dir_all(&p_path);
 

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [Unreleased]
+
+- Reject custom profiles that share a storage directory with an existing profile, including the built-in private vault and case-insensitive aliases. Ignore colliding saved profile entries on startup.
+- Add IPC regression coverage for profile storage identities and a native Windows/Linux/macOS core-test, release-build and UI-build workflow.
+- Record the general-purpose framework roadmap and distinguish planned cross-platform capabilities from validated support.
+
 ## [v0.23.0] - 2026-10-26
 
 - Build the actual pinned v0.22 source/runtime/installer for upgrade tests; verify encrypted vault and backup bytes survive upgrade, uninstall and reinstall, then authenticate and restore their contents.

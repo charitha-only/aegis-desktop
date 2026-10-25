@@ -1,0 +1,19 @@
+# Platform support and validation
+
+The product targets Windows, Linux and macOS. This table describes implementation and validation scope, not a blanket support guarantee.
+
+| Capability | Windows | Linux | macOS |
+| --- | --- | --- | --- |
+| Shared Rust core tests and release build | Native CI | Native CI added; result must be checked per commit | Native CI added; result must be checked per commit |
+| TypeScript/UI build | Native CI | Native CI added | Native CI added |
+| Embedded application webview | Not implemented | Not implemented | Not implemented |
+| Retained-session OS lock monitoring | WTS/power adapter; hosted lock test | Not implemented | Not implemented |
+| Installer acceptance | Disposable hosted runner tests | Not implemented | Not implemented |
+| Publisher-signed Aegis distribution | Setup available; credentials needed | Not implemented | Not implemented; notarization needed |
+| Physical low-resource device benchmarks | Pending | Pending | Pending |
+
+The portable-core workflow tests the native architecture selected by each hosted runner; this is not coverage of every CPU architecture or OS version. Green core/UI builds do not imply desktop integration or installer parity. Inspect the exact-commit workflow result before claiming a platform check passed.
+
+Retained vault sessions outside Windows currently do not receive OS lock/suspend revocation. Applications requiring that guarantee must not treat them as protected by lifecycle monitoring. Platform adapters, supported OS versions, architecture coverage and acceptance criteria must be established before advertising production support.
+
+See [the roadmap](ROADMAP.md) for planned milestones. Existing Windows release checks remain separate so portable checks cannot silently replace installer/signature/lifecycle coverage.
