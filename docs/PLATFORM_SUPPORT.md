@@ -10,6 +10,7 @@ The product targets Windows, Linux and macOS. This table describes implementatio
 | Optional embedded application webview | Wry/WebView2 preview; hosted fixture passed | GTK4/WebKit6 preview; virtual-display fixture passed | Wry/WKWebView preview; hosted fixture passed |
 | Opt-in text clipboard writes | Native provider preview | X11 provider preview; native Wayland not enabled | Native provider preview |
 | Optional single-file picker | Windows shell helper preview | XDG Portal helper preview | AppKit helper preview |
+| Optional native message dialogs | rfd native helper preview | zenity helper preview; requires installed provider | rfd AppKit helper preview |
 | Retained-session OS lock monitoring | WTS/power adapter; hosted lock test | Not implemented | Not implemented |
 | Installer acceptance | Disposable hosted runner tests | Not implemented | Not implemented |
 | Native portable directory | Supported | Implementation added; native CI acceptance required | Implementation added; native CI acceptance required |

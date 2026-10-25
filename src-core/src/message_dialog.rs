@@ -104,6 +104,15 @@ impl MessageRequest {
     pub fn linux_command(&self) -> Result<std::process::Command, String> {
         Self::new(&self.title, &self.message, &self.kind)?;
         let mut command = std::process::Command::new("zenity");
+        // zenity permits environment-defined exit codes. Preserve our result contract.
+        command.envs([
+            ("ZENITY_OK", "0"),
+            ("ZENITY_CANCEL", "1"),
+            ("ZENITY_ESC", "1"),
+            ("ZENITY_ERROR", "2"),
+            ("ZENITY_TIMEOUT", "5"),
+            ("ZENITY_EXTRA", "1"),
+        ]);
         command
             .arg(format!("--{}", self.kind))
             .args(["--no-markup", "--timeout=120"])
@@ -132,6 +141,25 @@ impl MessageRequest {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn linux_provider_exit_statuses_cannot_be_redefined_by_inherited_environment() {
+        let request = super::MessageRequest::new("fixture", "message", "info").unwrap();
+        let command = request.linux_command().unwrap();
+        let env: std::collections::HashMap<_, _> = command.get_envs().collect();
+        for (name, value) in [
+            ("ZENITY_OK", "0"),
+            ("ZENITY_CANCEL", "1"),
+            ("ZENITY_ESC", "1"),
+            ("ZENITY_ERROR", "2"),
+            ("ZENITY_TIMEOUT", "5"),
+            ("ZENITY_EXTRA", "1"),
+        ] {
+            assert_eq!(
+                env.get(std::ffi::OsStr::new(name)).copied().flatten(),
+                Some(std::ffi::OsStr::new(value))
+            );
+        }
+    }
     #[test]
     fn failed_provider_cannot_report_acknowledgement() {
         let jobs = super::MessageDialogJobs::new(std::time::Duration::from_secs(5));
