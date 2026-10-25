@@ -31,3 +31,19 @@ jobs:
             npm run test:sensitive
             if ($LASTEXITCODE -ne 0) { throw 'Sensitive smoke checks failed' }
           } finally { Stop-Process -Id $process.Id -ErrorAction SilentlyContinue }
+      - name: Vault session smoke checks against portable binary
+        shell: pwsh
+        run: |
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'aegis-isolated-session-smoke'
+          $env:AEGIS_BRIDGE_URL = 'http://127.0.0.1:48400'
+          $binary = Join-Path $PWD 'dist-bundle/AegisDesktopApplication/aegis-core.exe'
+          $process = Start-Process -FilePath $binary -ArgumentList '--port=48400' -WindowStyle Hidden -PassThru
+          try {
+            $ready = $false
+            for ($i=0; $i -lt 50; $i++) {
+              try { Invoke-RestMethod "$env:AEGIS_BRIDGE_URL/handshake" | Out-Null; $ready=$true; break } catch { Start-Sleep -Milliseconds 200 }
+            }
+            if (-not $ready) { throw 'Portable core failed to start' }
+            npm run test:sessions
+            if ($LASTEXITCODE -ne 0) { throw 'Session smoke checks failed' }
+          } finally { Stop-Process -Id $process.Id -ErrorAction SilentlyContinue }

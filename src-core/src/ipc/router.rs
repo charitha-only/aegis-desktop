@@ -38,6 +38,8 @@ pub struct IpcRouter {
     p2p_market: Arc<P2PPluginMarketplace>,
     hsm_engine: Arc<HsmPkcs11Engine>,
     sensitive_limiter: crate::security::RateLimiter,
+    vault_sessions: crate::security::vault_session::VaultSessions,
+    dispatch: std::sync::Mutex<()>,
 }
 
 impl IpcRouter {
@@ -59,7 +61,11 @@ impl IpcRouter {
         p2p_market: Arc<P2PPluginMarketplace>,
         hsm_engine: Arc<HsmPkcs11Engine>,
     ) -> Self {
+        let vault_sessions =
+            crate::security::vault_session::VaultSessions::new(secret_manager.clone());
         Self {
+            vault_sessions,
+            dispatch: std::sync::Mutex::new(()),
             security,
             session,
             plugins,
@@ -89,7 +95,16 @@ impl IpcRouter {
             );
         }
 
-        if req.command.starts_with("vault_")
+        // Serialize profile changes, unlock, reads and revocation. A completed lock
+        // prevents any later core operation from using a retained credential.
+        let _dispatch = match self.dispatch.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                self.vault_sessions.lock();
+                return IpcResponse::err(&req.id, "Router state unavailable");
+            }
+        };
+        if (req.command.starts_with("vault_") && req.command != "vault_session_lock")
             || req.command == "secrets_store"
             || req.command == "secrets_retrieve"
         {
@@ -115,6 +130,68 @@ impl IpcRouter {
             return IpcResponse::err(&req.id, "UNAVAILABLE: This integration is disabled until a real provider is configured. No hardware verification, network installation or encrypted transport is claimed.");
         }
         match req.command.as_str() {
+            "vault_session_lock" => {
+                self.vault_sessions.lock();
+                IpcResponse::ok(&req.id, json!({"locked": true}))
+            }
+            "vault_session_unlock" | "vault_session_read" => {
+                if let Err(e) = self.security.check_crypto() {
+                    return IpcResponse::err(&req.id, &e);
+                }
+                let file = req
+                    .payload
+                    .get("filename")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if !file.ends_with(".vault") {
+                    return IpcResponse::err(&req.id, "A .vault filename is required");
+                }
+                let path = match self.security.check_fs_read(file) {
+                    Ok(path) => path,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+                // Includes the profile's resolved sandbox path; tokens cannot cross profiles.
+                let identity = path.to_string_lossy();
+                let envelope = match crate::storage::read_bounded(&path) {
+                    Ok(data) => data,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+                if req.command == "vault_session_unlock" {
+                    let pass = req
+                        .payload
+                        .get("passphrase")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    match self.vault_sessions.unlock(&identity, &envelope, pass) {
+                        Ok(token) => {
+                            self.sensitive_limiter.clear_nonce_failures("sensitive");
+                            IpcResponse::ok(
+                                &req.id,
+                                json!({"sessionToken": &*token, "idleTimeoutSeconds":crate::security::vault_session::IDLE_TIMEOUT.as_secs(), "absoluteTimeoutSeconds":crate::security::vault_session::ABSOLUTE_TIMEOUT.as_secs()}),
+                            )
+                        }
+                        Err(_) => {
+                            self.sensitive_limiter.record_nonce_failure("sensitive");
+                            IpcResponse::err(&req.id, "Vault unlock failed")
+                        }
+                    }
+                } else {
+                    let token = req
+                        .payload
+                        .get("sessionToken")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    match self.vault_sessions.read(token, &identity, &envelope) {
+                        Ok(plaintext) => IpcResponse::ok(
+                            &req.id,
+                            json!({"filename":file,"decryptedContent": &*plaintext,"integrityVerified":true}),
+                        ),
+                        Err(_) => {
+                            IpcResponse::err(&req.id, "Vault session is locked, expired or invalid")
+                        }
+                    }
+                }
+            }
             "get_security_status" => {
                 let mut status = json!({
                     "engine": concat!("Aegis Core ",env!("CARGO_PKG_VERSION")," (Rust)"),
@@ -178,6 +255,7 @@ impl IpcRouter {
             "privacy_status" => IpcResponse::ok(&req.id, PrivacyShield::get_telemetry_audit()),
 
             "vault_encrypt_store" => {
+                self.vault_sessions.lock();
                 match self.security.check_crypto() {
                     Ok(_) => {
                         let filename = match req.payload.get("filename").and_then(|f| f.as_str()) {
@@ -280,6 +358,7 @@ impl IpcRouter {
             }
 
             "vault_rotate_passphrase" => {
+                self.vault_sessions.lock();
                 if let Err(e) = self.security.check_crypto() {
                     return IpcResponse::err(&req.id, &e);
                 }
@@ -340,6 +419,7 @@ impl IpcRouter {
                 }
             }
             "vault_restore_backup" => {
+                self.vault_sessions.lock();
                 if let Err(e) = self.security.check_crypto() {
                     return IpcResponse::err(&req.id, &e);
                 }
@@ -960,6 +1040,7 @@ impl IpcRouter {
             ),
 
             "profile_switch" => {
+                self.vault_sessions.lock();
                 let id = match req.payload.get("profileId").and_then(|i| i.as_str()) {
                     Some(i) => i,
                     None => return IpcResponse::err(&req.id, "Missing 'profileId' parameter"),

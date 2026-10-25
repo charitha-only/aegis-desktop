@@ -36,3 +36,8 @@ Real WebAuthn registration/assertion verification, vendor PKCS#11 providers, pla
 See [sensitive-data framework review gates](SECURITY_REVIEW.md) for atomic authenticated vault replacement, encrypted backup/restore, password rotation, secret-buffer cleanup, strict packaged IPC and the remaining production-release requirements. This remains a framework, not a password-manager application.
 
 Local v0.20 validation: 24 Rust regression tests passed; optimized core and production UI builds passed; the isolated portable runtime passed the sensitive smoke suite (authenticated overwrite/backup/rotation, no-cache responses, strict CSP/origins, reserved names and profile secret clearing). Windows CI now repeats the portable sensitive smoke suite. This does not replace the pending independent review described in SECURITY_REVIEW.md.
+
+
+## v0.21.0 scoped session lifecycle
+
+Added authenticated vault-scoped unlock/read/lock interfaces, random tokens, idle/absolute expiry, background credential cleanup and revocation on vault mutations/profile switches. Core dispatch is serialized against lock/profile changes. Password-per-operation interfaces remain fresh-authentication paths. This provides a framework building block, not native OS login or a completed password manager. See SECURITY_REVIEW.md for limits and release gates.

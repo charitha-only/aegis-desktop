@@ -24,3 +24,4 @@ pub use vault::VaultEngine;
 
 #[cfg(test)]
 mod regression_tests;
+pub mod vault_session;

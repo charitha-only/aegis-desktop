@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.21.0] - 2026-10-26
+
+- Add vault-scoped `vault_session_unlock`, `vault_session_read`, and `vault_session_lock` interfaces, with typed bridge methods.
+- Require authenticated vault decryption before issuing a random session token. Permit one unlocked vault per runtime; a new unlock revokes its predecessor.
+- Enforce 60-second idle and 300-second absolute limits; background cleanup drops zeroizing credentials and clears ephemeral secrets. Lock remains available during rate limiting.
+- Serialize router operations so profile switching and vault mutation revoke retained sessions before subsequent reads. Existing password-per-operation interfaces remain available and require fresh authentication.
+- Add session-manager and IPC regression coverage, plus packaged session smoke checks. No UI redesign or password-manager app is added.
+- Signing, clean-machine installation, native OS lock integration, and an independent security audit remain release gates.
+
 ## [v0.20.0] - 2026-10-26
 
 ### Framework hardening (not a password-manager application)
@@ -46,7 +55,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## 🔮 [Upcoming Roadmap] - v0.21.0
+## 🔮 [Upcoming Roadmap] - v0.22.0
 > **Target Release:** Q1 2027
 
 ### 🚀 Planned Features & Enhancements

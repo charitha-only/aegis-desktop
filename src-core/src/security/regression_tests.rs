@@ -326,3 +326,202 @@ fn oversized_replacement_preserves_both_generations() {
         first
     );
 }
+
+#[test]
+fn vault_session_authenticates_and_lock_revokes_access() {
+    let secrets = std::sync::Arc::new(crate::secrets::SecretManager::new());
+    let sessions = super::vault_session::VaultSessions::new(secrets.clone());
+    let envelope = VaultEngine::encrypt("session plaintext", "session-test-password").unwrap();
+    assert!(sessions
+        .unlock("one.vault", &envelope, "incorrect-password")
+        .is_err());
+    let token = sessions
+        .unlock("one.vault", &envelope, "session-test-password")
+        .unwrap();
+    assert!(sessions.read("forged", "one.vault", &envelope).is_err());
+    assert!(sessions.read(&token, "two.vault", &envelope).is_err());
+    assert_eq!(
+        &*sessions.read(&token, "one.vault", &envelope).unwrap(),
+        "session plaintext"
+    );
+    secrets
+        .store_secret("temporary", "sensitive", "session-test-password")
+        .unwrap();
+    sessions.lock();
+    assert!(sessions.read(&token, "one.vault", &envelope).is_err());
+    assert!(secrets.list_secrets().is_empty());
+}
+
+#[test]
+fn vault_session_expiry_and_reunlock_revoke_tokens() {
+    use std::{sync::Arc, time::Duration};
+    let secret = Arc::new(crate::secrets::SecretManager::new());
+    let envelope = VaultEngine::encrypt("expires", "session-test-password").unwrap();
+    for (idle, absolute) in [
+        (Duration::ZERO, Duration::from_secs(300)),
+        (Duration::from_secs(60), Duration::ZERO),
+    ] {
+        let sessions =
+            super::vault_session::VaultSessions::with_limits(secret.clone(), idle, absolute);
+        let token = sessions
+            .unlock("one.vault", &envelope, "session-test-password")
+            .unwrap();
+        assert!(sessions.read(&token, "one.vault", &envelope).is_err());
+    }
+    let sessions = super::vault_session::VaultSessions::new(secret);
+    let old = sessions
+        .unlock("one.vault", &envelope, "session-test-password")
+        .unwrap();
+    let new = sessions
+        .unlock("one.vault", &envelope, "session-test-password")
+        .unwrap();
+    assert_ne!(&*old, &*new);
+    assert!(sessions.read(&old, "one.vault", &envelope).is_err());
+    assert!(sessions.read(&new, "one.vault", &envelope).is_ok());
+}
+
+#[test]
+fn ipc_vault_sessions_reject_unauthorized_and_locked_requests() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let security = Arc::new(SecurityEngine::new(CapabilityManifest::default(), d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload: serde_json::Value| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "session-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    let password = "ipc-session-test-password";
+    assert!(
+        call(
+            "vault_encrypt_store",
+            serde_json::json!({"filename":"one.vault","content":"PRIVATE","passphrase":password})
+        )
+        .success
+    );
+    assert!(
+        !call(
+            "vault_session_read",
+            serde_json::json!({"filename":"one.vault","sessionToken":"forged"})
+        )
+        .success
+    );
+    assert!(
+        !call(
+            "vault_session_unlock",
+            serde_json::json!({"filename":"one.vault","passphrase":"wrong-password"})
+        )
+        .success
+    );
+    let unlocked = call(
+        "vault_session_unlock",
+        serde_json::json!({"filename":"one.vault","passphrase":password}),
+    );
+    assert!(unlocked.success, "{:?}", unlocked.error);
+    let token = unlocked.data.as_ref().unwrap()["sessionToken"]
+        .as_str()
+        .unwrap();
+    assert!(
+        !call(
+            "vault_session_read",
+            serde_json::json!({"filename":"two.vault","sessionToken":token})
+        )
+        .success
+    );
+    let read = call(
+        "vault_session_read",
+        serde_json::json!({"filename":"one.vault","sessionToken":token}),
+    );
+    assert_eq!(read.data.as_ref().unwrap()["decryptedContent"], "PRIVATE");
+    assert!(call("vault_session_lock", serde_json::json!({})).success);
+    assert!(
+        !call(
+            "vault_session_read",
+            serde_json::json!({"filename":"one.vault","sessionToken":token})
+        )
+        .success
+    );
+    let reopened = call(
+        "vault_session_unlock",
+        serde_json::json!({"filename":"one.vault","passphrase":password}),
+    );
+    let token = reopened.data.as_ref().unwrap()["sessionToken"]
+        .as_str()
+        .unwrap();
+    assert!(
+        call(
+            "profile_switch",
+            serde_json::json!({"profileId":"private_vault"})
+        )
+        .success
+    );
+    assert!(call("profile_switch", serde_json::json!({"profileId":"default"})).success);
+    assert!(
+        !call(
+            "vault_session_read",
+            serde_json::json!({"filename":"one.vault","sessionToken":token})
+        )
+        .success
+    );
+    for _ in 0..25 {
+        call(
+            "vault_session_read",
+            serde_json::json!({"filename":"one.vault","sessionToken":token}),
+        );
+    }
+    assert!(
+        call("vault_session_lock", serde_json::json!({})).success,
+        "Lock must bypass the sensitive-operation budget"
+    );
+}
+
+#[test]
+fn expired_session_background_cleanup_clears_ephemeral_secrets() {
+    use std::{
+        sync::Arc,
+        time::{Duration, Instant},
+    };
+    let secrets = Arc::new(crate::secrets::SecretManager::new());
+    let sessions = super::vault_session::VaultSessions::with_limits(
+        secrets.clone(),
+        Duration::from_secs(3),
+        Duration::from_secs(300),
+    );
+    let envelope = VaultEngine::encrypt("expires", "session-test-password").unwrap();
+    let _token = sessions
+        .unlock("one.vault", &envelope, "session-test-password")
+        .unwrap();
+    secrets
+        .store_secret("temporary", "private", "session-test-password")
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(8);
+    while !secrets.list_secrets().is_empty() && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(
+        secrets.list_secrets().is_empty(),
+        "Cleanup must run without a new IPC request"
+    );
+}

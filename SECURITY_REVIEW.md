@@ -1,4 +1,4 @@
-# Sensitive-data framework review gates (v0.20.0)
+# Sensitive-data framework review gates (v0.21.0)
 
 This version hardens the framework. It does not create a password manager, banking application, hardware provider or a security certification. The original README presentation is retained.
 
@@ -49,7 +49,7 @@ Hardware authentication, TPM, HSM/PKCS#11, biometrics, GPU, P2P, native non-Wind
 
 ## Verification
 
-Run cargo test --locked --manifest-path src-core/Cargo.toml, npm --prefix src-ui run build and npm audit --prefix src-ui. Run npm run test:sensitive only against a fresh isolated core; it creates encrypted test fixtures and must not be pointed at real user vault data. Live smoke checks cover authenticated overwrite, raw-write rejection, backup authentication/restore, password rotation, reserved names, JSON enforcement and origin rejection. Independent audit and clean-machine/hardware gates remain pending.
+Run cargo test --locked --manifest-path src-core/Cargo.toml, npm --prefix src-ui run build and npm audit --prefix src-ui. Run npm run test:sensitive and npm run test:sessions each against a fresh isolated core; it creates encrypted test fixtures and must not be pointed at real user vault data. Live smoke checks cover authenticated overwrite, raw-write rejection, backup authentication/restore, password rotation, reserved names, JSON enforcement and origin rejection. Independent audit and clean-machine/hardware gates remain pending.
 
 ### Additional recovery regression coverage
 
@@ -57,4 +57,19 @@ Automated storage tests also exercise a backup target that cannot be replaced, a
 
 ### Outstanding release evidence
 
-Session authorization and lock/key lifecycle remain design and implementation work, not completed protections. Signing requires a publisher-controlled certificate or signing service; do not commit private signing keys. Installer verification needs a clean Windows environment. An independent audit requires a separate reviewer and cannot be replaced by this project's own test suite. None of these gates is marked complete by the added recovery tests.
+Application-wide user authorization and native OS lock/key lifecycle integration remain application work. The scoped session support below supplies vault-specific authorization only. Signing requires a publisher-controlled certificate or signing service; do not commit private signing keys. Installer verification needs a clean Windows environment. An independent audit requires a separate reviewer and cannot be replaced by this project's own test suite. None of these gates is marked complete by the added recovery tests.
+
+
+## v0.21 vault-scoped unlocked sessions
+
+`vault_session_unlock` takes an existing `.vault` filename and passphrase. Authenticated decryption is required before a fresh OS-random 256-bit token is issued. `vault_session_read` accepts that filename and `sessionToken`, with no password in subsequent read requests. `vault_session_lock` revokes the active session and clears ephemeral secrets. These interfaces do not provide a general OS user login or administrative authorization.
+
+One unlocked vault is permitted per runtime, scoped to its resolved profile path. Successful re-unlock replaces the previous token. Every dispatched vault mutation attempt and profile switch attempt also revokes the session; this conservative behavior includes failed attempts. A token cannot authorize another vault. A 60-second idle limit and a 300-second absolute limit use a monotonic clock; successful reads refresh only the idle deadline. Reads check expiry before and after decryption. A background worker checks expiry approximately once per second without requiring traffic; OS scheduling can delay memory cleanup. Core requests are serialized against profile changes and explicit lock. Already returned or queued HTTP plaintext cannot be recalled by locking.
+
+The retained password, session token, discarded unlock plaintext and session plaintext intermediates use zeroizing owned buffers. Lock, expiry, replacement and manager destruction drop retained credentials. This reduces retention and is not a guarantee against process-memory access or every allocator/OS/browser copy. The TypeScript bridge leaves token ownership with the caller: keep it in memory, never persist it, and clear application plaintext on lock. The demo layout is preserved and has not been converted into a session-based password-manager interface.
+
+Existing password-per-operation vault and secret interfaces are retained. They still require the relevant passphrase; presenting a valid master password is fresh authentication even after lock. A lock revokes retained session access, not knowledge of the password. Initial vault creation is not enrollment of an OS user. Invalid session tokens never unlock a vault. Shared loopback handshake tokens are still transport credentials, distinct from vault-session tokens. Native Windows lock/suspend integration, clipboard handling and application-wide idle policy remain required before release.
+
+Verification includes authenticated unlock, forged/cross-vault token rejection, explicit lock, re-unlock revocation, idle/absolute expiry, cleanup without another IPC request, profile-change revocation and lock during rate limiting. Real power loss, disk exhaustion, signed installers and independent audit remain unverified.
+
+Local v0.21 validation: 31 Rust tests, production UI build, release core build and both isolated portable smoke suites passed. This evidence does not complete the external release gates above.

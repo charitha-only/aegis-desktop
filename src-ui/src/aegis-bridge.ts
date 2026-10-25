@@ -216,6 +216,19 @@ class AegisBridge {
     return this.invoke('vault_encrypt_store', { filename, content, passphrase });
   }
 
+  // Keep the returned token in application memory only. Lock on blur/OS lock as appropriate.
+  public async vaultSessionUnlock(filename: string, passphrase: string): Promise<IpcResponse<{ sessionToken: string; idleTimeoutSeconds: number; absoluteTimeoutSeconds: number }>> {
+    return this.invoke('vault_session_unlock', { filename, passphrase });
+  }
+
+  public async vaultSessionRead(filename: string, sessionToken: string): Promise<IpcResponse<{ filename: string; decryptedContent: string; integrityVerified: boolean }>> {
+    return this.invoke('vault_session_read', { filename, sessionToken });
+  }
+
+  public async vaultSessionLock(): Promise<IpcResponse<{ locked: boolean }>> {
+    return this.invoke('vault_session_lock');
+  }
+
   public async vaultRestoreBackup(filename:string,passphrase:string):Promise<IpcResponse>{return this.invoke('vault_restore_backup',{filename,passphrase});}
   public async vaultRotatePassphrase(filename:string,oldPassphrase:string,newPassphrase:string):Promise<IpcResponse>{return this.invoke('vault_rotate_passphrase',{filename,oldPassphrase,newPassphrase});}
   public async vaultDecryptRetrieve(filename: string, passphrase: string): Promise<IpcResponse<{ filename: string; decryptedContent: string; integrityVerified: boolean }>> {
