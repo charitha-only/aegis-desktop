@@ -50,3 +50,11 @@ Hardware authentication, TPM, HSM/PKCS#11, biometrics, GPU, P2P, native non-Wind
 ## Verification
 
 Run cargo test --locked --manifest-path src-core/Cargo.toml, npm --prefix src-ui run build and npm audit --prefix src-ui. Run npm run test:sensitive only against a fresh isolated core; it creates encrypted test fixtures and must not be pointed at real user vault data. Live smoke checks cover authenticated overwrite, raw-write rejection, backup authentication/restore, password rotation, reserved names, JSON enforcement and origin rejection. Independent audit and clean-machine/hardware gates remain pending.
+
+### Additional recovery regression coverage
+
+Automated storage tests also exercise a backup target that cannot be replaced, a truncated active vault with a valid prior-generation backup, and an oversized replacement. Failed writes must preserve the existing generations and handled backup failure must leave no temporary file. These are deterministic failure tests; they do not simulate actual disk exhaustion, sudden power loss or a clean-machine installation.
+
+### Outstanding release evidence
+
+Session authorization and lock/key lifecycle remain design and implementation work, not completed protections. Signing requires a publisher-controlled certificate or signing service; do not commit private signing keys. Installer verification needs a clean Windows environment. An independent audit requires a separate reviewer and cannot be replaced by this project's own test suite. None of these gates is marked complete by the added recovery tests.

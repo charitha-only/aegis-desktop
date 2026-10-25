@@ -269,3 +269,60 @@ fn legacy_v2_parameters_and_short_password_remain_readable() {
     );
     assert!(VaultEngine::encrypt("new", password).is_err());
 }
+
+#[test]
+fn failed_backup_replacement_preserves_active_vault() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("recovery.vault");
+    let password = "recovery-test-password";
+    let first = VaultEngine::encrypt("original", password).unwrap();
+    let second = VaultEngine::encrypt("replacement", password).unwrap();
+    crate::storage::atomic_vault_write(&path, first.as_bytes(), password).unwrap();
+    // A non-file backup target forces failure before the active generation changes.
+    std::fs::create_dir(crate::storage::backup_path(&path)).unwrap();
+    assert!(crate::storage::atomic_vault_write(&path, second.as_bytes(), password).is_err());
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), first);
+    assert!(!std::fs::read_dir(d.path()).unwrap().any(|e| e
+        .unwrap()
+        .file_name()
+        .to_string_lossy()
+        .starts_with(".aegis-tmp-")));
+}
+
+#[test]
+fn corrupted_active_vault_does_not_destroy_recovery_backup() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("recovery.vault");
+    let password = "recovery-test-password";
+    let first = VaultEngine::encrypt("original", password).unwrap();
+    let second = VaultEngine::encrypt("replacement", password).unwrap();
+    crate::storage::atomic_vault_write(&path, first.as_bytes(), password).unwrap();
+    crate::storage::atomic_vault_write(&path, second.as_bytes(), password).unwrap();
+    std::fs::write(&path, "AEGIS_VAULT_V2:truncated").unwrap();
+    assert!(crate::storage::atomic_vault_write(&path, second.as_bytes(), password).is_err());
+    assert_eq!(
+        std::fs::read_to_string(&path).unwrap(),
+        "AEGIS_VAULT_V2:truncated"
+    );
+    let backup = crate::storage::read_bounded(&crate::storage::backup_path(&path)).unwrap();
+    assert_eq!(backup, first);
+    assert_eq!(VaultEngine::decrypt(&backup, password).unwrap(), "original");
+}
+
+#[test]
+fn oversized_replacement_preserves_both_generations() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("recovery.vault");
+    let password = "recovery-test-password";
+    let first = VaultEngine::encrypt("original", password).unwrap();
+    let second = VaultEngine::encrypt("replacement", password).unwrap();
+    crate::storage::atomic_vault_write(&path, first.as_bytes(), password).unwrap();
+    crate::storage::atomic_vault_write(&path, second.as_bytes(), password).unwrap();
+    let oversized = vec![b'x'; crate::storage::MAX_FILE_BYTES + 1];
+    assert!(crate::storage::atomic_vault_write(&path, &oversized, password).is_err());
+    assert_eq!(crate::storage::read_bounded(&path).unwrap(), second);
+    assert_eq!(
+        crate::storage::read_bounded(&crate::storage::backup_path(&path)).unwrap(),
+        first
+    );
+}
