@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Build the actual pinned v0.22 source/runtime/installer for upgrade tests; verify encrypted vault and backup bytes survive upgrade, uninstall and reinstall, then authenticate and restore their contents.
 - Add a real Windows workstation-lock acceptance test restricted to explicitly enabled disposable GitHub-hosted runners. Verify OS lock state, denied retained/fresh session access, and ephemeral-secret cleanup. The developer PC is never locked or suspended by this test.
 - Expose current Windows session availability in security status and publish sanitized exact-commit installer/lock evidence as CI artifacts.
+- Automate RustSec/npm known-advisory checks with lockfile provenance; test real publisher-signature acceptance and unsigned/wrong-publisher rejection before any certificate import. Pin workflow actions and correct obsolete security glossary terms.
 - Preserve publisher-signing setup and external audit handoff. No certificate, independent human audit, pristine-device acceptance or real suspend/resume result is fabricated.
 
 ## [v0.22.0] - 2026-10-26

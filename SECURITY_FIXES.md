@@ -51,3 +51,5 @@ Native Windows session/power events revoke vault sessions; current WTS state and
 ## v0.23.0 release acceptance coverage
 
 Actual previous-version upgrade, uninstall/reinstall data preservation and authenticated migrated-backup recovery are checked through installed runtimes. A real workstation-lock test is restricted to explicitly enabled disposable hosted CI runners, with exact-commit evidence artifacts. Workflow actions are pinned and private certificate containers are ignored. Publisher credentials, a separate human security audit and physical-device suspend/resume acceptance remain external requirements.
+
+RustSec and npm known-advisory checks reported zero findings locally and are now repeated in CI with exact-commit/lockfile evidence. Positive signature verification uses the genuine upstream-signed compiler fixture; negative tests reject unsigned/wrong-publisher binaries and missing release identity. This does not constitute Aegis publisher signing or an independent application audit.

@@ -20,7 +20,15 @@ jobs:
           node-version: 22
       - run: cargo test --locked --manifest-path src-core/Cargo.toml
       - run: npm ci --prefix src-ui
+      - name: Check known dependency advisories
+        shell: pwsh
+        run: ./scripts/audit-dependencies-ci.ps1
       - run: npm run bundle
+      - shell: pwsh
+        run: ./scripts/setup-inno-ci.ps1
+      - name: Verify publisher signature acceptance and rejection
+        shell: pwsh
+        run: ./scripts/test-signing-verification.ps1 -SignedFixture (Join-Path $env:RUNNER_TEMP 'innosetup-6.7.3.exe') -UnsignedFixture ./dist-bundle/AegisDesktopApplication/aegis-core.exe
       - name: Import publisher certificate into ephemeral runner
         id: certificate
         shell: pwsh
@@ -41,8 +49,6 @@ jobs:
       - name: Sign and verify core
         shell: pwsh
         run: ./scripts/sign-windows.ps1 -Path ./dist-bundle/AegisDesktopApplication/aegis-core.exe -Thumbprint '${{ steps.certificate.outputs.thumbprint }}'
-      - shell: pwsh
-        run: ./scripts/setup-inno-ci.ps1
       - name: Compile installer from verified signed core
         shell: pwsh
         run: ./scripts/build-installer.ps1 -ExpectedThumbprint '${{ steps.certificate.outputs.thumbprint }}'

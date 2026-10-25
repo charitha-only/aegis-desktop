@@ -26,3 +26,8 @@ Record reviewer identity/independence, reviewed commit hash, OS/build/device det
 Download the exact run's `windows-validation-evidence` artifact and compare its `commit` with the source under review. Installer evidence includes actual v0.22 upgrade, uninstall/reinstall ciphertext preservation and authenticated backup restoration. Lock evidence comes from a real `LockWorkStation` call in the disposable hosted runner, not from injected messages. It explicitly records real suspend/resume as not run and independent audit as pending. Review the guarded test scripts before reproducing them; do not enable a workstation lock test on a developer or production machine.
 
 Publisher-signature verification was checked against the immutable, digest-pinned, upstream-signed Inno Setup compiler installer as a positive fixture, plus unsigned/mismatched identity rejection. Aegis signing still needs its own publisher certificate; no synthetic identity was substituted. Actions are pinned, but reviewers should still examine dependency and signing-environment provenance.
+
+
+## Known-advisory scan provenance
+
+Local 2026-10-26 scan: cargo-audit 0.22.2 checked 94 lockfile dependencies against RustSec database commit `21d909e4c8bd4e14c7aea58bf980c881a0053ab1` (1,352 advisories), reporting zero known vulnerabilities and no warnings. This is a point-in-time database result, not proof that dependencies or the application have no flaws. CI repeats RustSec and npm checks with a digest-pinned RustSec executable and uploads their JSON results with commit and lockfile hashes; failed scans fail the job.
