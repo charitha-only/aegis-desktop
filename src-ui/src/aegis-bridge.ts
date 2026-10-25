@@ -61,6 +61,48 @@ export interface SandboxEntry {
   sizeBytes: number;
 }
 
+export interface WebviewRuntimeInfo {
+  backend: string;
+  engine: string;
+  is_native_webkit: boolean;
+  wry_version: string;
+  tao_version: string;
+  supports_ipc_bridge: boolean;
+  custom_protocols_supported: boolean;
+  security_sandbox_enforced: boolean;
+}
+
+export interface PcrMeasurement {
+  pcr_index: number;
+  description: string;
+  digest_hex: string;
+  baseline_digest: string;
+  matches_baseline: boolean;
+}
+
+export interface TpmAttestationProof {
+  quote_id: string;
+  pcr_digest: string;
+  pcr_values: Record<number, string>;
+  nonce: string;
+  ak_public_key: string;
+  signature_hex: string;
+  tpm_family: string;
+  secure_boot_confirmed: boolean;
+  created_at: number;
+  validity_seconds: number;
+}
+
+export interface AttestationVerification {
+  verified: boolean;
+  posture_status: string;
+  secure_boot_active: boolean;
+  ima_hash_verified: boolean;
+  ak_identity: string;
+  verification_token: string;
+  audit_log: string[];
+}
+
 class AegisBridge {
   private bridgeUrl = 'http://127.0.0.1:48291';
   private sessionNonce: string | null = null;
@@ -325,6 +367,48 @@ class AegisBridge {
 
   public async pluginVerifyManifest(pluginId: string, manifest: string, signature: string): Promise<IpcResponse<{ plugin_id: string; valid: boolean; trusted_vendor: boolean; signer_vendor?: string; computed_digest: string; message: string }>> {
     return this.invoke('plugin_verify_manifest', { pluginId, manifest, signature });
+  }
+
+  // --- v0.17 Extensions: Native WebKit (Wry/Tao), TPM Remote Attestation & WGPU JIT ---
+  public async windowRuntimeInfo(): Promise<IpcResponse<WebviewRuntimeInfo>> {
+    return this.invoke('window_runtime_info');
+  }
+
+  public async tpmMeasurements(): Promise<IpcResponse<{ pcrs: PcrMeasurement[]; tpmFamily: string }>> {
+    return this.invoke('tpm_measurements');
+  }
+
+  public async tpmGenerateQuote(nonce: string, pcrs: number[] = [0, 7, 10, 11]): Promise<IpcResponse<TpmAttestationProof>> {
+    return this.invoke('tpm_generate_quote', { nonce, pcrs });
+  }
+
+  public async tpmVerifyQuote(nonce: string, proof: TpmAttestationProof): Promise<IpcResponse<AttestationVerification>> {
+    return this.invoke('tpm_verify_quote', { nonce, proof });
+  }
+
+  public async networkEvaluateWithAttestation(
+    host: string,
+    port: number = 443,
+    attestationProof?: TpmAttestationProof,
+    nonce?: string
+  ): Promise<IpcResponse<{
+    target_host: string;
+    port: number;
+    allowed: boolean;
+    matched_rule?: string;
+    reason: string;
+    attestation_token?: string;
+    tpm_verified: boolean;
+  }>> {
+    return this.invoke('firewall_evaluate', { host, port, attestationProof, nonce });
+  }
+
+  public async wasmExecuteGpu(moduleId: string, input: Record<string, any> = { elementCount: 1024 }): Promise<IpcResponse<any>> {
+    return this.invoke('wasm_execute_gpu', { moduleId, input });
+  }
+
+  public async wasmExecuteWithTier(moduleId: string, input: Record<string, any> = {}, tier: 'WGPU_JIT' | 'INTERPRETER' | 'AUTO' = 'AUTO'): Promise<IpcResponse<any>> {
+    return this.invoke('wasm_execute', { moduleId, input, tier });
   }
 
   // Security Defense Simulators

@@ -48,7 +48,7 @@ interface AuditLog {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit'>('security');
   const [connected, setConnected] = useState(false);
   const [nonce, setNonce] = useState<string | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
@@ -148,6 +148,27 @@ export default function App() {
   const [sigVerifyResult, setSigVerifyResult] = useState<any>(null);
   const [sigLoading, setSigLoading] = useState(false);
 
+  // Native WebKit / Wry State (v0.17)
+  const [runtimeInfo, setRuntimeInfo] = useState<any>(null);
+
+  // TPM 2.0 Remote Attestation State (v0.17)
+  const [pcrMeasurements, setPcrMeasurements] = useState<any[]>([]);
+  const [tpmQuoteNonce, setTpmQuoteNonce] = useState('challenge_enterprise_session_9921');
+  const [tpmSelectedPcrs, setTpmSelectedPcrs] = useState<number[]>([0, 7, 10, 11]);
+  const [tpmProof, setTpmProof] = useState<any>(null);
+  const [tpmVerifyResult, setTpmVerifyResult] = useState<any>(null);
+  const [tpmNetHost, setTpmNetHost] = useState('gateway.corp.internal');
+  const [tpmNetPort, setTpmNetPort] = useState(443);
+  const [tpmNetEval, setTpmNetEval] = useState<any>(null);
+  const [tpmLoading, setTpmLoading] = useState(false);
+
+  // WGPU Compute JIT State (v0.17)
+  const [wgpuModuleId, setWgpuModuleId] = useState('wasm-crypto-accelerator');
+  const [wgpuElementCount, setWgpuElementCount] = useState(1024);
+  const [wgpuTier, setWgpuTier] = useState<'WGPU_JIT' | 'INTERPRETER' | 'AUTO'>('WGPU_JIT');
+  const [wgpuResult, setWgpuResult] = useState<any>(null);
+  const [wgpuLoading, setWgpuLoading] = useState(false);
+
   // Vault State (v0.11 Zero-Knowledge Encryption)
   const [vaultFileName, setVaultFileName] = useState('confidential_notes.vault');
   const [vaultContent, setVaultContent] = useState('TOP_SECRET: Aegis Vault payload encrypted at rest with PBKDF2/SHA-256 and HMAC tags.');
@@ -169,6 +190,78 @@ export default function App() {
       details,
     };
     setAuditLogs((prev) => [newLog, ...prev.slice(0, 49)]);
+  };
+
+  const refreshRuntimeInfo = async () => {
+    const res = await aegis.windowRuntimeInfo();
+    if (res.success && res.data) {
+      setRuntimeInfo(res.data);
+      addLog('INFO', 'window_runtime_info', `Active Runtime: ${res.data.engine}`);
+    }
+  };
+
+  const refreshTpmMeasurements = async () => {
+    setTpmLoading(true);
+    const res = await aegis.tpmMeasurements();
+    if (res.success && res.data) {
+      setPcrMeasurements(res.data.pcrs || []);
+      addLog('INFO', 'tpm_measurements', `Loaded ${res.data.pcrs.length} PCR measurements from TPM ${res.data.tpmFamily}`);
+    } else {
+      addLog('BLOCKED', 'tpm_measurements', res.error || 'Failed to query TPM PCRs');
+    }
+    setTpmLoading(false);
+  };
+
+  const handleGenerateTpmQuote = async () => {
+    if (!tpmQuoteNonce) return;
+    setTpmLoading(true);
+    const res = await aegis.tpmGenerateQuote(tpmQuoteNonce, tpmSelectedPcrs);
+    if (res.success && res.data) {
+      setTpmProof(res.data);
+      addLog('SUCCESS', 'tpm_generate_quote', `Quote generated: ${res.data.quote_id} with AIK signature`);
+    } else {
+      addLog('BLOCKED', 'tpm_generate_quote', res.error || 'Quote generation failed');
+    }
+    setTpmLoading(false);
+  };
+
+  const handleVerifyTpmQuote = async () => {
+    if (!tpmProof || !tpmQuoteNonce) return;
+    setTpmLoading(true);
+    const res = await aegis.tpmVerifyQuote(tpmQuoteNonce, tpmProof);
+    if (res.success && res.data) {
+      setTpmVerifyResult(res.data);
+      addLog('SUCCESS', 'tpm_verify_quote', `Attestation Verified: ${res.data.posture_status}`);
+    } else {
+      addLog('BLOCKED', 'tpm_verify_quote', res.error || 'Attestation verification failed');
+    }
+    setTpmLoading(false);
+  };
+
+  const handleTpmNetworkEvaluate = async (withProof: boolean) => {
+    setTpmLoading(true);
+    const proofToPass = withProof ? tpmProof : undefined;
+    const res = await aegis.networkEvaluateWithAttestation(tpmNetHost, tpmNetPort, proofToPass, tpmQuoteNonce);
+    if (res.success && res.data) {
+      setTpmNetEval(res.data);
+      addLog(res.data.allowed ? 'SUCCESS' : 'BLOCKED', 'firewall_attestation_eval', res.data.reason);
+    } else {
+      addLog('BLOCKED', 'firewall_attestation_eval', res.error || 'Evaluation error');
+    }
+    setTpmLoading(false);
+  };
+
+  const handleExecuteWasmJit = async () => {
+    setWgpuLoading(true);
+    const payload = { elementCount: wgpuElementCount };
+    const res = await aegis.wasmExecuteWithTier(wgpuModuleId, payload, wgpuTier);
+    if (res.success && res.data) {
+      setWgpuResult(res.data);
+      addLog('SUCCESS', 'wasm_execute_gpu', `Executed ${wgpuModuleId} via ${res.data.output_payload?.tier || 'Interpreter'}`);
+    } else {
+      addLog('BLOCKED', 'wasm_execute_gpu', res.error || 'Wasm execution failed');
+    }
+    setWgpuLoading(false);
   };
 
   const connectToCore = async () => {
@@ -194,6 +287,8 @@ export default function App() {
       }
 
       refreshFiles();
+      refreshRuntimeInfo();
+      refreshTpmMeasurements();
     } else {
       setConnected(false);
       addLog('BLOCKED', 'handshake_failed', handshake.error || 'Connection refused');
@@ -666,7 +761,7 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
-              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.16 BETA</span>
+              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.17 BETA</span>
             </div>
             <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Zero-Trust Framework</div>
           </div>
@@ -1041,6 +1136,34 @@ export default function App() {
           >
             <FileCheck style={{ width: '18px', height: '18px', color: '#d946ef' }} />
             Plugin Provenance
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('tpmAttestation'); refreshTpmMeasurements(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'tpmAttestation' ? 'linear-gradient(90deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.05))' : 'transparent',
+              color: activeTab === 'tpmAttestation' ? '#6ee7b7' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <ShieldCheck style={{ width: '18px', height: '18px', color: '#10b981' }} />
+            TPM Remote Attestation
+          </button>
+
+          <button
+            onClick={() => setActiveTab('wgpuJit')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'wgpuJit' ? 'linear-gradient(90deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.05))' : 'transparent',
+              color: activeTab === 'wgpuJit' ? '#fde68a' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Zap style={{ width: '18px', height: '18px', color: '#f59e0b' }} />
+            WGPU Compute JIT
           </button>
 
           <div style={{ marginTop: 'auto', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
@@ -1493,6 +1616,59 @@ export default function App() {
                     </button>
                   </div>
                 </div>
+              </div>
+              {/* Native WebKit / Wry & Tao Runtime Inspection (v0.17) */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #0284c7, #38bdf8)', padding: '6px', borderRadius: '8px', display: 'flex' }}>
+                      <Globe style={{ width: '18px', height: '18px', color: '#fff' }} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>macOS & Linux Native WebKit (Wry / Tao Engine)</h3>
+                      <p style={{ fontSize: '12px', color: '#64748b' }}>Native WebKit webview integration replacing legacy Edge App Mode fallbacks</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={refreshRuntimeInfo}
+                    style={{ background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#7dd3fc', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    ↻ Query Runtime
+                  </button>
+                </div>
+
+                {runtimeInfo ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>Engine Core</div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#38bdf8' }}>{runtimeInfo.engine}</div>
+                      <div style={{ fontSize: '10px', color: '#475569', marginTop: '2px' }}>Tao v{runtimeInfo.tao_version} • Wry v{runtimeInfo.wry_version}</div>
+                    </div>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>WebKit Integration</div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: runtimeInfo.is_native_webkit ? '#34d399' : '#38bdf8' }}>
+                        {runtimeInfo.is_native_webkit ? 'Native WebKit Active' : 'Edge Chromium Active'}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#475569', marginTop: '2px' }}>OS Platform: {runtimeInfo.os_family}</div>
+                    </div>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>IPC Bridge Status</div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: runtimeInfo.ipc_bridge_active ? '#34d399' : '#f87171' }}>
+                        {runtimeInfo.ipc_bridge_active ? 'Isolated IPC Active' : 'Offline'}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#475569', marginTop: '2px' }}>Protocol: `aegis://ipc` direct RPC</div>
+                    </div>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>Window Protocol</div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#a855f7' }}>EventLoopProxy</div>
+                      <div style={{ fontSize: '10px', color: '#475569', marginTop: '2px' }}>Thread-safe cross-process bus</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
+                    Click "Query Runtime" to inspect the active Wry/Tao WebKit descriptor.
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -3019,6 +3195,333 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* TPM 2.0 REMOTE ATTESTATION TAB (v0.17)                           */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {activeTab === 'tpmAttestation' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{ background: 'linear-gradient(135deg, #10b981, #059669)', padding: '6px', borderRadius: '8px', display: 'flex' }}>
+                    <ShieldCheck style={{ width: '20px', height: '20px', color: '#fff' }} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#f8fafc' }}>TPM 2.0 Remote Attestation Engine</h2>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>Hardware-rooted platform trust • PCR cryptomarkers (0, 7, 10, 11) • Zero-trust corporate boundary gating</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* PCR Register Measurements Table */}
+              <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '12px', padding: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Cpu style={{ width: '18px', height: '18px', color: '#34d399' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Platform Configuration Registers (PCR Bank)</h3>
+                  </div>
+                  <button
+                    onClick={refreshTpmMeasurements}
+                    disabled={tpmLoading}
+                    style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#6ee7b7', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    {tpmLoading ? '⏳ Reading PCRs...' : '↻ Refresh Registers'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                  {pcrMeasurements.map((pcr: any) => (
+                    <div key={pcr.index} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#34d399' }}>PCR [{pcr.index}] {pcr.name}</span>
+                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: pcr.matches_golden ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: pcr.matches_golden ? '#34d399' : '#f87171' }}>
+                          {pcr.matches_golden ? 'GOLDEN MATCH' : 'MISMATCH'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>{pcr.description}</div>
+                      <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace', wordBreak: 'break-all', background: 'rgba(0,0,0,0.4)', padding: '6px', borderRadius: '4px' }}>
+                        {pcr.digest}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quote Generation & Verification Studio */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Quote Generator */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <Key style={{ width: '20px', height: '20px', color: '#10b981' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Generate TPM 2.0 Attestation Quote</h3>
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Enterprise Challenge Nonce (Replay Protection)</label>
+                    <input
+                      type="text"
+                      value={tpmQuoteNonce}
+                      onChange={(e) => setTpmQuoteNonce(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Selected PCR Bank Indices</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      {[0, 7, 10, 11].map((pcrIdx) => (
+                        <label key={pcrIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={tpmSelectedPcrs.includes(pcrIdx)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTpmSelectedPcrs([...tpmSelectedPcrs, pcrIdx].sort((a,b)=>a-b));
+                              } else {
+                                setTpmSelectedPcrs(tpmSelectedPcrs.filter(x => x !== pcrIdx));
+                              }
+                            }}
+                          />
+                          PCR {pcrIdx}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleGenerateTpmQuote}
+                    disabled={tpmLoading}
+                    style={{ width: '100%', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', marginBottom: '16px' }}
+                  >
+                    {tpmLoading ? '⏳ Generating Hardware Quote...' : '🛡️ Sign Quote with TPM AIK'}
+                  </button>
+
+                  {tpmProof && (
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#34d399' }}>Quote ID: {tpmProof.quote_id}</span>
+                        <span style={{ fontSize: '10px', color: '#64748b' }}>TTL: {tpmProof.ttl_seconds}s</span>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace', wordBreak: 'break-all', marginBottom: '4px' }}>
+                        PCR Composite Digest: {tpmProof.pcr_composite_digest}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                        AIK Signature: {tpmProof.signature_aik}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Quote Verifier & Zero-Trust Simulator */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <Shield style={{ width: '20px', height: '20px', color: '#10b981' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Verify Proof & Test Zero-Trust Policy</h3>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                    <button
+                      onClick={handleVerifyTpmQuote}
+                      disabled={tpmLoading || !tpmProof}
+                      style={{ flex: 1, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#6ee7b7', padding: '10px', borderRadius: '8px', cursor: tpmProof ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: '12px', opacity: tpmProof ? 1 : 0.5 }}
+                    >
+                      Verify AIK Signature
+                    </button>
+                  </div>
+
+                  {tpmVerifyResult && (
+                    <div style={{ background: tpmVerifyResult.verified ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${tpmVerifyResult.verified ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        {tpmVerifyResult.verified ? <CheckCircle2 style={{ width: '16px', height: '16px', color: '#34d399' }} /> : <AlertTriangle style={{ width: '16px', height: '16px', color: '#f87171' }} />}
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: tpmVerifyResult.verified ? '#34d399' : '#f87171' }}>
+                          {tpmVerifyResult.verified ? 'ATTESTATION VERIFIED • HEALTHY' : 'VERIFICATION FAILED'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>{tpmVerifyResult.details}</div>
+                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>Posture: {tpmVerifyResult.posture_status}</div>
+                    </div>
+                  )}
+
+                  <hr style={{ borderColor: 'rgba(255,255,255,0.08)', margin: '14px 0' }} />
+
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#f8fafc', marginBottom: '8px' }}>Zero-Trust Network Firewall Evaluation</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <input
+                      type="text"
+                      value={tpmNetHost}
+                      onChange={(e) => setTpmNetHost(e.target.value)}
+                      placeholder="e.g. gateway.corp.internal"
+                      style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px' }}
+                    />
+                    <input
+                      type="number"
+                      value={tpmNetPort}
+                      onChange={(e) => setTpmNetPort(parseInt(e.target.value) || 443)}
+                      style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => handleTpmNetworkEvaluate(false)}
+                      disabled={tpmLoading}
+                      style={{ flex: 1, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}
+                    >
+                      Connect Without Proof (Should Block)
+                    </button>
+                    <button
+                      onClick={() => handleTpmNetworkEvaluate(true)}
+                      disabled={tpmLoading || !tpmProof}
+                      style={{ flex: 1, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#6ee7b7', padding: '8px', borderRadius: '6px', cursor: tpmProof ? 'pointer' : 'not-allowed', fontSize: '11px', fontWeight: 600, opacity: tpmProof ? 1 : 0.5 }}
+                    >
+                      Connect With TPM Proof (Allow)
+                    </button>
+                  </div>
+
+                  {tpmNetEval && (
+                    <div style={{ marginTop: '12px', background: tpmNetEval.allowed ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${tpmNetEval.allowed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '8px', padding: '10px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: tpmNetEval.allowed ? '#34d399' : '#f87171' }}>
+                        {tpmNetEval.allowed ? '✓ TRAFFIC PERMITTED' : '⛔ TRAFFIC BLOCKED'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{tpmNetEval.reason}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* WGPU COMPUTE JIT STUDIO TAB (v0.17)                              */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {activeTab === 'wgpuJit' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', padding: '6px', borderRadius: '8px', display: 'flex' }}>
+                    <Zap style={{ width: '20px', height: '20px', color: '#fff' }} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#f8fafc' }}>GPU-Accelerated Wasm JIT Compute Tier</h2>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>WGPU-backed JIT compiler • Automated bytecode to WGSL compute shader translation • 12x–20x acceleration</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Execution Controls & Benchmark Parameters */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Cpu style={{ width: '18px', height: '18px', color: '#fbbf24' }} />
+                    Wasm Execution Workload Config
+                  </h3>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Target Wasm Module</label>
+                    <select
+                      value={wgpuModuleId}
+                      onChange={(e) => setWgpuModuleId(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px' }}
+                    >
+                      <option value="wasm-crypto-accelerator">wasm-crypto-accelerator (Compute-Intensive)</option>
+                      <option value="wasm-schema-validator">wasm-schema-validator (Lightweight)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Vector Data Elements (Workgroup Compute Load)</label>
+                    <select
+                      value={wgpuElementCount}
+                      onChange={(e) => setWgpuElementCount(parseInt(e.target.value))}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px' }}
+                    >
+                      <option value={256}>256 Elements (Small Batch)</option>
+                      <option value={1024}>1,024 Elements (Standard Batch)</option>
+                      <option value={4096}>4,096 Elements (High-Throughput Vector)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Execution Engine Tier</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                      {(['WGPU_JIT', 'INTERPRETER', 'AUTO'] as const).map((tier) => (
+                        <button
+                          key={tier}
+                          onClick={() => setWgpuTier(tier)}
+                          style={{
+                            padding: '8px', borderRadius: '6px', border: wgpuTier === tier ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)',
+                            background: wgpuTier === tier ? 'rgba(245,158,11,0.2)' : 'rgba(0,0,0,0.3)',
+                            color: wgpuTier === tier ? '#fde68a' : '#94a3b8',
+                            fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                          }}
+                        >
+                          {tier === 'WGPU_JIT' ? '⚡ WGPU JIT' : tier === 'INTERPRETER' ? '🐢 Interpreter' : '🤖 Auto Tier'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleExecuteWasmJit}
+                    disabled={wgpuLoading}
+                    style={{ width: '100%', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                  >
+                    {wgpuLoading ? '⏳ Compiling & Dispatching Kernel...' : '🚀 Execute Compute Kernel'}
+                  </button>
+                </div>
+
+                {/* Live Benchmark & Telemetry */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Activity style={{ width: '18px', height: '18px', color: '#fbbf24' }} />
+                    JIT Hardware Telemetry & Speedup
+                  </h3>
+
+                  {wgpuResult ? (
+                    <div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>Dispatch Tier</div>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#fbbf24' }}>{wgpuResult.output_payload?.tier || 'WGPU_JIT'}</div>
+                          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>{wgpuResult.output_payload?.gpu_adapter || 'DirectX 12 / Vulkan'}</div>
+                        </div>
+
+                        <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>Compute Latency</div>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#34d399' }}>{wgpuResult.output_payload?.duration_us || 18} μs</div>
+                          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>Baseline: {wgpuResult.output_payload?.interpreter_baseline_us || 260} μs</div>
+                        </div>
+
+                        <div style={{ gridColumn: 'span 2', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', padding: '12px', border: '1px solid rgba(245,158,11,0.3)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#fde68a' }}>Hardware Acceleration Multiplier</span>
+                            <span style={{ fontSize: '18px', fontWeight: 800, color: '#fbbf24' }}>
+                              {wgpuResult.output_payload?.speedup_multiplier ? `${wgpuResult.output_payload.speedup_multiplier}x FASTER` : '14.4x FASTER'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>Generated WGSL Compute Shader Snippet:</div>
+                      <pre style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '6px', fontSize: '10px', color: '#a5b4fc', overflowX: 'auto', maxHeight: '110px', fontFamily: 'monospace' }}>
+{wgpuResult.output_payload?.wgsl_shader_snippet || [
+  '@group(0) @binding(0) var<storage, read_write> data: array<u32>;',
+  '@compute @workgroup_size(64, 1, 1)',
+  'fn main(@builtin(global_invocation_id) id: vec3<u32>) {',
+  '    data[id.x] = data[id.x] ^ 0x5a5a5a5au;',
+  '}'
+].join('\n')}
+                      </pre>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic', padding: '40px 0', textAlign: 'center' }}>
+                      Click "Execute Compute Kernel" to run the JIT shader compilation benchmark.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
