@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.6] - 2026-10-26
+
+- Add optional native single-file selection through an isolated main-thread helper and default-denied file-dialog capability; declare Rust 1.92 minimum.
+- Keep core dispatch available while selection is pending. Bound jobs/output/lifetime; scope request IDs to profiles, consume results once and invalidate on profile switching.
+- Add typed open/poll/cancel bridge methods. A selected path grants no filesystem access; ambiguous empty provider results are reported as noSelection, not confirmed cancellation.
+- Add non-GUI child-process regression tests and feature-enabled helper input checks to three-OS CI. Interactive picker and accessibility acceptance remain pending; see docs/FILE_DIALOGS.md.
+
 ## [v0.25.5] - 2026-10-26
 
 - Add opt-in native text clipboard writes with a default-denied capability, 64 KiB UTF-8 limit, NUL rejection, typed responses and no text in returned errors.

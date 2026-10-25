@@ -1,14 +1,16 @@
 [package]
 name = "aegis-core"
-version = "0.25.5"
+version = "0.25.6"
 edition = "2021"
-rust-version = "1.89"
+rust-version = "1.92"
 
 [features]
 default = []
+file-dialog = ["dep:rfd"]
 native-desktop = ["dep:wry", "dep:winit", "dep:webkit6", "dep:gtk4"]
 
 [dependencies]
+rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"], optional = true }
 arboard = { version = "3.7.0", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

@@ -21,6 +21,7 @@ use std::fs;
 use std::sync::Arc;
 
 pub struct IpcRouter {
+    file_dialogs: crate::file_dialog::FileDialogJobs,
     clipboard: crate::clipboard::TextClipboard,
     security: Arc<SecurityEngine>,
     session: Arc<HandshakeSession>,
@@ -70,6 +71,9 @@ impl IpcRouter {
         #[cfg(all(not(windows), not(test)))]
         vault_sessions.require_platform_monitor();
         Self {
+            file_dialogs: crate::file_dialog::FileDialogJobs::new(std::time::Duration::from_secs(
+                120,
+            )),
             clipboard: crate::clipboard::TextClipboard::new(),
             vault_sessions,
             dispatch: std::sync::Mutex::new(()),
@@ -137,6 +141,50 @@ impl IpcRouter {
             return IpcResponse::err(&req.id, "UNAVAILABLE: This integration is disabled until a real provider is configured. No hardware verification, network installation or encrypted transport is claimed.");
         }
         match req.command.as_str() {
+            "file_dialog_open" | "file_dialog_poll" | "file_dialog_cancel" => {
+                if let Err(error) = self.security.check_file_dialogs() {
+                    return IpcResponse::err(&req.id, &error);
+                }
+                let profile = self.profile_manager.get_active_profile().id;
+                if req.command == "file_dialog_open" {
+                    let title = req
+                        .payload
+                        .get("title")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Select a file");
+                    let result =
+                        crate::file_dialog::FileSelectionRequest::new(title).and_then(|request| {
+                            self.file_dialogs.start(
+                                &profile,
+                                &request,
+                                crate::file_dialog::native_helper()?,
+                            )
+                        });
+                    return match result {
+                        Ok(id) => {
+                            IpcResponse::ok(&req.id, json!({"requestId":id,"status":"pending"}))
+                        }
+                        Err(error) => IpcResponse::err(&req.id, &error),
+                    };
+                }
+                let id = match req.payload.get("requestId").and_then(|v| v.as_str()) {
+                    Some(id) => id,
+                    None => return IpcResponse::err(&req.id, "Missing 'requestId' parameter"),
+                };
+                if req.command == "file_dialog_cancel" {
+                    return match self.file_dialogs.cancel(&profile, id) {
+                        Ok(()) => IpcResponse::ok(&req.id, json!({"status":"cancelled"})),
+                        Err(error) => IpcResponse::err(&req.id, &error),
+                    };
+                }
+                match self.file_dialogs.poll(&profile, id) {
+                    Ok(None) => IpcResponse::ok(&req.id, json!({"status":"pending"})),
+                    Ok(Some(outcome)) => {
+                        IpcResponse::ok(&req.id, serde_json::to_value(outcome).unwrap())
+                    }
+                    Err(error) => IpcResponse::err(&req.id, &error),
+                }
+            }
             "clipboard_write_text" => {
                 if let Err(error) = self.security.check_clipboard_write() {
                     return IpcResponse::err(&req.id, &error);
@@ -1101,6 +1149,7 @@ impl IpcRouter {
 
             "profile_switch" => {
                 self.vault_sessions.lock();
+                self.file_dialogs.invalidate();
                 let id = match req.payload.get("profileId").and_then(|i| i.as_str()) {
                     Some(i) => i,
                     None => return IpcResponse::err(&req.id, "Missing 'profileId' parameter"),

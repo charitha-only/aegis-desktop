@@ -3,10 +3,11 @@
 mod bundler;
 mod clipboard;
 mod crash;
+mod file_dialog;
 mod ipc;
-mod network;
 #[cfg(feature = "native-desktop")]
 mod native_window;
+mod network;
 mod p2p_market;
 mod package_pipeline;
 mod platform;
@@ -42,6 +43,9 @@ use wasm::WasmSandbox;
 use window::{WindowConfig, WindowManager};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if std::env::args().any(|arg| arg == "--file-picker-helper") {
+        return file_dialog::run_helper().map_err(Into::into);
+    }
     println!("============================================================");
     println!(
         "     AEGIS DESKTOP CORE v{} - EXPERIMENTAL RUNTIME",
@@ -196,7 +200,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 3. Parse CLI arguments
     // --spawn-window flag: launch UI Window
-    if args.iter().any(|arg| arg == "--spawn-window" || arg == "--native-window") {
+    if args
+        .iter()
+        .any(|arg| arg == "--spawn-window" || arg == "--native-window")
+    {
         let win_cfg = window_config;
         let ui_url = if packaged {
             format!("http://127.0.0.1:{port}")

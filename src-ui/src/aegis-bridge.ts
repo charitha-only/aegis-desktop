@@ -38,6 +38,11 @@ export interface NativeDialogSubmission {
   deliveryConfirmed: false;
 }
 
+export type FileSelectionResult =
+  | {status: 'pending'}
+  | {status: 'selected'; path: string}
+  | {status: 'noSelection'};
+
 export interface SecurityStatus {
   engine: string;
   windowsLifecycleMonitorActive?: boolean;
@@ -288,6 +293,18 @@ class AegisBridge {
 
   public async writeClipboardText(text: string): Promise<IpcResponse<{written: true}>> {
     return this.invoke('clipboard_write_text', {text});
+  }
+
+  public async openFileDialog(title = 'Select a file'): Promise<IpcResponse<{requestId: string; status: 'pending'}>> {
+    return this.invoke('file_dialog_open', {title});
+  }
+
+  public async pollFileDialog(requestId: string): Promise<IpcResponse<FileSelectionResult>> {
+    return this.invoke('file_dialog_poll', {requestId});
+  }
+
+  public async cancelFileDialog(requestId: string): Promise<IpcResponse<{status: 'cancelled'}>> {
+    return this.invoke('file_dialog_cancel', {requestId});
   }
 
   // Generic pass-through call (for new/custom IPC commands)

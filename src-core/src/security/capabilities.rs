@@ -14,6 +14,8 @@ pub struct FsCapabilities {
 #[serde(rename_all = "camelCase")]
 pub struct SystemCapabilities {
     #[serde(default)]
+    pub allow_file_dialogs: bool,
+    #[serde(default)]
     pub allow_clipboard_write: bool,
     pub allow_system_info: bool,
     pub allow_dialogs: bool,
@@ -43,6 +45,7 @@ impl Default for CapabilityManifest {
                 deny_paths: vec!["../".to_string(), "C:\\Windows".to_string()],
             },
             system: SystemCapabilities {
+                allow_file_dialogs: false,
                 allow_clipboard_write: false,
                 allow_system_info: true,
                 allow_dialogs: true,
@@ -132,6 +135,14 @@ impl SecurityEngine {
             Ok(())
         } else {
             Err("Security Violation: 'clipboard_write' capability is disabled".into())
+        }
+    }
+
+    pub fn check_file_dialogs(&self) -> Result<(), String> {
+        if self.manifest.system.allow_file_dialogs {
+            Ok(())
+        } else {
+            Err("Security Violation: 'file_dialogs' capability is disabled".into())
         }
     }
 

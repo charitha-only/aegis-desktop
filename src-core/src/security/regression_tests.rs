@@ -953,3 +953,50 @@ fn clipboard_rejects_nul_without_accessing_the_os() {
         "Clipboard text contains NUL"
     );
 }
+
+#[test]
+fn ipc_file_dialog_is_denied_by_default_before_provider_access() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let manifest = CapabilityManifest::default();
+
+    let security = Arc::new(SecurityEngine::new(manifest, d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload: serde_json::Value| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "session-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    let response = call(
+        "file_dialog_open",
+        serde_json::json!({"title":"x".repeat(1025)}),
+    );
+    assert!(!response.success);
+    assert!(response
+        .error
+        .as_deref()
+        .unwrap()
+        .contains("'file_dialogs' capability is disabled"));
+}
