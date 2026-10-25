@@ -1,5 +1,5 @@
 /**
- * Aegis Desktop IPC Bridge Client v0.12
+ * Aegis Desktop IPC Bridge Client v0.13
  * Secure typed communication with Rust Backend Core
  */
 
@@ -190,6 +190,39 @@ class AegisBridge {
   // Generic pass-through call (for new/custom IPC commands)
   public async call<T = any>(command: string, payload: Record<string, any> = {}): Promise<IpcResponse<T>> {
     return this.invoke<T>(command, payload);
+  }
+
+  // --- v0.13 Extensions ---
+  public async pluginList(): Promise<IpcResponse> {
+    return this.invoke('plugin_list');
+  }
+
+  public async pluginDispatch(name: string, payload: Record<string, any> = {}): Promise<IpcResponse> {
+    return this.invoke('plugin_dispatch', { plugin: name, payload });
+  }
+
+  public async notifySend(title: string, body: string, urgency: 'low' | 'normal' | 'critical' = 'normal'): Promise<IpcResponse> {
+    return this.invoke('notify_send', { title, body, urgency });
+  }
+
+  public async trayStatus(): Promise<IpcResponse> {
+    return this.invoke('tray_status');
+  }
+
+  public async updaterStatus(): Promise<IpcResponse> {
+    return this.invoke('updater_status');
+  }
+
+  public async updaterCheck(manifest: Record<string, any>): Promise<IpcResponse> {
+    return this.invoke('updater_check', { manifest });
+  }
+
+  public async updaterVerify(targetVersion: string, expectedSha256: string): Promise<IpcResponse> {
+    return this.invoke('updater_verify', { targetVersion, expectedSha256 });
+  }
+
+  public async permissionsStatus(): Promise<IpcResponse> {
+    return this.invoke('permissions_status');
   }
 
   // Security Defense Simulators

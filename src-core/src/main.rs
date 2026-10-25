@@ -1,20 +1,25 @@
 mod bundler;
 mod ipc;
+mod plugin;
 mod security;
 mod server;
+mod tray;
+mod updater;
 mod window;
 
 use ipc::IpcRouter;
+use plugin::{PluginRegistry, register_builtin_plugins};
 use security::{CapabilityManifest, HandshakeSession, OriginValidator, SecurityEngine};
 use server::CoreServer;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use updater::AutoUpdater;
 use window::{WindowConfig, WindowManager};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("     🛡️  AEGIS DESKTOP CORE v0.12.0 • HIGH-SECURITY RUNTIME  ");
+    println!("     🛡️  AEGIS DESKTOP CORE v0.13.0 • HIGH-SECURITY RUNTIME  ");
     println!("============================================================");
 
     // 1. Locate and parse aegis.config.json
@@ -61,9 +66,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let handshake_session = Arc::new(HandshakeSession::new());
     let origin_validator = Arc::new(OriginValidator::new(allowed_origins));
 
+    // 2b. Initialize Plugin Registry
+    let plugin_registry = PluginRegistry::new();
+    register_builtin_plugins(&plugin_registry);
+
+    // 2c. Initialize Auto-Updater
+    let auto_updater = Arc::new(AutoUpdater::new("0.13.0", &base_dir));
+
     let router = Arc::new(IpcRouter::new(
         Arc::clone(&security_engine),
         Arc::clone(&handshake_session),
+        plugin_registry,
+        auto_updater,
     ));
 
     // 2. Bind the Secure Loopback Bridge

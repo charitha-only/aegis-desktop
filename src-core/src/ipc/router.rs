@@ -1,5 +1,8 @@
 use super::protocol::{IpcRequest, IpcResponse};
+use crate::plugin::PluginRegistry;
 use crate::security::{HandshakeSession, PrivacyShield, SecurityEngine, VaultEngine};
+use crate::tray::{NotificationConfig, NotificationEngine, TrayDaemon};
+use crate::updater::{AutoUpdater, UpdateManifest};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -8,11 +11,18 @@ use std::sync::Arc;
 pub struct IpcRouter {
     security: Arc<SecurityEngine>,
     session: Arc<HandshakeSession>,
+    plugins: Arc<PluginRegistry>,
+    updater: Arc<AutoUpdater>,
 }
 
 impl IpcRouter {
-    pub fn new(security: Arc<SecurityEngine>, session: Arc<HandshakeSession>) -> Self {
-        Self { security, session }
+    pub fn new(
+        security: Arc<SecurityEngine>,
+        session: Arc<HandshakeSession>,
+        plugins: Arc<PluginRegistry>,
+        updater: Arc<AutoUpdater>,
+    ) -> Self {
+        Self { security, session, plugins, updater }
     }
 
     pub fn handle_request(&self, req: IpcRequest) -> IpcResponse {
@@ -25,7 +35,7 @@ impl IpcRouter {
         match req.command.as_str() {
             "get_security_status" => {
                 let status = json!({
-                    "engine": "Aegis Core v0.12 (Rust)",
+                    "engine": "Aegis Core v0.13 (Rust)",
                     "nonceVerified": true,
                     "sandboxEnforced": true,
                     "privacyVaultActive": true,
@@ -33,6 +43,9 @@ impl IpcRouter {
                     "airGapPolicyActive": true,
                     "bundlerEngineActive": true,
                     "multiWindowApiActive": true,
+                    "pluginEngineActive": true,
+                    "notificationEngineActive": true,
+                    "autoUpdaterActive": true,
                     "activeCapabilities": {
                         "fsRead": true,
                         "fsWrite": true,
@@ -41,7 +54,10 @@ impl IpcRouter {
                         "crypto": true,
                         "encryptedVault": true,
                         "bundler": true,
-                        "multiWindow": true
+                        "multiWindow": true,
+                        "plugins": true,
+                        "notifications": true,
+                        "autoUpdater": true
                     }
                 });
                 IpcResponse::ok(&req.id, status)
@@ -241,6 +257,8 @@ impl IpcRouter {
                     height,
                     resizable: true,
                     modal,
+                    always_on_top: false,
+                    kiosk: false,
                 };
 
                 match crate::window::WindowManager::spawn_window(url, &cfg) {
@@ -322,6 +340,121 @@ impl IpcRouter {
                     "howToBundle": "Run: cargo run --manifest-path src-core/Cargo.toml -- --bundle",
                     "innoSetupDocs": "https://jrsoftware.org/isinfo.php",
                     "supportedTargets": ["windows-x64", "linux-x64", "macos-aarch64"]
+                }))
+            }
+
+            // ─── PLUGIN ENGINE IPC (v0.13) ─────────────────────────────────
+
+            "plugin_list" => {
+                let plugins = self.plugins.list_plugins();
+                IpcResponse::ok(&req.id, json!({
+                    "plugins": plugins,
+                    "count": plugins.len()
+                }))
+            }
+
+            "plugin_dispatch" => {
+                let plugin_name = match req.payload.get("plugin").and_then(|p| p.as_str()) {
+                    Some(n) => n,
+                    None => return IpcResponse::err(&req.id, "Missing 'plugin' parameter"),
+                };
+                let payload = req.payload.get("payload").cloned().unwrap_or(json!({}));
+
+                match self.plugins.dispatch(plugin_name, &payload) {
+                    Ok(result) => IpcResponse::ok(&req.id, json!({
+                        "plugin": plugin_name,
+                        "result": result
+                    })),
+                    Err(e) => IpcResponse::err(&req.id, &format!("Plugin error: {}", e)),
+                }
+            }
+
+            // ─── NOTIFICATION ENGINE IPC (v0.13) ───────────────────────────
+
+            "notify_send" => {
+                let title = req.payload.get("title").and_then(|t| t.as_str()).unwrap_or("Aegis Desktop");
+                let body = req.payload.get("body").and_then(|b| b.as_str()).unwrap_or("Notification from Aegis Core");
+
+                let config = NotificationConfig {
+                    title: title.to_string(),
+                    body: body.to_string(),
+                    icon: req.payload.get("icon").and_then(|i| i.as_str()).map(|s| s.to_string()),
+                    urgency: crate::tray::NotificationUrgency::Normal,
+                    timeout_ms: req.payload.get("timeout_ms").and_then(|t| t.as_u64()).map(|t| t as u32),
+                };
+
+                match NotificationEngine::send(&config) {
+                    Ok(_) => IpcResponse::ok(&req.id, json!({
+                        "delivered": true,
+                        "title": title,
+                        "body": body,
+                        "platform": std::env::consts::OS
+                    })),
+                    Err(e) => IpcResponse::err(&req.id, &format!("Notification failed: {}", e)),
+                }
+            }
+
+            "tray_status" => {
+                IpcResponse::ok(&req.id, TrayDaemon::get_status())
+            }
+
+            // ─── AUTO-UPDATER IPC (v0.13) ──────────────────────────────────
+
+            "updater_status" => {
+                IpcResponse::ok(&req.id, self.updater.get_status())
+            }
+
+            "updater_check" => {
+                // Accept a manifest JSON directly in the payload for air-gapped checking
+                match serde_json::from_value::<UpdateManifest>(req.payload.clone()) {
+                    Ok(manifest) => {
+                        let result = self.updater.check_update_available(&manifest);
+                        IpcResponse::ok(&req.id, serde_json::to_value(&result).unwrap_or(json!({})))
+                    }
+                    Err(e) => IpcResponse::err(&req.id, &format!("Invalid manifest payload: {}", e)),
+                }
+            }
+
+            "updater_verify" => {
+                let file_path = match req.payload.get("filePath").and_then(|p| p.as_str()) {
+                    Some(p) => std::path::PathBuf::from(p),
+                    None => return IpcResponse::err(&req.id, "Missing 'filePath' parameter"),
+                };
+                let expected_sha256 = match req.payload.get("expectedSha256").and_then(|h| h.as_str()) {
+                    Some(h) => h,
+                    None => return IpcResponse::err(&req.id, "Missing 'expectedSha256' parameter"),
+                };
+
+                match self.updater.verify_integrity(&file_path, expected_sha256) {
+                    Ok(_) => IpcResponse::ok(&req.id, json!({
+                        "verified": true,
+                        "filePath": file_path.to_string_lossy(),
+                        "sha256": expected_sha256
+                    })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ─── PERMISSION MANAGER IPC (v0.13) ────────────────────────────
+
+            "permissions_status" => {
+                IpcResponse::ok(&req.id, json!({
+                    "permissionManagerVersion": "v0.13.0",
+                    "activeCapabilities": {
+                        "fs": { "read": true, "write": true, "paths": ["./sandbox/**"] },
+                        "shell": { "allowed": false, "policy": "PERMANENTLY_REVOKED" },
+                        "systemInfo": { "allowed": true },
+                        "crypto": { "allowed": true },
+                        "encryptedVault": { "allowed": true },
+                        "bundler": { "allowed": true },
+                        "multiWindow": { "allowed": true },
+                        "plugins": { "allowed": true },
+                        "notifications": { "allowed": true },
+                        "autoUpdater": { "allowed": true, "autoApply": false }
+                    },
+                    "policySource": "aegis.config.json",
+                    "runtimeOverridesEnabled": false,
+                    "note": "Runtime permission overrides planned for v0.14+"
                 }))
             }
 

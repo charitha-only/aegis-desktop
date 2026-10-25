@@ -10,11 +10,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 > **Target Release:** Q1 2027
 
 ### 🚀 Planned Features & Enhancements
-- [ ] **Custom Rust Plugin Engine:** Allow developers to expose their own Rust system functions through a composable capability manifest.
-- [ ] **Tray & System Notifications:** Background daemon mode with OS system tray icon and notification support.
 - [ ] **macOS & Linux Native WebKit:** Full native webview integration via `wry` and `tao` (replacing Edge App Mode fallback).
-- [ ] **WebSocket IPC Transport:** Low-latency bidirectional real-time event streaming from Rust Core → frontend.
-- [ ] **Auto-Updater (Air-Gapped):** Self-contained update mechanism that verifies signature before applying patches.
+- [ ] **Hardware Security Key Integration:** FIDO2 / WebAuthn and YubiKey challenge-response in VaultEngine.
+- [ ] **Wasm Plugin Sandbox:** Running dynamically compiled WebAssembly modules inside Rust Core with memory isolation.
+- [ ] **Multi-Profile Isolation:** Sandboxed runtime instances with separate keyrings and storage vaults.
+
+---
+
+## 🚀 [v0.13.0] - 2026-10-25
+> **The Extensibility, Notifications, Air-Gapped Updater & Capability Matrix Release**
+
+### ✨ Highlights & New Features
+- **Extensible Rust Plugin Engine (`src-core/src/plugin.rs`):**
+  - Thread-safe `PluginRegistry` allows registration of memory-safe Rust closures with fine-grained capability descriptors.
+  - Three out-of-the-box native built-in plugins:
+    - `system_memory` — RAM utilization, total capacity, and paging telemetry.
+    - `file_checksum` — Streaming SHA-256 integrity verification inside the sandbox.
+    - `process_uptime` — Host OS uptime and Aegis daemon process metrics.
+  - New IPC commands: `plugin_list` and `plugin_dispatch`.
+- **System Tray & Native OS Notifications (`src-core/src/tray.rs`):**
+  - Zero-dependency OS notification dispatch using native subsystems:
+    - **Windows:** PowerShell WinRT Toast integration (`Windows.UI.Notifications`).
+    - **macOS:** AppleScript (`display notification`).
+    - **Linux:** Freedesktop `notify-send`.
+  - Input sanitization against command injection before invoking native OS hooks.
+  - New IPC commands: `notify_send` and `tray_status`.
+- **Air-Gapped Cryptographic Auto-Updater (`src-core/src/updater.rs`):**
+  - Strict SemVer version comparison (`check_update_available`).
+  - Streaming SHA-256 cryptographic integrity verification (`verify_integrity`).
+  - Isolated atomic staging into `.aegis_updates/` sandbox before application restart.
+  - Air-gapped offline support for air-gapped enterprise environments.
+  - New IPC commands: `updater_status`, `updater_check`, and `updater_verify`.
+- **Runtime Capability & Permission Guard (`src-core/src/ipc/router.rs`):**
+  - Comprehensive capability matrix tracking `fs`, `shell`, `systemInfo`, `crypto`, `encryptedVault`, `bundler`, `multiWindow`, `plugins`, `notifications`, and `autoUpdater`.
+  - Zero-trust enforcement: untrusted frontend cannot elevate capabilities at runtime.
+  - New IPC command: `permissions_status`.
+- **Frontend Dashboard Extensions (`src-ui/src/App.tsx` & `aegis-bridge.ts`):**
+  - 4 new interactive tabs: **Plugin Engine**, **Tray & Notifications**, **Permission Manager**, and **Auto-Updater**.
+  - TypeScript client helpers: `pluginList()`, `pluginDispatch()`, `notifySend()`, `trayStatus()`, `updaterStatus()`, `updaterCheck()`, `updaterVerify()`, `permissionsStatus()`.
+
+### 🛡️ Security
+- All notification parameters are strictly sanitized against shell escaping.
+- Updater forbids automatic execution of unverified update files.
+- Plugin handlers execute directly in Rust closures with zero shell breakout risk.
 
 ---
 
@@ -126,10 +164,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 | Version | Release Date | Key Changes | Stability |
 | :---: | :---: | :--- | :---: |
+| **[v0.13.0](#-v0130---2026-10-25)** | **2026-10-25** | Rust Plugin Engine, System Tray & OS Notifications, SHA-256 Air-Gapped Updater, Capability Matrix | **Alpha** |
 | **[v0.12.0](#-v0120---2026-10-25)** | **2026-10-25** | One-Click Native Bundler & .exe Installer, Multi-Window Manager, `bundle_status` & `window_list` IPC | **Alpha** |
 | **[v0.11.0](#-v0110---2026-10-25)** | **2026-10-25** | Zero-Knowledge Encrypted Vault, Anti-DoS Rate Limiter, Air-Gap Privacy Shield | **Alpha** |
 | **[v0.10.0](#-v0100---2026-10-25)** | **2026-10-25** | Initial Open-Source Release: Rust core, React UI, Sandbox, Attack Simulator | **Alpha** |
-| *v0.20.0* | *Upcoming (Q1 2027)* | Plugin Engine, Tray Daemon, macOS WebKit, WebSocket IPC, Auto-Updater | *Planned* |
+| *v0.20.0* | *Upcoming (Q1 2027)* | macOS WebKit, Hardware Keys, Wasm Sandbox, Multi-Profile Isolation | *Planned* |
 
 ---
 

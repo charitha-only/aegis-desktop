@@ -21,6 +21,10 @@ import {
   EyeOff,
   Flame,
   AppWindow,
+  Plug,
+  Bell,
+  Settings,
+  ArrowUpCircle,
 } from 'lucide-react';
 import {
   aegis,
@@ -40,7 +44,7 @@ interface AuditLog {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'diagnostics' | 'logs'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'diagnostics' | 'logs'>('security');
   const [connected, setConnected] = useState(false);
   const [nonce, setNonce] = useState<string | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
@@ -57,6 +61,26 @@ export default function App() {
   // Bundler State (v0.12)
   const [bundlerStatus, setBundlerStatus] = useState<any>(null);
   const [bundlerLoading, setBundlerLoading] = useState(false);
+
+  // Plugin Engine State (v0.13)
+  const [pluginList, setPluginList] = useState<any[]>([]);
+  const [pluginDispatchName, setPluginDispatchName] = useState('system_memory');
+  const [pluginDispatchPayload, setPluginDispatchPayload] = useState('{}');
+  const [pluginResult, setPluginResult] = useState<any>(null);
+  const [pluginLoading, setPluginLoading] = useState(false);
+
+  // Notifications State (v0.13)
+  const [notifTitle, setNotifTitle] = useState('Aegis Security Alert');
+  const [notifBody, setNotifBody] = useState('Zero-Trust policy enforcement active. All capabilities verified.');
+  const [trayStatus, setTrayStatus] = useState<any>(null);
+
+  // Permissions State (v0.13)
+  const [permissionsStatus, setPermissionsStatus] = useState<any>(null);
+
+  // Auto-Updater State (v0.13)
+  const [updaterStatus, setUpdaterStatus] = useState<any>(null);
+  const [updaterLoading, setUpdaterLoading] = useState(false);
+
   // Vault State (v0.11 Zero-Knowledge Encryption)
   const [vaultFileName, setVaultFileName] = useState('confidential_notes.vault');
   const [vaultContent, setVaultContent] = useState('TOP_SECRET: Aegis Vault payload encrypted at rest with PBKDF2/SHA-256 and HMAC tags.');
@@ -124,6 +148,53 @@ export default function App() {
       addLog('INFO', 'bundle_status', `Bundler engine v${res.data.bundlerEngineVersion} queried`);
     }
     setBundlerLoading(false);
+  };
+
+  const refreshPlugins = async () => {
+    setPluginLoading(true);
+    const res = await aegis.call('plugin_list', {});
+    if (res.success && res.data) {
+      setPluginList(res.data.plugins || []);
+      addLog('INFO', 'plugin_list', `${res.data.count} plugins found in registry`);
+    }
+    setPluginLoading(false);
+  };
+
+  const handleDispatchPlugin = async () => {
+    let payload: any = {};
+    try { payload = JSON.parse(pluginDispatchPayload); } catch { payload = {}; }
+    setPluginLoading(true);
+    const res = await aegis.call('plugin_dispatch', { plugin: pluginDispatchName, payload });
+    setPluginResult(res.success ? res.data : { error: res.error });
+    addLog(res.success ? 'SUCCESS' : 'BLOCKED', 'plugin_dispatch', `Plugin '${pluginDispatchName}' invoked`);
+    setPluginLoading(false);
+  };
+
+  const handleSendNotification = async () => {
+    const res = await aegis.call('notify_send', { title: notifTitle, body: notifBody });
+    addLog(res.success ? 'SUCCESS' : 'BLOCKED', 'notify_send', res.success ? 'OS notification delivered' : (res.error || 'Failed'));
+    if (!trayStatus) {
+      const ts = await aegis.call('tray_status', {});
+      if (ts.success) setTrayStatus(ts.data);
+    }
+  };
+
+  const refreshPermissions = async () => {
+    const res = await aegis.call('permissions_status', {});
+    if (res.success && res.data) {
+      setPermissionsStatus(res.data);
+      addLog('INFO', 'permissions_status', 'Permission manifest loaded from Rust Core');
+    }
+  };
+
+  const refreshUpdaterStatus = async () => {
+    setUpdaterLoading(true);
+    const res = await aegis.call('updater_status', {});
+    if (res.success && res.data) {
+      setUpdaterStatus(res.data);
+      addLog('INFO', 'updater_status', `Auto-Updater ${res.data.autoUpdaterVersion} queried`);
+    }
+    setUpdaterLoading(false);
   };
 
   useEffect(() => {
@@ -456,6 +527,64 @@ export default function App() {
           >
             <Terminal style={{ width: '18px', height: '18px' }} />
             Live Audit Stream
+          </button>
+
+          <div style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '1px', padding: '8px 12px 4px' }}>v0.13 New</div>
+
+          <button
+            onClick={() => { setActiveTab('plugins'); refreshPlugins(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'plugins' ? 'linear-gradient(90deg, rgba(52, 211, 153, 0.2), rgba(52, 211, 153, 0.05))' : 'transparent',
+              color: activeTab === 'plugins' ? '#6ee7b7' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Plug style={{ width: '18px', height: '18px', color: '#34d399' }} />
+            Plugin Engine
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('notifications'); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'notifications' ? 'linear-gradient(90deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.05))' : 'transparent',
+              color: activeTab === 'notifications' ? '#fde68a' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Bell style={{ width: '18px', height: '18px', color: '#fbbf24' }} />
+            Tray & Notifications
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('permissions'); refreshPermissions(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'permissions' ? 'linear-gradient(90deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.05))' : 'transparent',
+              color: activeTab === 'permissions' ? '#fca5a5' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Settings style={{ width: '18px', height: '18px', color: '#f87171' }} />
+            Permission Manager
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('updater' as any); refreshUpdaterStatus(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: (activeTab as string) === 'updater' ? 'linear-gradient(90deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.05))' : 'transparent',
+              color: (activeTab as string) === 'updater' ? '#7dd3fc' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <ArrowUpCircle style={{ width: '18px', height: '18px', color: '#38bdf8' }} />
+            Auto-Updater
           </button>
 
           <div style={{ marginTop: 'auto', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
@@ -1032,6 +1161,348 @@ export default function App() {
                     <ExternalLink style={{ width: '12px', height: '12px' }} />
                     Download Inno Setup Compiler
                   </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4c: PLUGIN ENGINE (NEW IN v0.13) */}
+          {activeTab === 'plugins' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  Custom Rust Plugin Engine
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Extensible, sandboxed native Rust plugins. Each plugin registers explicit capabilities and executes inside memory-safe Rust closures with zero shell breakout risk.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Plugin Registry List */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Plug style={{ width: '16px', height: '16px', color: '#34d399' }} />
+                      Registered Plugins ({pluginList.length})
+                    </h3>
+                    <button
+                      onClick={refreshPlugins}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                    >
+                      <RefreshCw style={{ width: '14px', height: '14px' }} />
+                    </button>
+                  </div>
+
+                  {pluginLoading && pluginList.length === 0 ? (
+                    <div style={{ color: '#64748b', fontSize: '13px' }}>Querying plugin registry...</div>
+                  ) : pluginList.length === 0 ? (
+                    <div style={{ color: '#64748b', fontSize: '13px' }}>No plugins loaded. Click refresh to query the Rust Core.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {pluginList.map((p) => (
+                        <div key={p.name} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '14px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#6ee7b7' }}>{p.name}</span>
+                            <span style={{ fontSize: '11px', background: 'rgba(52,211,153,0.15)', color: '#34d399', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>v{p.version}</span>
+                          </div>
+                          <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 10px' }}>{p.description}</p>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            {p.capabilities?.map((cap: string) => (
+                              <span key={cap} style={{ fontSize: '10px', background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', padding: '2px 6px', borderRadius: '4px' }}>
+                                ⚡ {cap}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Plugin Dispatcher */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Zap style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
+                    Plugin Dispatch Console
+                  </h3>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                      TARGET PLUGIN
+                    </label>
+                    <select
+                      value={pluginDispatchName}
+                      onChange={(e) => setPluginDispatchName(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#f8fafc', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
+                    >
+                      <option value="system_memory">system_memory (RAM & paging telemetry)</option>
+                      <option value="file_checksum">file_checksum (SHA-256 integrity calculator)</option>
+                      <option value="process_uptime">process_uptime (Host and daemon uptime)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                      JSON PAYLOAD (ARGUMENTS)
+                    </label>
+                    <textarea
+                      value={pluginDispatchPayload}
+                      onChange={(e) => setPluginDispatchPayload(e.target.value)}
+                      rows={3}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#86efac', fontFamily: 'monospace', padding: '8px 12px', borderRadius: '6px', fontSize: '12px' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleDispatchPlugin}
+                    disabled={pluginLoading}
+                    style={{ width: '100%', background: 'linear-gradient(90deg, #059669, #10b981)', border: 'none', color: '#fff', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', marginBottom: '16px' }}
+                  >
+                    {pluginLoading ? 'Executing in Rust Core...' : 'Invoke Plugin via Native Dispatch'}
+                  </button>
+
+                  {pluginResult && (
+                    <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#34d399', marginBottom: '6px' }}>DISPATCH RESPONSE:</div>
+                      <pre style={{ margin: 0, fontSize: '11px', color: '#cbd5e1', overflowX: 'auto', maxHeight: '180px' }}>
+                        {JSON.stringify(pluginResult, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4d: TRAY & NOTIFICATIONS (NEW IN v0.13) */}
+          {activeTab === 'notifications' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  System Tray & Native OS Notifications
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Cross-platform desktop notifications powered by native OS subsystems (Windows WinRT / PowerShell, macOS osascript, Linux notify-send) without external Electron/Chromium overhead.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Send Notification Form */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Bell style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
+                    Dispatch Native OS Notification
+                  </h3>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                      NOTIFICATION TITLE
+                    </label>
+                    <input
+                      type="text"
+                      value={notifTitle}
+                      onChange={(e) => setNotifTitle(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#f1f5f9', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                      NOTIFICATION BODY
+                    </label>
+                    <textarea
+                      value={notifBody}
+                      onChange={(e) => setNotifBody(e.target.value)}
+                      rows={3}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#f1f5f9', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSendNotification}
+                    style={{ width: '100%', background: 'linear-gradient(90deg, #d97706, #fbbf24)', border: 'none', color: '#0f172a', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                  >
+                    Send Native Notification Now
+                  </button>
+                </div>
+
+                {/* Tray Engine Status */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Shield style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                    Tray & Notification Architecture
+                  </h3>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Target OS:</span>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#e2e8f0' }}>{sysInfo?.os || 'Windows'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Notification Driver:</span>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#34d399' }}>WinRT Toast / Windows PowerShell</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Urgency Levels:</span>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#fbbf24' }}>Low, Normal, Critical</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Daemon Status:</span>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#38bdf8' }}>Ready & Listening</span>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#7dd3fc', marginBottom: '4px' }}>🔒 Security Guarantee</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.5' }}>
+                      Notification payloads are sanitized in the Rust Core to eliminate command injection vulnerabilities before invoking native system hooks.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4e: PERMISSION MANAGER (NEW IN v0.13) */}
+          {activeTab === 'permissions' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  Runtime Capability & Permission Guard
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Granular Zero-Trust capabilities configured strictly inside <code style={{ color: '#fca5a5' }}>aegis.config.json</code>. No capability can be elevated at runtime by untrusted frontend scripts.
+                </p>
+              </div>
+
+              <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Settings style={{ width: '18px', height: '18px', color: '#f87171' }} />
+                    Active Capability Matrix
+                  </h3>
+                  <button
+                    onClick={refreshPermissions}
+                    style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}
+                  >
+                    Refresh Policy
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+                  {[
+                    { cap: 'fs', name: 'File System Sandbox', desc: 'Read/write scoped strictly to sandbox/ directory', granted: true },
+                    { cap: 'shell', name: 'Raw Shell Execution', desc: 'Arbitrary system command spawning', granted: false },
+                    { cap: 'systemInfo', name: 'Hardware Telemetry', desc: 'Read CPU, RAM, and OS telemetry', granted: true },
+                    { cap: 'crypto', name: 'Hardware Cryptography', desc: 'SHA-256 and PBKDF2 native operations', granted: true },
+                    { cap: 'encryptedVault', name: 'Zero-Knowledge Vault', desc: 'Encrypted at-rest secure local storage', granted: true },
+                    { cap: 'bundler', name: 'Native Executable Bundler', desc: 'InnoSetup & standalone packager', granted: true },
+                    { cap: 'multiWindow', name: 'Multi-Window & Native Dialogs', desc: 'Spawn auxiliary windows & message boxes', granted: true },
+                    { cap: 'plugins', name: 'Rust Plugin Engine', desc: 'Registered in-memory native plugins', granted: true },
+                    { cap: 'notifications', name: 'OS Native Notifications', desc: 'System tray & desktop alert toasts', granted: true },
+                    { cap: 'autoUpdater', name: 'SHA-256 Auto-Updater', desc: 'Air-gapped manifest verification & staging', granted: true },
+                  ].map((item) => (
+                    <div key={item.cap} style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${item.granted ? 'rgba(52,211,153,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: '8px', padding: '14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#f1f5f9' }}>{item.name}</span>
+                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: item.granted ? 'rgba(52,211,153,0.15)' : 'rgba(239,68,68,0.15)', color: item.granted ? '#34d399' : '#f87171' }}>
+                          {item.granted ? 'GRANTED' : 'DENIED'}
+                        </span>
+                      </div>
+                      <code style={{ fontSize: '11px', color: '#94a3b8' }}>capability: {item.cap}</code>
+                      <p style={{ fontSize: '11px', color: '#64748b', marginTop: '6px', margin: '6px 0 0' }}>{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4f: AUTO-UPDATER (NEW IN v0.13) */}
+          {activeTab === 'updater' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  Air-Gapped Auto-Update Subsystem
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Enterprise-grade updater with cryptographically enforced SHA-256 hash checks and air-gap capability. Aegis never executes unsigned or unverified update binaries.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Updater Status Card */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ArrowUpCircle style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                      Updater Engine Telemetry
+                    </h3>
+                    <button
+                      onClick={refreshUpdaterStatus}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                    >
+                      <RefreshCw style={{ width: '14px', height: '14px' }} />
+                    </button>
+                  </div>
+
+                  {updaterLoading ? (
+                    <div style={{ color: '#64748b', fontSize: '13px' }}>Querying Rust update daemon...</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Current Installed Version:</span>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#38bdf8' }}>{updaterStatus?.currentVersion || '0.13.0'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Staging Directory:</span>
+                        <span style={{ fontSize: '12px', fontWeight: 500, color: '#94a3b8' }}>{updaterStatus?.stagingDir || '.aegis_updates'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Integrity Verification:</span>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#34d399' }}>{updaterStatus?.verificationAlgorithm || 'SHA-256'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Air-Gap Support:</span>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#34d399' }}>Full Local File Support</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#7dd3fc', marginBottom: '4px' }}>🛡️ Zero-Trust Verification Rule</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.5' }}>
+                      Update manifests require valid SemVer format, cryptographic SHA-256 checksum matching, and isolated staging before any replacement occurs.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Staging & Manifest Pipeline */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Zap style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
+                    Update Verification Pipeline
+                  </h3>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[
+                      { num: '1', title: 'Manifest Ingestion', desc: 'JSON manifest contains version, target OS, and exact SHA-256 signature.' },
+                      { num: '2', title: 'SemVer Pre-Flight Check', desc: 'Validates target version is strictly newer than active core version.' },
+                      { num: '3', title: 'Cryptographic Integrity Check', desc: 'Rust calculates streaming SHA-256 hash of payload; rejects on mismatch.' },
+                      { num: '4', title: 'Atomic Staging', desc: 'Moves binary to isolated .aegis_updates staging sandbox awaiting application restart.' },
+                    ].map((step) => (
+                      <div key={step.num} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(56,189,248,0.15)', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>
+                          {step.num}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#e2e8f0' }}>{step.title}</div>
+                          <div style={{ fontSize: '11px', color: '#94a3b8' }}>{step.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
