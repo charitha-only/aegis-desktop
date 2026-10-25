@@ -22,12 +22,13 @@ pub struct ProfileConfig {
 }
 
 pub struct ProfileManager {
+    base_dir: PathBuf,
     profiles: Mutex<HashMap<String, ProfileConfig>>,
     active_profile_id: Mutex<String>,
 }
 
 impl ProfileManager {
-    pub fn new() -> Self {
+    pub fn new(base_dir: &Path) -> Self {
         let mut profiles = HashMap::new();
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
@@ -58,9 +59,19 @@ impl ProfileManager {
         );
 
         Self {
+            base_dir: base_dir.to_path_buf(),
             profiles: Mutex::new(profiles),
             active_profile_id: Mutex::new("default".to_string()),
         }
+    }
+
+    pub fn get_active_sandbox_path(&self) -> PathBuf {
+        let active = self.get_active_profile();
+        let p = self.base_dir.join(&active.sandbox_dir);
+        if !p.exists() {
+            let _ = fs::create_dir_all(&p);
+        }
+        p
     }
 
     pub fn list_profiles(&self) -> Vec<ProfileConfig> {
@@ -89,7 +100,7 @@ impl ProfileManager {
             *active = id.to_string();
             
             // Ensure profile sandbox directory exists
-            let path = PathBuf::from(&target.sandbox_dir);
+            let path = self.base_dir.join(&target.sandbox_dir);
             if !path.exists() {
                 let _ = fs::create_dir_all(&path);
             }
@@ -107,7 +118,8 @@ impl ProfileManager {
         }
 
         let sandbox_dir = format!("sandbox_{}", id.replace(|c: char| !c.is_alphanumeric(), "_"));
-        let _ = fs::create_dir_all(&sandbox_dir);
+        let p_path = self.base_dir.join(&sandbox_dir);
+        let _ = fs::create_dir_all(&p_path);
 
         let cfg = ProfileConfig {
             id: id.to_string(),

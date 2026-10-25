@@ -554,10 +554,14 @@ impl IpcRouter {
                     None => return IpcResponse::err(&req.id, "Missing 'profileId' parameter"),
                 };
                 match self.profile_manager.switch_profile(id) {
-                    Ok(profile) => IpcResponse::ok(&req.id, json!({
-                        "switched": true,
-                        "activeProfile": profile
-                    })),
+                    Ok(profile) => {
+                        let new_sandbox = self.profile_manager.get_active_sandbox_path();
+                        self.security.set_sandbox_root(new_sandbox);
+                        IpcResponse::ok(&req.id, json!({
+                            "switched": true,
+                            "activeProfile": profile
+                        }))
+                    }
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }

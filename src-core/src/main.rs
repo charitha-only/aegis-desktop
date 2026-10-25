@@ -88,7 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2d. Initialize v0.14 Subsystems
     let hardware_keys = Arc::new(HardwareKeyEngine::new());
-    let profile_manager = Arc::new(ProfileManager::new());
+    let profile_manager = Arc::new(ProfileManager::new(&base_dir));
     let wasm_sandbox = Arc::new(WasmSandbox::new());
 
     // 2e. Initialize v0.15 Subsystems

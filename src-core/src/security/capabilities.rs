@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FsCapabilities {
@@ -51,7 +52,7 @@ impl Default for CapabilityManifest {
 
 pub struct SecurityEngine {
     manifest: CapabilityManifest,
-    sandbox_root: PathBuf,
+    sandbox_root: RwLock<PathBuf>,
 }
 
 impl SecurityEngine {
@@ -62,8 +63,21 @@ impl SecurityEngine {
         }
         Self {
             manifest,
-            sandbox_root,
+            sandbox_root: RwLock::new(sandbox_root),
         }
+    }
+
+    pub fn set_sandbox_root(&self, new_root: PathBuf) {
+        if !new_root.exists() {
+            let _ = std::fs::create_dir_all(&new_root);
+        }
+        if let Ok(mut lock) = self.sandbox_root.write() {
+            *lock = new_root;
+        }
+    }
+
+    pub fn get_sandbox_root(&self) -> PathBuf {
+        self.sandbox_root.read().unwrap().clone()
     }
 
     pub fn check_fs_read(&self, requested_path: &str) -> Result<PathBuf, String> {
@@ -107,26 +121,64 @@ impl SecurityEngine {
     }
 
     fn resolve_and_validate_path(&self, requested: &str, is_write: bool) -> Result<PathBuf, String> {
-        // 1. Prevent traversal strings
+        let sandbox_root = self.sandbox_root.read().unwrap().clone();
+        let canonical_base = sandbox_root
+            .canonicalize()
+            .map_err(|e| format!("Failed to canonicalize sandbox root: {}", e))?;
+
+        // 1. Strict Traversal Checks
         if requested.contains("..") {
             return Err("Security Violation: Directory traversal '..' detected!".into());
         }
 
-        // 2. Deny blacklisted absolute prefixes
+        // 2. Deny blacklisted explicit patterns
         for denied in &self.manifest.fs.deny_paths {
             if requested.to_lowercase().starts_with(&denied.to_lowercase()) {
                 return Err(format!("Security Violation: Path matches denied pattern '{}'", denied));
             }
         }
 
-        // 3. Resolve relative to sandbox
-        let clean_path = requested.trim_start_matches("./").trim_start_matches("sandbox/");
-        let full_target = self.sandbox_root.join(clean_path);
+        let p = Path::new(requested);
 
-        // Normalize
-        let canonical_base = self.sandbox_root.canonicalize().unwrap_or(self.sandbox_root.clone());
-        
-        // For read, path should exist
+        // 3. Absolute path handling:
+        // If an absolute path was requested, it MUST strictly fall inside canonical_base.
+        // It cannot bypass sandbox by supplying C:\ or /etc.
+        let full_target = if p.is_absolute() {
+            let canon = if p.exists() {
+                p.canonicalize().map_err(|_| "Invalid path target".to_string())?
+            } else if is_write {
+                // If writing a new file with absolute path, check its parent
+                if let Some(parent) = p.parent() {
+                    let parent_canon = parent
+                        .canonicalize()
+                        .map_err(|_| "Security Violation: Parent directory of absolute path is inaccessible".to_string())?;
+                    if !parent_canon.starts_with(&canonical_base) {
+                        return Err("Security Violation: Absolute path escapes sandbox root boundary!".into());
+                    }
+                }
+                p.to_path_buf()
+            } else {
+                return Err(format!("File not found in sandbox: {}", requested));
+            };
+
+            if canon.exists() && !canon.starts_with(&canonical_base) {
+                return Err("Security Violation: Absolute path escapes sandbox root boundary!".into());
+            }
+            canon
+        } else {
+            // Relative path: strictly strip any "./", "sandbox/", or "sandbox_*" prefix and resolve within active sandbox_root
+            let mut clean = requested.trim_start_matches("./");
+            if clean.starts_with("sandbox/") {
+                clean = &clean[8..];
+            } else if clean.starts_with("sandbox_") {
+                if let Some(idx) = clean.find('/') {
+                    clean = &clean[idx + 1..];
+                }
+            }
+            sandbox_root.join(clean)
+        };
+
+        // 4. Final canonical validation
         if !is_write {
             match full_target.canonicalize() {
                 Ok(canon) => {
@@ -138,9 +190,14 @@ impl SecurityEngine {
                 Err(_) => Err(format!("File not found in sandbox: {}", requested)),
             }
         } else {
-            // For write, verify parent directory
+            // For write, create parents inside sandbox and ensure no escaping
             if let Some(parent) = full_target.parent() {
                 let _ = std::fs::create_dir_all(parent);
+                if let Ok(canon_parent) = parent.canonicalize() {
+                    if !canon_parent.starts_with(&canonical_base) {
+                        return Err("Security Violation: Write path parent escapes sandbox boundary!".into());
+                    }
+                }
             }
             Ok(full_target)
         }
