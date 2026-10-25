@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.0] - 2026-10-26
+
+- Introduce portable data/config/cache resolution and typed platform IPC interfaces. Document filesystem, permission, case-collision, recovery and unavailable-provider contracts.
+- Run actual release-binary platform/storage IPC checks on Windows, Linux and macOS in addition to shared tests and UI builds.
+- Fail closed for retained sessions on Linux/macOS until lifecycle adapters exist; preserve fresh-passphrase encrypted-file operations.
+- OS key stores, embedded webviews and Linux/macOS installers remain explicitly unavailable; portable core support does not imply those integrations.
+
 ## [v0.24.0] - 2026-10-26
 
 - Separate notification text from OS scripts/arguments on all three platforms, bound notification text and reject unimplemented icons. Notification submission means helper startup, not confirmed user-visible delivery.

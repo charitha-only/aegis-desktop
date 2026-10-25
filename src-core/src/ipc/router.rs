@@ -66,6 +66,8 @@ impl IpcRouter {
         ));
         #[cfg(all(windows, not(test)))]
         crate::security::windows_lifecycle::start(Arc::downgrade(&vault_sessions));
+        #[cfg(all(not(windows), not(test)))]
+        vault_sessions.require_platform_monitor();
         Self {
             vault_sessions,
             dispatch: std::sync::Mutex::new(()),
@@ -133,6 +135,27 @@ impl IpcRouter {
             return IpcResponse::err(&req.id, "UNAVAILABLE: This integration is disabled until a real provider is configured. No hardware verification, network installation or encrypted transport is claimed.");
         }
         match req.command.as_str() {
+            "platform_info" => match crate::platform::Platform::current() {
+                Ok(platform) => IpcResponse::ok(&req.id, platform.capabilities()),
+                Err(error) => IpcResponse::err(&req.id, &error),
+            },
+            "platform_directories" => {
+                let app_id = match req.payload.get("appId").and_then(|v| v.as_str()) {
+                    Some(id) => id,
+                    None => return IpcResponse::err(&req.id, "Missing 'appId' parameter"),
+                };
+                let resolved = crate::platform::Platform::current().and_then(|platform| {
+                    crate::platform::AppDirectories::resolve(
+                        platform,
+                        app_id,
+                        &crate::platform::PlatformEnvironment::current(),
+                    )
+                });
+                match resolved {
+                    Ok(dirs) => IpcResponse::ok(&req.id, json!(dirs)),
+                    Err(error) => IpcResponse::err(&req.id, &error),
+                }
+            }
             "vault_session_lock" => {
                 self.vault_sessions.lock();
                 IpcResponse::ok(&req.id, json!({"locked": true}))

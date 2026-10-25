@@ -5,7 +5,7 @@ This is the release ledger for the roadmap. A source version does not certify pr
 | Version | State | Evidence and remaining gates |
 | --- | --- | --- |
 | 0.24.0 | Source prepared; exact-commit CI required before tagging | Profile collision and restart coverage; window capability/URL validation; notification text separated from scripts; 41 local Rust tests and UI build pass. Focused review in PROFILE_ISOLATION_REVIEW.md. Broader unknown vulnerabilities and external audit remain outside this release claim. |
-| 0.25 | In progress | Three-platform CI and app-data resolver implemented. Config/cache locations, platform adapter contracts and platform filesystem documentation next. |
+| 0.25.0 | Source prepared; exact-commit CI required before tagging | Portable data/config/cache module, platform capability/typed IPC contracts and real native-binary smoke tests. Lifecycle/keychain/installers without adapters are explicitly unavailable. Shared tests and filesystem contracts documented; 42 local Rust tests and UI build pass. |
 | 0.26 | Planned | Embedded desktop windows and native application APIs, with real GUI acceptance. |
 | 0.27 | Planned | Repeatable benchmarks and measured constrained-device budgets. Physical baseline hardware needed for final acceptance. |
 | 0.28 | Planned | Packaging parity and authenticated updates. Owner signing identities/notarization credentials needed for signed production distribution. |

@@ -15,6 +15,22 @@ export interface IpcResponse<T = any> {
   error?: string;
 }
 
+export interface PlatformInfo {
+  os: 'windows' | 'linux' | 'macos';
+  architecture: string;
+  embeddedWebview: boolean;
+  lifecycleAdapterCompiled: boolean;
+  installerAdapterCompiled: boolean;
+  osKeyStore: boolean;
+  encryptedFileStorage: boolean;
+}
+
+export interface AppDirectories {
+  data: string;
+  config: string;
+  cache: string;
+}
+
 export interface SecurityStatus {
   engine: string;
   windowsLifecycleMonitorActive?: boolean;
@@ -189,6 +205,14 @@ class AegisBridge {
   }
 
   // High-Level Helper APIs
+  public async platformInfo(): Promise<IpcResponse<PlatformInfo>> {
+    return this.invoke<PlatformInfo>('platform_info');
+  }
+
+  public async platformDirectories(appId: string): Promise<IpcResponse<AppDirectories>> {
+    return this.invoke<AppDirectories>('platform_directories', { appId });
+  }
+
   public async getSecurityStatus(): Promise<IpcResponse<SecurityStatus>> {
     return this.invoke<SecurityStatus>('get_security_status');
   }

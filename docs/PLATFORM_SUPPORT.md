@@ -19,6 +19,6 @@ App-data resolution is independent of the working directory and rejects unsafe a
 
 Window requests are validated before invoking a browser: only local HTTP URLs with a valid port are accepted, and unsupported modal/kiosk/always-on-top/transparent requests return errors. Validation tests do not launch a browser and do not establish successful native window creation. The existing backend still launches an external browser.
 
-Retained vault sessions outside Windows currently do not receive OS lock/suspend revocation. Applications requiring that guarantee must not treat them as protected by lifecycle monitoring. Platform adapters, supported OS versions, architecture coverage and acceptance criteria must be established before advertising production support.
+Retained vault sessions outside Windows are unavailable until real OS lifecycle monitors exist; fresh-passphrase encrypted-file operations remain available. Platform adapters, supported OS versions, architecture coverage and acceptance criteria must be established before advertising production support.
 
 See [the roadmap](ROADMAP.md) for planned milestones. Existing Windows release checks remain separate so portable checks cannot silently replace installer/signature/lifecycle coverage.

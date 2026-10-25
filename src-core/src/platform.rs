@@ -8,6 +8,123 @@ pub enum Platform {
     Macos,
 }
 
+#[derive(Default)]
+pub struct PlatformEnvironment {
+    pub home: Option<PathBuf>,
+    pub local_app_data: Option<PathBuf>,
+    pub roaming_app_data: Option<PathBuf>,
+    pub xdg_data_home: Option<PathBuf>,
+    pub xdg_config_home: Option<PathBuf>,
+    pub xdg_cache_home: Option<PathBuf>,
+}
+
+#[derive(serde::Serialize)]
+pub struct AppDirectories {
+    pub data: PathBuf,
+    pub config: PathBuf,
+    pub cache: PathBuf,
+}
+
+impl AppDirectories {
+    /// Pure location resolution; creates no folders and changes no environment variables.
+    pub fn resolve(
+        platform: Platform,
+        app_id: &str,
+        env: &PlatformEnvironment,
+    ) -> Result<Self, String> {
+        let data = resolve_app_data_dir(
+            platform,
+            app_id,
+            env.home.as_deref(),
+            env.local_app_data.as_deref(),
+            env.xdg_data_home.as_deref(),
+        )?;
+        let suffix = PathBuf::from("AegisDesktop").join(app_id);
+        let (config, cache) = match platform {
+            Platform::Windows => (
+                env.roaming_app_data
+                    .as_ref()
+                    .ok_or("APPDATA is required for configuration")?
+                    .join(&suffix),
+                data.join("Cache"),
+            ),
+            Platform::Linux => {
+                let select = |value: &Option<PathBuf>, fallback: &str| -> Result<PathBuf, String> {
+                    match value.as_ref().filter(|p| p.is_absolute()) {
+                        Some(path) => Ok(path.join(&suffix)),
+                        None => Ok(env
+                            .home
+                            .as_ref()
+                            .ok_or("HOME is required")?
+                            .join(fallback)
+                            .join(&suffix)),
+                    }
+                };
+                (
+                    select(&env.xdg_config_home, ".config")?,
+                    select(&env.xdg_cache_home, ".cache")?,
+                )
+            }
+            Platform::Macos => (
+                data.clone(),
+                env.home
+                    .as_ref()
+                    .ok_or("HOME is required")?
+                    .join("Library/Caches")
+                    .join(&suffix),
+            ),
+        };
+        if !config.is_absolute() || !cache.is_absolute() {
+            return Err("Platform directory roots must be absolute".into());
+        }
+        Ok(Self {
+            data,
+            config,
+            cache,
+        })
+    }
+}
+
+impl PlatformEnvironment {
+    pub fn current() -> Self {
+        let read = |name| std::env::var_os(name).map(PathBuf::from);
+        Self {
+            home: read("HOME"),
+            local_app_data: read("LOCALAPPDATA"),
+            roaming_app_data: read("APPDATA"),
+            xdg_data_home: read("XDG_DATA_HOME"),
+            xdg_config_home: read("XDG_CONFIG_HOME"),
+            xdg_cache_home: read("XDG_CACHE_HOME"),
+        }
+    }
+}
+
+impl Platform {
+    pub fn current() -> Result<Self, String> {
+        if cfg!(target_os = "windows") {
+            Ok(Self::Windows)
+        } else if cfg!(target_os = "linux") {
+            Ok(Self::Linux)
+        } else if cfg!(target_os = "macos") {
+            Ok(Self::Macos)
+        } else {
+            Err("This operating system has no platform adapter".into())
+        }
+    }
+
+    pub fn capabilities(self) -> serde_json::Value {
+        serde_json::json!({
+            "os": match self { Self::Windows => "windows", Self::Linux => "linux", Self::Macos => "macos" },
+            "architecture": std::env::consts::ARCH,
+            "embeddedWebview": false,
+            "lifecycleAdapterCompiled": matches!(self, Self::Windows),
+            "installerAdapterCompiled": matches!(self, Self::Windows),
+            "osKeyStore": false,
+            "encryptedFileStorage": true
+        })
+    }
+}
+
 /// Resolve a location from explicit platform environment inputs without touching disk.
 pub fn resolve_app_data_dir(
     platform: Platform,
@@ -74,6 +191,36 @@ pub fn app_data_dir(app_id: &str) -> Result<PathBuf, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn platform_directories_keep_data_config_and_cache_in_standard_roots() {
+        let root = std::env::temp_dir();
+        let env = PlatformEnvironment {
+            home: Some(root.join("home")),
+            local_app_data: Some(root.join("local")),
+            roaming_app_data: Some(root.join("roaming")),
+            xdg_data_home: Some(root.join("data")),
+            xdg_config_home: Some(root.join("config")),
+            xdg_cache_home: Some(root.join("cache")),
+        };
+        let linux = AppDirectories::resolve(Platform::Linux, "Example", &env).unwrap();
+        assert_eq!(linux.config, root.join("config/AegisDesktop/Example"));
+        assert_eq!(linux.cache, root.join("cache/AegisDesktop/Example"));
+        assert_eq!(linux.data, root.join("data/AegisDesktop/Example"));
+        let windows = AppDirectories::resolve(Platform::Windows, "Example", &env).unwrap();
+        assert_eq!(windows.data, root.join("local/AegisDesktop/Example"));
+        assert_eq!(windows.config, root.join("roaming/AegisDesktop/Example"));
+        assert_eq!(windows.cache, root.join("local/AegisDesktop/Example/Cache"));
+        let mac = AppDirectories::resolve(Platform::Macos, "Example", &env).unwrap();
+        assert_eq!(
+            mac.config,
+            root.join("home/Library/Application Support/AegisDesktop/Example")
+        );
+        assert_eq!(
+            mac.cache,
+            root.join("home/Library/Caches/AegisDesktop/Example")
+        );
+    }
 
     #[test]
     fn rejects_unsafe_app_ids_and_relative_environment_roots() {

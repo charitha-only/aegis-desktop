@@ -24,6 +24,8 @@ jobs:
         run: cargo test --locked --manifest-path src-core/Cargo.toml
       - name: Build optimized core
         run: cargo build --release --locked --manifest-path src-core/Cargo.toml
+      - name: Verify real native platform IPC and storage
+        run: node aegis-cli/bin/portable-smoke.js
       - run: npm ci --prefix src-ui
       - name: Typecheck and build UI
         run: npm --prefix src-ui run build
