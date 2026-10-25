@@ -20,6 +20,7 @@ dependencies = [
  "chacha20poly1305",
  "ed25519-dalek",
  "getrandom 0.2.17",
+ "gtk4",
  "hex",
  "serde",
  "serde_json",
