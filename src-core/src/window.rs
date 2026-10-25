@@ -4,6 +4,7 @@ use std::process::Command;
 // ─── Window Configuration ──────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct WindowConfig {
     pub title: String,
     pub width: u32,
@@ -43,7 +44,7 @@ impl Default for WindowConfig {
             decorations: true,
             transparent: false,
             devtools_enabled: false,
-            custom_protocols: vec!["aegis".to_string()],
+            custom_protocols: Vec::new(),
         }
     }
 }
@@ -105,6 +106,7 @@ pub struct WindowRecord {
 // ─── Multi-Window & WebKit Manager ─────────────────────────────────────────
 
 pub struct WindowManager;
+static NATIVE_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[derive(Clone)]
 pub struct NativeWindowPolicy {
@@ -121,6 +123,7 @@ impl NativeWindowPolicy {
             || config.title.len() > 1024
             || config.title.contains('\0')
             || config.devtools_enabled
+            || !config.custom_protocols.is_empty()
         {
             return Err(
                 "Invalid native window size/title or unsupported developer tools request".into(),
@@ -145,7 +148,36 @@ impl NativeWindowPolicy {
     }
 }
 impl WindowManager {
+    #[cfg(feature = "native-desktop")]
+    pub(crate) fn mark_native_active() {
+        NATIVE_ACTIVE.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
     pub fn detect_runtime() -> WebviewRuntimeInfo {
+        if NATIVE_ACTIVE.load(std::sync::atomic::Ordering::SeqCst) {
+            return WebviewRuntimeInfo {
+                backend: "NATIVE_EMBEDDED".into(),
+                engine: if cfg!(windows) {
+                    "WebView2"
+                } else if cfg!(target_os = "macos") {
+                    "WKWebView"
+                } else {
+                    "GTK4/WebKit6"
+                }
+                .into(),
+                is_native_webkit: !cfg!(windows),
+                wry_version: if cfg!(target_os = "linux") {
+                    ""
+                } else {
+                    "0.57.1"
+                }
+                .into(),
+                tao_version: String::new(),
+                supports_ipc_bridge: true,
+                custom_protocols_supported: false,
+                security_sandbox_enforced: false,
+            };
+        }
         WebviewRuntimeInfo {
             backend: "EXTERNAL_BROWSER".into(),
             engine: "System browser (Edge app mode on Windows)".into(),
@@ -250,6 +282,9 @@ mod tests {
         assert!(NativeWindowPolicy::new("http://localhost:5173", &invalid).is_err());
         invalid = config;
         invalid.modal = true;
+        assert!(NativeWindowPolicy::new("http://localhost:5173", &invalid).is_err());
+        invalid.modal = false;
+        invalid.custom_protocols = vec!["custom".into()];
         assert!(NativeWindowPolicy::new("http://localhost:5173", &invalid).is_err());
     }
     #[test]

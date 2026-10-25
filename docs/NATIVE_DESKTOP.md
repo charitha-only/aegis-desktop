@@ -8,8 +8,8 @@ The window loop runs on the main thread; the loopback server runs on a worker th
 
 The default browser backend and existing demo UI remain available. This preview does not implement the full multi-window/dialog/file-selection/clipboard/lifecycle interfaces required by v0.26. The existing capability report still describes the external-browser API, rather than claiming those new controls work.
 
-Linux requires GTK4 and WebKitGTK 6 development/runtime libraries. Windows requires WebView2 and an appropriate native build toolchain; this development PC has no MSVC linker, so native-feature compilation is validated in hosted CI. The default GNU core build remains locally testable.
+Linux requires GTK 4.10 or newer and WebKitGTK 6 development/runtime libraries. Windows requires WebView2 and an appropriate native build toolchain; this development PC has no MSVC linker, so native-feature compilation is validated in hosted CI. The default GNU core build remains locally testable.
 
-The optional-native workflow compiles/links/tests the feature on all three operating systems without opening a window. Actual rendering, accessibility, keyboard navigation, display/DPI behavior, GUI process cleanup and physical-device lifecycle acceptance remain outstanding; compilation is not a substitute for those tests.
+The optional-native workflow compiles/links/tests the feature on all three operating systems, then runs a disposable fixture-window test that checks the expected document title and process exit. Linux uses a virtual display. The fixture refuses to run on this developer PC. Check the exact-commit CI result before claiming that GUI check passed. This is not visual rendering, accessibility, keyboard navigation, display/DPI or physical-device lifecycle acceptance.
 
 Upstream references: [Wry feature definitions](https://github.com/tauri-apps/wry/blob/dev/Cargo.toml), [Winit](https://docs.rs/winit/latest/winit/), [WebKit6](https://docs.rs/webkit6/latest/webkit6/).

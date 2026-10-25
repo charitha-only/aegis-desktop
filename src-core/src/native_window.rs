@@ -69,6 +69,7 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
                     .with_download_started_handler(|_, _| false)
                     .build(&window)?;
                 window.set_visible(true);
+                crate::window::WindowManager::mark_native_active();
                 Ok((window, webview))
             };
             match build() {
@@ -213,6 +214,7 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
             .build();
         view.load_uri(&url);
         window.present();
+        crate::window::WindowManager::mark_native_active();
     });
     if smoke {
         let app = app.downgrade();

@@ -87,9 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "http://127.0.0.1:5173".to_string(),
     ];
     let mut csp = "default-src 'self' 'unsafe-inline';".to_string();
-    let mut win_title = "Aegis Core • Enterprise Desktop".to_string();
-    let mut win_width = 1280;
-    let mut win_height = 840;
+    let mut window_config = WindowConfig::default();
 
     let manifest = if config_path.exists() {
         match fs::read_to_string(config_path) {
@@ -104,14 +102,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Some(csp_str) = parsed["security"]["contentSecurityPolicy"].as_str() {
                     csp = csp_str.to_string();
                 }
-                if let Some(w) = parsed["window"]["width"].as_u64() {
-                    win_width = w as u32;
-                }
-                if let Some(h) = parsed["window"]["height"].as_u64() {
-                    win_height = h as u32;
-                }
-                if let Some(t) = parsed["window"]["title"].as_str() {
-                    win_title = t.to_string();
+                if let Some(window) = parsed.get("window") {
+                    window_config = serde_json::from_value(window.clone())?;
                 }
                 serde_json::from_value::<CapabilityManifest>(
                     parsed["security"]["capabilities"].clone(),
@@ -204,16 +196,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 3. Parse CLI arguments
     // --spawn-window flag: launch UI Window
     if args.iter().any(|arg| arg == "--spawn-window" || arg == "--native-window") {
-        let win_cfg = WindowConfig {
-            title: win_title,
-            width: win_width,
-            height: win_height,
-            resizable: true,
-            modal: false,
-            always_on_top: false,
-            kiosk: false,
-            ..Default::default()
-        };
+        let win_cfg = window_config;
         let ui_url = if packaged {
             format!("http://127.0.0.1:{port}")
         } else {

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.3] - 2026-10-26
+
+- Add optional Wry/Winit Windows/macOS and GTK4/WebKit6 Linux embedded-window adapters, preserving the smaller default runtime. Avoid the rejected legacy GLib chain without advisory exemptions.
+- Validate native navigation, dimensions, title, developer tools and unsupported protocols/settings through a public window-policy regression test; honor configured window fields instead of silently replacing them with defaults.
+- Add feature-enabled builds/tests and real fixture-window load/exit checks restricted to disposable hosted runners. GUI/accessibility/device acceptance is reported separately; the full v0.26 milestone remains incomplete.
+
 ## [v0.25.2] - 2026-10-26
 
 - Add a source-only create command, discoverable help/version and a minimal typed-bridge template without changing the framework demo UI or README.
