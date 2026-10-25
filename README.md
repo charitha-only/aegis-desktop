@@ -2,6 +2,8 @@
 
 <div align="center">
 
+[![Version](https://img.shields.io/badge/version-v0.10-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.10-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -14,7 +16,7 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**  
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [Use Cases](#-what-can-you-build-with-aegis) • [Key Highlights](#-key-highlights) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries) • [Getting Started](#-getting-started) • [Building Your App](#-building-your-own-app)
+[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run-in-30-seconds) • [📜 What's New in v0.10 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
 
 </div>
 
@@ -30,6 +32,39 @@ Traditional desktop frameworks like Electron bundle an entire Chromium browser a
 * 🪶 **Ultra Lightweight:** Minimal ~8MB binary footprint and under 50MB RAM usage.
 * 🛡️ **Zero-Trust Security:** Shell execution is permanently blocked, file access is locked inside an isolated sandbox, and every IPC request is cryptographically authenticated.
 * ⚡ **Frontend Agnostic:** Use React, Vue, Svelte, or plain HTML/CSS with seamless type-safe IPC communication to Rust.
+
+---
+
+## ⚡ Quick Install & Run (in 30 Seconds)
+
+Getting started with Aegis is fast and straightforward:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/charitha-only/aegis-desktop.git
+cd aegis-desktop
+
+# 2. Install all dependencies (Root + Frontend UI)
+npm run setup
+
+# 3. Launch the development environment (Rust Security Core + UI)
+npm run dev
+```
+
+> 📋 **Prerequisites:** Make sure you have [Node.js](https://nodejs.org/) (v18+) and [Rust & Cargo](https://www.rust-lang.org/tools/install) (v1.75+) installed on your machine.
+
+---
+
+## 📜 Version & Release Notes (`v0.10`)
+
+The current active release is **`v0.10` (Alpha)**.
+
+| Version | Status | Highlights & Changelog |
+| :---: | :---: | :--- |
+| **`v0.10`** | 🟢 **Current Release** | Initial public open-source release with Rust Core, Zero-Trust Sandbox, Nonce Authentication & Attack Simulator. 👉 [**View Full v0.10 Changelog**](CHANGELOG.md#-v0100---2026-10-25) |
+| **`v0.11`** | 🟡 *Next Roadmap* | One-click standalone native `.exe` bundler, multi-window dialog APIs, and Mac/Linux WebKit support. 👉 [**View Upcoming Features**](CHANGELOG.md#-upcoming-roadmap---v0110--v0200) |
+
+👉 **[Click here to view all Version Updates, Bug Fixes, and Roadmap in CHANGELOG.md](CHANGELOG.md)**
 
 ---
 

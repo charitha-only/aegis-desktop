@@ -170,7 +170,7 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
-              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v1.0 ENTERPRISE</span>
+              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.10 ALPHA</span>
             </div>
             <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React High-Security Framework</div>
           </div>
