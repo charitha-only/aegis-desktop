@@ -11,12 +11,39 @@
 [![Security](https://img.shields.io/badge/Security-Zero--Trust-success)](#-zero-trust-capability-security-model)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**A high-security, lightweight cross-platform desktop framework.**  
-Bridging a high-performance **Rust systems engine** with **any modern frontend framework** via zero-trust capability-based IPC.
+**A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**  
+Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[Key Highlights](#-key-highlights) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries) • [Getting Started](#-getting-started) • [Building Your App](#-building-your-own-app) • [Security Policy](SECURITY.md) • [Contributing](CONTRIBUTING.md)
+[What is Aegis?](#-what-is-aegis-desktop) • [Use Cases](#-what-can-you-build-with-aegis) • [Key Highlights](#-key-highlights) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries) • [Getting Started](#-getting-started) • [Building Your App](#-building-your-own-app)
 
 </div>
+
+---
+
+## 💡 What is Aegis Desktop?
+
+**Aegis Desktop** is a modern, open-source desktop framework designed to replace heavy, insecure desktop setups. It allows you to build **ultra-fast, native desktop software** using familiar web frontend technologies (**React, Vue, Svelte, Solid, or Tailwind**) backed by a memory-safe, impenetrable **Rust systems core**.
+
+Traditional desktop frameworks like Electron bundle an entire Chromium browser and Node.js runtime with your app. This leads to bloated binary sizes (**150MB+**), heavy memory consumption (**300MB–500MB+ RAM**), and severe security risks—where an XSS vulnerability can grant an attacker full access to run shell commands (`cmd.exe`) on the user's computer.
+
+**Aegis solves these issues by design:**
+* 🪶 **Ultra Lightweight:** Minimal ~8MB binary footprint and under 50MB RAM usage.
+* 🛡️ **Zero-Trust Security:** Shell execution is permanently blocked, file access is locked inside an isolated sandbox, and every IPC request is cryptographically authenticated.
+* ⚡ **Frontend Agnostic:** Use React, Vue, Svelte, or plain HTML/CSS with seamless type-safe IPC communication to Rust.
+
+---
+
+## 🎯 What Can You Build with Aegis?
+
+With Aegis Desktop, developers can build any desktop application requiring **modern UI, instant responsiveness, and hardened data protection**:
+
+| Application Type | Why Aegis is the Ideal Framework |
+| :--- | :--- |
+| 🔐 **Encrypted Vaults & Password Managers** | Sensitive data remains strictly quarantined inside an isolated sandbox folder that malicious external scripts cannot touch. |
+| 🪙 **Crypto, Web3 & FinTech Desktop Tools** | The revoked shell execution policy and SHA-256 session handshake guarantee that malicious third-party dependencies cannot inject arbitrary commands. |
+| 📝 **Private Local-First Notes & Documents** | Build responsive offline markdown editors and personal knowledge vaults with zero memory lag and instant startup times. |
+| 📊 **Enterprise Dashboards & Admin Tools** | Safely display internal system diagnostics and data without exposing operating-system-level vulnerabilities. |
+| 🛠️ **Developer Utilities & Native GUIs** | Fast, reactive tooling with a fraction of the CPU and memory footprint of Electron apps. |
 
 ---
 
