@@ -31,6 +31,13 @@ export interface AppDirectories {
   cache: string;
 }
 
+export interface NativeDialogSubmission {
+  dialogType: 'info' | 'warning' | 'error';
+  title: string;
+  submitted: true;
+  deliveryConfirmed: false;
+}
+
 export interface SecurityStatus {
   engine: string;
   windowsLifecycleMonitorActive?: boolean;
@@ -271,7 +278,7 @@ class AegisBridge {
     return this.invoke('window_spawn', options);
   }
 
-  public async showNativeDialog(title: string, message: string, type: 'info' | 'warning' | 'error' = 'info'): Promise<IpcResponse> {
+  public async showNativeDialog(title: string, message: string, type: 'info' | 'warning' | 'error' = 'info'): Promise<IpcResponse<NativeDialogSubmission>> {
     return this.invoke('window_dialog', { title, message, type });
   }
 

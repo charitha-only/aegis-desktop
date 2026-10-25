@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.4] - 2026-10-26
+
+- Correct compiled/active native capability metadata and bound native CI package-download/job waits without ignoring failed checks.
+- Enforce the configured dialog capability before helper preparation or execution.
+- Separate Windows dialog text from PowerShell code, bound text inputs and validate dialog kinds. Parse the prepared script in a regression test without opening a dialog; verify the parser rejects an invalid-script fixture.
+- Return explicit unavailable errors for missing macOS/Linux dialog providers instead of fabricated delivery success. Report helper submission separately from confirmed delivery and add a typed bridge response.
+
 ## [v0.25.3] - 2026-10-26
 
 - Add optional Wry/Winit Windows/macOS and GTK4/WebKit6 Linux embedded-window adapters, preserving the smaller default runtime. Avoid the rejected legacy GLib chain without advisory exemptions.

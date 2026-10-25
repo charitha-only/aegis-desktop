@@ -148,6 +148,36 @@ impl NativeWindowPolicy {
     }
 }
 impl WindowManager {
+    /// Prepare the currently implemented simple Windows message-box helper.
+    /// Preparation does not execute a process or open a desktop dialog.
+    pub fn prepare_dialog(
+        platform: crate::platform::Platform,
+        title: &str,
+        message: &str,
+    ) -> Result<Command, String> {
+        if title.len() > 1024
+            || message.len() > 16384
+            || title.contains('\0')
+            || message.contains('\0')
+        {
+            return Err("Dialog text exceeds limits or contains a null character".into());
+        }
+        if !matches!(platform, crate::platform::Platform::Windows) {
+            return Err(
+                "UNAVAILABLE: native dialog provider is not implemented for this OS".into(),
+            );
+        }
+        let mut command = Command::new("powershell");
+        command.args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command",
+            "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show($env:AEGIS_DIALOG_MESSAGE, $env:AEGIS_DIALOG_TITLE, [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]$env:AEGIS_DIALOG_ICON) | Out-Null"])
+            .env("AEGIS_DIALOG_MESSAGE", message).env("AEGIS_DIALOG_TITLE", title).env("AEGIS_DIALOG_ICON", "Information");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000);
+        }
+        Ok(command)
+    }
     #[cfg(feature = "native-desktop")]
     pub(crate) fn mark_native_active() {
         NATIVE_ACTIVE.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -260,6 +290,56 @@ impl WindowManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn prepared_dialog_script_parses_without_opening_a_dialog() {
+        use std::os::windows::process::CommandExt;
+        let prepared =
+            WindowManager::prepare_dialog(crate::platform::Platform::Windows, "fixture", "fixture")
+                .unwrap();
+        let script = prepared.get_args().last().unwrap();
+        let mut parser = Command::new("powershell");
+        parser.creation_flags(0x08000000).args(["-NoProfile", "-NonInteractive", "-Command", "$t=$null; $e=$null; [System.Management.Automation.Language.Parser]::ParseInput($env:AEGIS_DIALOG_SCRIPT,[ref]$t,[ref]$e) | Out-Null; if ($e.Count -gt 0) {exit 1} else {exit 0}"])
+            .env("AEGIS_DIALOG_SCRIPT", script);
+        assert!(parser.status().unwrap().success());
+        parser.env("AEGIS_DIALOG_SCRIPT", "(");
+        assert!(
+            !parser.status().unwrap().success(),
+            "The parser check must reject invalid scripts"
+        );
+    }
+    #[test]
+    fn dialog_text_is_data_and_unimplemented_providers_return_errors() {
+        let title = "A user's ‘title’ $value";
+        let message = "Line one\nසිංහල message";
+        let command =
+            WindowManager::prepare_dialog(crate::platform::Platform::Windows, title, message)
+                .unwrap();
+        let args: Vec<_> = command
+            .get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        assert!(!args.last().unwrap().contains(title));
+        assert!(!args.last().unwrap().contains(message));
+        assert!(command
+            .get_envs()
+            .any(|(key, value)| key == "AEGIS_DIALOG_MESSAGE"
+                && value == Some(std::ffi::OsStr::new(message))));
+        assert!(
+            WindowManager::prepare_dialog(crate::platform::Platform::Linux, title, message)
+                .is_err()
+        );
+        assert!(
+            WindowManager::prepare_dialog(crate::platform::Platform::Macos, title, message)
+                .is_err()
+        );
+        assert!(WindowManager::prepare_dialog(
+            crate::platform::Platform::Windows,
+            &"x".repeat(1025),
+            message
+        )
+        .is_err());
+    }
     #[test]
     fn native_policy_restricts_navigation_and_rejects_unsupported_settings() {
         let config = WindowConfig::default();

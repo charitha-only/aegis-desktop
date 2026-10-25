@@ -742,6 +742,10 @@ impl IpcRouter {
             }
 
             "window_dialog" => {
+                if let Err(error) = self.security.check_dialogs() {
+                    return IpcResponse::err(&req.id, &error);
+                }
+
                 let dialog_type = req
                     .payload
                     .get("type")
@@ -758,27 +762,36 @@ impl IpcRouter {
                     .and_then(|t| t.as_str())
                     .unwrap_or("Aegis Security Dialog");
 
-                // Execute native OS dialog via powershell on Windows, zenity on Linux, or osascript on Mac
-                #[cfg(target_os = "windows")]
-                {
-                    let script = format!(
-                        "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('{}', '{}')",
-                        message.replace("'", "''"),
-                        title.replace("'", "''")
-                    );
-                    let _ = std::process::Command::new("powershell")
-                        .args(["-NoProfile", "-Command", &script])
-                        .spawn();
+                let icon = match dialog_type {
+                    "info" => "Information",
+                    "warning" => "Warning",
+                    "error" => "Error",
+                    _ => return IpcResponse::err(&req.id, "Unsupported dialog type"),
+                };
+                let platform = match crate::platform::Platform::current() {
+                    Ok(platform) => platform,
+                    Err(error) => return IpcResponse::err(&req.id, &error),
+                };
+                let mut command =
+                    match crate::window::WindowManager::prepare_dialog(platform, title, message) {
+                        Ok(command) => command,
+                        Err(error) => return IpcResponse::err(&req.id, &error),
+                    };
+                command.env("AEGIS_DIALOG_ICON", icon);
+                match command.spawn() {
+                    Ok(mut child) => {
+                        std::thread::spawn(move || {
+                            let _ = child.wait();
+                        });
+                        IpcResponse::ok(
+                            &req.id,
+                            json!({"dialogType":dialog_type,"title":title,"submitted":true,"deliveryConfirmed":false}),
+                        )
+                    }
+                    Err(_) => {
+                        IpcResponse::err(&req.id, "Native dialog helper could not be started")
+                    }
                 }
-
-                IpcResponse::ok(
-                    &req.id,
-                    json!({
-                        "dialogType": dialog_type,
-                        "title": title,
-                        "delivered": true
-                    }),
-                )
             }
 
             "window_list" => {
