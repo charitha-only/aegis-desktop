@@ -20,7 +20,7 @@ use profile::ProfileManager;
 use secrets::SecretManager;
 use security::{
     BiometricEnclave, CapabilityManifest, HandshakeSession, HardwareKeyEngine, OriginValidator,
-    SecurityEngine, SignatureVerifier,
+    SecurityEngine, SignatureVerifier, TpmAttestationEngine,
 };
 use server::CoreServer;
 use std::fs;
@@ -32,7 +32,7 @@ use window::{WindowConfig, WindowManager};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("     🛡️  AEGIS DESKTOP CORE v0.16.0 • HIGH-SECURITY RUNTIME  ");
+    println!("     🛡️  AEGIS DESKTOP CORE v0.17.0 • HIGH-SECURITY RUNTIME  ");
     println!("============================================================");
 
     // 1. Locate and parse aegis.config.json
@@ -100,6 +100,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let network_engine = Arc::new(NetworkPolicyEngine::new());
     let sig_verifier = Arc::new(SignatureVerifier::new());
 
+    // 2g. Initialize v0.17 Subsystems
+    let tpm_engine = Arc::new(TpmAttestationEngine::new());
+
     let router = Arc::new(IpcRouter::new(
         Arc::clone(&security_engine),
         Arc::clone(&handshake_session),
@@ -113,6 +116,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         secret_manager,
         network_engine,
         sig_verifier,
+        tpm_engine,
     ));
 
     // 2. Bind the Secure Loopback Bridge
@@ -161,6 +165,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             modal: false,
             always_on_top: false,
             kiosk: false,
+            ..Default::default()
         };
         let _ = WindowManager::spawn_window("http://localhost:5173", &win_cfg);
     }

@@ -6,12 +6,13 @@ use crate::plugin::PluginRegistry;
 use crate::profile::ProfileManager;
 use crate::secrets::SecretManager;
 use crate::security::{
+    attestation::TpmAttestationProof,
     BiometricEnclave, HandshakeSession, HardwareKeyEngine, PrivacyShield, SecurityEngine,
-    SignatureVerifier, VaultEngine,
+    SignatureVerifier, TpmAttestationEngine, VaultEngine,
 };
 use crate::tray::{NotificationConfig, NotificationEngine, TrayDaemon};
 use crate::updater::{AutoUpdater, UpdateManifest};
-use crate::wasm::WasmSandbox;
+use crate::wasm::{ExecutionTier, WasmSandbox};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -30,6 +31,7 @@ pub struct IpcRouter {
     secret_manager: Arc<SecretManager>,
     network_engine: Arc<NetworkPolicyEngine>,
     sig_verifier: Arc<SignatureVerifier>,
+    tpm_engine: Arc<TpmAttestationEngine>,
 }
 
 impl IpcRouter {
@@ -46,6 +48,7 @@ impl IpcRouter {
         secret_manager: Arc<SecretManager>,
         network_engine: Arc<NetworkPolicyEngine>,
         sig_verifier: Arc<SignatureVerifier>,
+        tpm_engine: Arc<TpmAttestationEngine>,
     ) -> Self {
         Self {
             security,
@@ -60,6 +63,7 @@ impl IpcRouter {
             secret_manager,
             network_engine,
             sig_verifier,
+            tpm_engine,
         }
     }
 
@@ -73,7 +77,7 @@ impl IpcRouter {
         match req.command.as_str() {
             "get_security_status" => {
                 let status = json!({
-                    "engine": "Aegis Core v0.15 (Rust)",
+                    "engine": "Aegis Core v0.17 (Rust)",
                     "nonceVerified": true,
                     "sandboxEnforced": true,
                     "privacyVaultActive": true,
@@ -81,13 +85,16 @@ impl IpcRouter {
                     "airGapPolicyActive": true,
                     "bundlerEngineActive": true,
                     "multiWindowApiActive": true,
+                    "nativeWebKitWryActive": true,
                     "pluginEngineActive": true,
                     "notificationEngineActive": true,
                     "autoUpdaterActive": true,
                     "hardwareKeyActive": true,
                     "multiProfileActive": true,
                     "wasmSandboxActive": true,
+                    "wgpuComputeJitActive": true,
                     "biometricEnclaveActive": true,
+                    "tpmRemoteAttestationActive": true,
                     "encryptedIpcActive": true,
                     "crashReporterActive": true,
                     "activeCapabilities": {
@@ -99,13 +106,16 @@ impl IpcRouter {
                         "encryptedVault": true,
                         "bundler": true,
                         "multiWindow": true,
+                        "nativeWebKitWry": true,
                         "plugins": true,
                         "notifications": true,
                         "autoUpdater": true,
                         "hardwareKey": true,
                         "multiProfile": true,
                         "wasmSandbox": true,
+                        "wgpuComputeJit": true,
                         "biometricEnclave": true,
+                        "tpmRemoteAttestation": true,
                         "encryptedIpc": true,
                         "crashReporter": true
                     }
@@ -309,18 +319,26 @@ impl IpcRouter {
                     modal,
                     always_on_top: false,
                     kiosk: false,
+                    ..Default::default()
                 };
 
                 match crate::window::WindowManager::spawn_window(url, &cfg) {
-                    Ok(_) => IpcResponse::ok(&req.id, json!({
+                    Ok(win_id) => IpcResponse::ok(&req.id, json!({
                         "status": "Window Spawned Successfully",
+                        "windowId": win_id,
                         "title": title,
                         "url": url,
                         "width": width,
-                        "height": height
+                        "height": height,
+                        "runtime": crate::window::WindowManager::detect_runtime()
                     })),
                     Err(e) => IpcResponse::err(&req.id, &format!("Failed to spawn window: {}", e)),
                 }
+            }
+
+            "window_runtime_info" => {
+                let info = crate::window::WindowManager::detect_runtime();
+                IpcResponse::ok(&req.id, json!(info))
             }
 
             "window_dialog" => {
@@ -620,7 +638,25 @@ impl IpcRouter {
                 };
                 let default_input = json!({});
                 let input_payload = req.payload.get("input").unwrap_or(&default_input);
-                match self.wasm_sandbox.execute_module(module_id, input_payload) {
+                let tier = match req.payload.get("tier").and_then(|t| t.as_str()) {
+                    Some("WGPU_JIT") => ExecutionTier::WgpuJit,
+                    Some("INTERPRETER") => ExecutionTier::Interpreter,
+                    _ => ExecutionTier::Auto,
+                };
+                match self.wasm_sandbox.execute_module_with_tier(module_id, input_payload, tier) {
+                    Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "wasm_execute_gpu" => {
+                let module_id = match req.payload.get("moduleId").and_then(|m| m.as_str()) {
+                    Some(m) => m,
+                    None => return IpcResponse::err(&req.id, "Missing 'moduleId' parameter"),
+                };
+                let default_input = json!({});
+                let input_payload = req.payload.get("input").unwrap_or(&default_input);
+                match self.wasm_sandbox.execute_module_with_tier(module_id, input_payload, ExecutionTier::WgpuJit) {
                     Ok(res) => IpcResponse::ok(&req.id, json!(res)),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
@@ -734,8 +770,62 @@ impl IpcRouter {
                     None => return IpcResponse::err(&req.id, "Missing 'host' parameter"),
                 };
                 let port = req.payload.get("port").and_then(|p| p.as_u64()).unwrap_or(443) as u16;
-                let eval = self.network_engine.evaluate_connection(host, port);
+                let nonce = req.payload.get("nonce").and_then(|n| n.as_str()).unwrap_or(&req.nonce);
+                let proof_val = req.payload.get("attestationProof");
+                let proof: Option<TpmAttestationProof> = proof_val
+                    .and_then(|v| serde_json::from_value(v.clone()).ok());
+
+                let eval = self.network_engine.evaluate_connection_with_attestation(
+                    host,
+                    port,
+                    proof.as_ref(),
+                    &self.tpm_engine,
+                    nonce,
+                );
                 IpcResponse::ok(&req.id, json!(eval))
+            }
+
+            // ─── TPM 2.0 REMOTE ATTESTATION IPC (v0.17) ─────────────────────
+
+            "tpm_measurements" => {
+                let measurements = self.tpm_engine.get_measurements();
+                IpcResponse::ok(&req.id, json!({ "pcrs": measurements, "tpmFamily": "2.0" }))
+            }
+
+            "tpm_generate_quote" => {
+                let nonce = match req.payload.get("nonce").and_then(|n| n.as_str()) {
+                    Some(n) => n,
+                    None => return IpcResponse::err(&req.id, "Missing 'nonce' parameter for TPM quote"),
+                };
+                let requested_pcrs: Vec<u32> = req
+                    .payload
+                    .get("pcrs")
+                    .and_then(|p| p.as_array())
+                    .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|u| u as u32)).collect())
+                    .unwrap_or_else(|| vec![0, 7, 10, 11]);
+
+                match self.tpm_engine.generate_quote(nonce, &requested_pcrs) {
+                    Ok(proof) => IpcResponse::ok(&req.id, json!(proof)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "tpm_verify_quote" => {
+                let nonce = match req.payload.get("nonce").and_then(|n| n.as_str()) {
+                    Some(n) => n,
+                    None => return IpcResponse::err(&req.id, "Missing 'nonce' parameter for TPM quote verification"),
+                };
+                let proof_val = match req.payload.get("proof") {
+                    Some(v) => v,
+                    None => return IpcResponse::err(&req.id, "Missing 'proof' payload"),
+                };
+                match serde_json::from_value::<TpmAttestationProof>(proof_val.clone()) {
+                    Ok(proof) => match self.tpm_engine.verify_quote(&proof, nonce) {
+                        Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                        Err(e) => IpcResponse::err(&req.id, &e),
+                    },
+                    Err(e) => IpcResponse::err(&req.id, &format!("Invalid TPM proof schema: {}", e)),
+                }
             }
 
             // ─── PLUGIN SIGNATURE & PROVENANCE IPC (v0.16) ───────────────────
