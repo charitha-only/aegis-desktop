@@ -2,15 +2,15 @@ use super::encrypted_stream::EncryptedStream;
 use super::protocol::{IpcRequest, IpcResponse};
 use crate::crash::CrashReporter;
 use crate::network::NetworkPolicyEngine;
-use crate::package_pipeline::{MultiOsPackageConfig, MultiOsPipeline};
 use crate::p2p_market::P2PPluginMarketplace;
+use crate::package_pipeline::{MultiOsPackageConfig, MultiOsPipeline};
 use crate::plugin::PluginRegistry;
 use crate::profile::ProfileManager;
 use crate::secrets::SecretManager;
 use crate::security::{
-    attestation::TpmAttestationProof,
-    BiometricEnclave, HandshakeSession, HardwareKeyEngine, HsmPkcs11Engine, PrivacyShield,
-    SecurityEngine, SignatureVerifier, TpmAttestationEngine, VaultEngine,
+    attestation::TpmAttestationProof, BiometricEnclave, HandshakeSession, HardwareKeyEngine,
+    HsmPkcs11Engine, PrivacyShield, SecurityEngine, SignatureVerifier, TpmAttestationEngine,
+    VaultEngine,
 };
 use crate::tray::{NotificationConfig, NotificationEngine, TrayDaemon};
 use crate::updater::{AutoUpdater, UpdateManifest};
@@ -81,10 +81,24 @@ impl IpcRouter {
     pub fn handle_request(&self, req: IpcRequest) -> IpcResponse {
         // 1. Cryptographic Nonce Verification
         if !self.session.validate_nonce(&req.nonce) {
-            return IpcResponse::err(&req.id, "Security Breach: Invalid cryptographic nonce. Request rejected!");
+            return IpcResponse::err(
+                &req.id,
+                "Security Breach: Invalid cryptographic nonce. Request rejected!",
+            );
         }
 
         // 2. Command Dispatching with Capability Verification
+        if req.command.starts_with("hardware_key_")
+            || req.command.starts_with("hsm_")
+            || req.command.starts_with("tpm_")
+            || req.command.starts_with("p2p_")
+            || req.command == "biometric_authenticate"
+            || req.command.starts_with("stream_")
+            || req.command.starts_with("updater_")
+            || req.command == "package_pipeline_stage"
+        {
+            return IpcResponse::err(&req.id, "UNAVAILABLE: This integration is disabled until a real provider is configured. No hardware verification, network installation or encrypted transport is claimed.");
+        }
         match req.command.as_str() {
             "get_security_status" => {
                 let status = json!({
@@ -93,20 +107,21 @@ impl IpcRouter {
                     "sandboxEnforced": true,
                     "privacyVaultActive": true,
                     "antiDosRateLimiterActive": true,
-                    "airGapPolicyActive": true,
+                    "airGapPolicyActive": false,
                     "bundlerEngineActive": true,
                     "multiWindowApiActive": true,
-                    "nativeWebKitWryActive": true,
+                    "nativeWebKitWryActive": false,
+                    "integrationStatus": "Hardware authentication, TPM, HSM, GPU, encrypted IPC, updater and P2P are unavailable",
                     "pluginEngineActive": true,
                     "notificationEngineActive": true,
-                    "autoUpdaterActive": true,
-                    "hardwareKeyActive": true,
+                    "autoUpdaterActive": false,
+                    "hardwareKeyActive": false,
                     "multiProfileActive": true,
                     "wasmSandboxActive": true,
-                    "wgpuComputeJitActive": true,
-                    "biometricEnclaveActive": true,
-                    "tpmRemoteAttestationActive": true,
-                    "encryptedIpcActive": true,
+                    "wgpuComputeJitActive": false,
+                    "biometricEnclaveActive": false,
+                    "tpmRemoteAttestationActive": false,
+                    "encryptedIpcActive": false,
                     "crashReporterActive": true,
                     "activeCapabilities": {
                         "fsRead": true,
@@ -117,52 +132,66 @@ impl IpcRouter {
                         "encryptedVault": true,
                         "bundler": true,
                         "multiWindow": true,
-                        "nativeWebKitWry": true,
+                        "nativeWebKitWry": false,
                         "plugins": true,
                         "notifications": true,
-                        "autoUpdater": true,
-                        "hardwareKey": true,
+                        "autoUpdater": false,
+                        "hardwareKey": false,
                         "multiProfile": true,
                         "wasmSandbox": true,
-                        "wgpuComputeJit": true,
-                        "biometricEnclave": true,
-                        "tpmRemoteAttestation": true,
-                        "encryptedIpc": true,
+                        "wgpuComputeJit": false,
+                        "biometricEnclave": false,
+                        "tpmRemoteAttestation": false,
+                        "encryptedIpc": false,
                         "crashReporter": true,
                         "multiOsPipeline": true,
-                        "p2pPluginMarketplace": true,
-                        "hsmPkcs11": true
+                        "p2pPluginMarketplace": false,
+                        "hsmPkcs11": false
                     }
                 });
                 IpcResponse::ok(&req.id, status)
             }
 
-            "privacy_status" => {
-                IpcResponse::ok(&req.id, PrivacyShield::get_telemetry_audit())
-            }
+            "privacy_status" => IpcResponse::ok(&req.id, PrivacyShield::get_telemetry_audit()),
 
             "vault_encrypt_store" => {
                 match self.security.check_crypto() {
                     Ok(_) => {
                         let filename = match req.payload.get("filename").and_then(|f| f.as_str()) {
                             Some(f) => f,
-                            None => return IpcResponse::err(&req.id, "Missing 'filename' parameter"),
+                            None => {
+                                return IpcResponse::err(&req.id, "Missing 'filename' parameter")
+                            }
                         };
                         let content = match req.payload.get("content").and_then(|c| c.as_str()) {
                             Some(c) => c,
-                            None => return IpcResponse::err(&req.id, "Missing 'content' parameter"),
+                            None => {
+                                return IpcResponse::err(&req.id, "Missing 'content' parameter")
+                            }
                         };
-                        let passphrase = match req.payload.get("passphrase").and_then(|p| p.as_str()) {
+                        let passphrase = match req
+                            .payload
+                            .get("passphrase")
+                            .and_then(|p| p.as_str())
+                        {
                             Some(p) => p,
-                            None => return IpcResponse::err(&req.id, "Missing 'passphrase' parameter"),
+                            None => {
+                                return IpcResponse::err(&req.id, "Missing 'passphrase' parameter")
+                            }
                         };
 
                         if passphrase.len() < 4 {
-                            return IpcResponse::err(&req.id, "Passphrase must be at least 4 characters long");
+                            return IpcResponse::err(
+                                &req.id,
+                                "Passphrase must be at least 4 characters long",
+                            );
                         }
 
                         // Encrypt data with PBKDF2/SHA-256 stream cipher + HMAC-SHA256
-                        let encrypted_envelope = VaultEngine::encrypt(content, passphrase);
+                        let encrypted_envelope = match VaultEngine::encrypt(content, passphrase) {
+                            Ok(v) => v,
+                            Err(e) => return IpcResponse::err(&req.id, &e),
+                        };
 
                         // Ensure filename ends with .vault
                         let safe_filename = if filename.ends_with(".vault") {
@@ -172,6 +201,13 @@ impl IpcRouter {
                         };
 
                         // Store safely inside isolated sandbox
+                        if let Err(e) = self.security.check_write_quota(
+                            &safe_filename,
+                            encrypted_envelope.len(),
+                            self.profile_manager.get_active_profile().max_storage_bytes,
+                        ) {
+                            return IpcResponse::err(&req.id, &e);
+                        }
                         match self.security.check_fs_write(&safe_filename) {
                             Ok(safe_path) => match fs::write(&safe_path, &encrypted_envelope) {
                                 Ok(_) => IpcResponse::ok(
@@ -182,7 +218,10 @@ impl IpcRouter {
                                         "envelopeLength": encrypted_envelope.len()
                                     }),
                                 ),
-                                Err(err) => IpcResponse::err(&req.id, &format!("Failed to write encrypted vault: {}", err)),
+                                Err(err) => IpcResponse::err(
+                                    &req.id,
+                                    &format!("Failed to write encrypted vault: {}", err),
+                                ),
                             },
                             Err(err) => IpcResponse::err(&req.id, &err),
                         }
@@ -196,11 +235,19 @@ impl IpcRouter {
                     Ok(_) => {
                         let filename = match req.payload.get("filename").and_then(|f| f.as_str()) {
                             Some(f) => f,
-                            None => return IpcResponse::err(&req.id, "Missing 'filename' parameter"),
+                            None => {
+                                return IpcResponse::err(&req.id, "Missing 'filename' parameter")
+                            }
                         };
-                        let passphrase = match req.payload.get("passphrase").and_then(|p| p.as_str()) {
+                        let passphrase = match req
+                            .payload
+                            .get("passphrase")
+                            .and_then(|p| p.as_str())
+                        {
                             Some(p) => p,
-                            None => return IpcResponse::err(&req.id, "Missing 'passphrase' parameter"),
+                            None => {
+                                return IpcResponse::err(&req.id, "Missing 'passphrase' parameter")
+                            }
                         };
 
                         let safe_filename = if filename.ends_with(".vault") {
@@ -223,7 +270,10 @@ impl IpcRouter {
                                     ),
                                     Err(err) => IpcResponse::err(&req.id, &err),
                                 },
-                                Err(err) => IpcResponse::err(&req.id, &format!("Failed to read vault file: {}", err)),
+                                Err(err) => IpcResponse::err(
+                                    &req.id,
+                                    &format!("Failed to read vault file: {}", err),
+                                ),
                             },
                             Err(err) => IpcResponse::err(&req.id, &err),
                         }
@@ -232,21 +282,19 @@ impl IpcRouter {
                 }
             }
 
-            "sys_info" => {
-                match self.security.check_system_info() {
-                    Ok(_) => {
-                        let info = json!({
-                            "os": std::env::consts::OS,
-                            "arch": std::env::consts::ARCH,
-                            "family": std::env::consts::FAMILY,
-                            "rustVersion": "1.99.1 (GNU)",
-                            "processId": std::process::id()
-                        });
-                        IpcResponse::ok(&req.id, info)
-                    }
-                    Err(e) => IpcResponse::err(&req.id, &e),
+            "sys_info" => match self.security.check_system_info() {
+                Ok(_) => {
+                    let info = json!({
+                        "os": std::env::consts::OS,
+                        "arch": std::env::consts::ARCH,
+                        "family": std::env::consts::FAMILY,
+                        "rustVersion": "1.99.1 (GNU)",
+                        "processId": std::process::id()
+                    });
+                    IpcResponse::ok(&req.id, info)
                 }
-            }
+                Err(e) => IpcResponse::err(&req.id, &e),
+            },
 
             "fs_read_file" => {
                 let path = match req.payload.get("path").and_then(|p| p.as_str()) {
@@ -256,8 +304,12 @@ impl IpcRouter {
 
                 match self.security.check_fs_read(path) {
                     Ok(safe_path) => match fs::read_to_string(&safe_path) {
-                        Ok(content) => IpcResponse::ok(&req.id, json!({ "path": path, "content": content })),
-                        Err(err) => IpcResponse::err(&req.id, &format!("Failed to read file: {}", err)),
+                        Ok(content) => {
+                            IpcResponse::ok(&req.id, json!({ "path": path, "content": content }))
+                        }
+                        Err(err) => {
+                            IpcResponse::err(&req.id, &format!("Failed to read file: {}", err))
+                        }
                     },
                     Err(err) => IpcResponse::err(&req.id, &err),
                 }
@@ -273,57 +325,89 @@ impl IpcRouter {
                     None => return IpcResponse::err(&req.id, "Missing 'content' parameter"),
                 };
 
+                if let Err(e) = self.security.check_write_quota(
+                    path,
+                    content.len(),
+                    self.profile_manager.get_active_profile().max_storage_bytes,
+                ) {
+                    return IpcResponse::err(&req.id, &e);
+                }
                 match self.security.check_fs_write(path) {
                     Ok(safe_path) => match fs::write(&safe_path, content) {
-                        Ok(_) => IpcResponse::ok(&req.id, json!({ "path": path, "bytesWritten": content.len() })),
-                        Err(err) => IpcResponse::err(&req.id, &format!("Failed to write file: {}", err)),
+                        Ok(_) => IpcResponse::ok(
+                            &req.id,
+                            json!({ "path": path, "bytesWritten": content.len() }),
+                        ),
+                        Err(err) => {
+                            IpcResponse::err(&req.id, &format!("Failed to write file: {}", err))
+                        }
                     },
                     Err(err) => IpcResponse::err(&req.id, &err),
                 }
             }
 
-            "fs_list_sandbox" => {
-                match self.security.check_fs_read(".") {
-                    Ok(sandbox_dir) => {
-                        let mut entries = Vec::new();
-                        if let Ok(read_dir) = fs::read_dir(sandbox_dir) {
-                            for entry in read_dir.flatten() {
-                                if let Ok(name) = entry.file_name().into_string() {
-                                    let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
-                                    let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
-                                    entries.push(json!({
-                                        "name": name,
-                                        "isDir": is_dir,
-                                        "sizeBytes": size
-                                    }));
-                                }
+            "fs_list_sandbox" => match self.security.check_fs_read(".") {
+                Ok(sandbox_dir) => {
+                    let mut entries = Vec::new();
+                    if let Ok(read_dir) = fs::read_dir(sandbox_dir) {
+                        for entry in read_dir.flatten() {
+                            if let Ok(name) = entry.file_name().into_string() {
+                                let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+                                let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+                                entries.push(json!({
+                                    "name": name,
+                                    "isDir": is_dir,
+                                    "sizeBytes": size
+                                }));
                             }
                         }
-                        IpcResponse::ok(&req.id, json!({ "entries": entries }))
                     }
-                    Err(err) => IpcResponse::err(&req.id, &err),
+                    IpcResponse::ok(&req.id, json!({ "entries": entries }))
                 }
-            }
+                Err(err) => IpcResponse::err(&req.id, &err),
+            },
 
-            "crypto_hash" => {
-                match self.security.check_crypto() {
-                    Ok(_) => {
-                        let text = req.payload.get("input").and_then(|t| t.as_str()).unwrap_or("");
-                        let mut hasher = Sha256::new();
-                        hasher.update(text.as_bytes());
-                        let hash = format!("{:x}", hasher.finalize());
-                        IpcResponse::ok(&req.id, json!({ "algorithm": "SHA-256", "hash": hash }))
-                    }
-                    Err(e) => IpcResponse::err(&req.id, &e),
+            "crypto_hash" => match self.security.check_crypto() {
+                Ok(_) => {
+                    let text = req
+                        .payload
+                        .get("input")
+                        .and_then(|t| t.as_str())
+                        .unwrap_or("");
+                    let mut hasher = Sha256::new();
+                    hasher.update(text.as_bytes());
+                    let hash = format!("{:x}", hasher.finalize());
+                    IpcResponse::ok(&req.id, json!({ "algorithm": "SHA-256", "hash": hash }))
                 }
-            }
+                Err(e) => IpcResponse::err(&req.id, &e),
+            },
 
             "window_spawn" => {
-                let url = req.payload.get("url").and_then(|u| u.as_str()).unwrap_or("http://localhost:5173");
-                let title = req.payload.get("title").and_then(|t| t.as_str()).unwrap_or("Aegis Secondary Window");
-                let width = req.payload.get("width").and_then(|w| w.as_u64()).unwrap_or(800) as u32;
-                let height = req.payload.get("height").and_then(|h| h.as_u64()).unwrap_or(600) as u32;
-                let modal = req.payload.get("modal").and_then(|m| m.as_bool()).unwrap_or(false);
+                let url = req
+                    .payload
+                    .get("url")
+                    .and_then(|u| u.as_str())
+                    .unwrap_or("http://localhost:5173");
+                let title = req
+                    .payload
+                    .get("title")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("Aegis Secondary Window");
+                let width = req
+                    .payload
+                    .get("width")
+                    .and_then(|w| w.as_u64())
+                    .unwrap_or(800) as u32;
+                let height = req
+                    .payload
+                    .get("height")
+                    .and_then(|h| h.as_u64())
+                    .unwrap_or(600) as u32;
+                let modal = req
+                    .payload
+                    .get("modal")
+                    .and_then(|m| m.as_bool())
+                    .unwrap_or(false);
 
                 let cfg = crate::window::WindowConfig {
                     title: title.to_string(),
@@ -337,15 +421,18 @@ impl IpcRouter {
                 };
 
                 match crate::window::WindowManager::spawn_window(url, &cfg) {
-                    Ok(win_id) => IpcResponse::ok(&req.id, json!({
-                        "status": "Window Spawned Successfully",
-                        "windowId": win_id,
-                        "title": title,
-                        "url": url,
-                        "width": width,
-                        "height": height,
-                        "runtime": crate::window::WindowManager::detect_runtime()
-                    })),
+                    Ok(win_id) => IpcResponse::ok(
+                        &req.id,
+                        json!({
+                            "status": "Window Spawned Successfully",
+                            "windowId": win_id,
+                            "title": title,
+                            "url": url,
+                            "width": width,
+                            "height": height,
+                            "runtime": crate::window::WindowManager::detect_runtime()
+                        }),
+                    ),
                     Err(e) => IpcResponse::err(&req.id, &format!("Failed to spawn window: {}", e)),
                 }
             }
@@ -356,9 +443,21 @@ impl IpcRouter {
             }
 
             "window_dialog" => {
-                let dialog_type = req.payload.get("type").and_then(|t| t.as_str()).unwrap_or("info");
-                let message = req.payload.get("message").and_then(|m| m.as_str()).unwrap_or("Aegis Native Notification");
-                let title = req.payload.get("title").and_then(|t| t.as_str()).unwrap_or("Aegis Security Dialog");
+                let dialog_type = req
+                    .payload
+                    .get("type")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("info");
+                let message = req
+                    .payload
+                    .get("message")
+                    .and_then(|m| m.as_str())
+                    .unwrap_or("Aegis Native Notification");
+                let title = req
+                    .payload
+                    .get("title")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("Aegis Security Dialog");
 
                 // Execute native OS dialog via powershell on Windows, zenity on Linux, or osascript on Mac
                 #[cfg(target_os = "windows")]
@@ -373,66 +472,79 @@ impl IpcRouter {
                         .spawn();
                 }
 
-                IpcResponse::ok(&req.id, json!({
-                    "dialogType": dialog_type,
-                    "title": title,
-                    "delivered": true
-                }))
+                IpcResponse::ok(
+                    &req.id,
+                    json!({
+                        "dialogType": dialog_type,
+                        "title": title,
+                        "delivered": true
+                    }),
+                )
             }
 
             "window_list" => {
                 // Returns info about multi-window support capabilities
-                IpcResponse::ok(&req.id, json!({
-                    "multiWindowSupported": true,
-                    "apiVersion": "v0.12.0",
-                    "spawnMethods": ["window_spawn", "window_dialog"],
-                    "platformHint": std::env::consts::OS,
-                    "capabilities": {
-                        "modal": true,
-                        "kiosk": true,
-                        "alwaysOnTop": true,
-                        "customSize": true,
-                        "customUrl": true
-                    }
-                }))
+                IpcResponse::ok(
+                    &req.id,
+                    json!({
+                        "multiWindowSupported": true,
+                        "apiVersion": "v0.12.0",
+                        "spawnMethods": ["window_spawn", "window_dialog"],
+                        "platformHint": std::env::consts::OS,
+                        "capabilities": {
+                            "modal": true,
+                            "kiosk": true,
+                            "alwaysOnTop": true,
+                            "customSize": true,
+                            "customUrl": true
+                        }
+                    }),
+                )
             }
 
             "bundle_status" => {
                 // Returns info about the bundler engine
-                let project_root = std::env::current_dir()
-                    .unwrap_or_else(|_| std::path::PathBuf::from("."));
+                let project_root =
+                    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
                 let dist_bundle = project_root.join("dist-bundle");
                 let bundle_exists = dist_bundle.exists();
                 let bundle_contents: Vec<String> = if bundle_exists {
                     std::fs::read_dir(&dist_bundle)
                         .ok()
-                        .map(|d| d.filter_map(|e| e.ok())
-                            .filter_map(|e| e.file_name().into_string().ok())
-                            .collect())
+                        .map(|d| {
+                            d.filter_map(|e| e.ok())
+                                .filter_map(|e| e.file_name().into_string().ok())
+                                .collect()
+                        })
                         .unwrap_or_default()
                 } else {
                     vec![]
                 };
 
-                IpcResponse::ok(&req.id, json!({
-                    "bundlerEngineVersion": "v0.12.0",
-                    "bundleExists": bundle_exists,
-                    "bundleOutputDir": dist_bundle.to_string_lossy(),
-                    "existingBundles": bundle_contents,
-                    "howToBundle": "Run: cargo run --manifest-path src-core/Cargo.toml -- --bundle",
-                    "innoSetupDocs": "https://jrsoftware.org/isinfo.php",
-                    "supportedTargets": ["windows-x64", "linux-x64", "macos-aarch64"]
-                }))
+                IpcResponse::ok(
+                    &req.id,
+                    json!({
+                        "bundlerEngineVersion": "v0.12.0",
+                        "bundleExists": bundle_exists,
+                        "bundleOutputDir": dist_bundle.to_string_lossy(),
+                        "existingBundles": bundle_contents,
+                        "howToBundle": "Run: cargo run --manifest-path src-core/Cargo.toml -- --bundle",
+                        "innoSetupDocs": "https://jrsoftware.org/isinfo.php",
+                        "supportedTargets": ["windows-x64", "linux-x64", "macos-aarch64"]
+                    }),
+                )
             }
 
             // ─── PLUGIN ENGINE IPC (v0.13) ─────────────────────────────────
-
             "plugin_list" => {
                 let plugins = self.plugins.list_plugins();
-                IpcResponse::ok(&req.id, json!({
-                    "plugins": plugins,
-                    "count": plugins.len()
-                }))
+                IpcResponse::ok(
+                    &req.id,
+                    json!({
+                        "plugins": plugins,
+                        "count": plugins.len()
+                    }),
+                )
             }
 
             "plugin_dispatch" => {
@@ -443,48 +555,64 @@ impl IpcRouter {
                 let payload = req.payload.get("payload").cloned().unwrap_or(json!({}));
 
                 match self.plugins.dispatch(plugin_name, &payload) {
-                    Ok(result) => IpcResponse::ok(&req.id, json!({
-                        "plugin": plugin_name,
-                        "result": result
-                    })),
+                    Ok(result) => IpcResponse::ok(
+                        &req.id,
+                        json!({
+                            "plugin": plugin_name,
+                            "result": result
+                        }),
+                    ),
                     Err(e) => IpcResponse::err(&req.id, &format!("Plugin error: {}", e)),
                 }
             }
 
             // ─── NOTIFICATION ENGINE IPC (v0.13) ───────────────────────────
-
             "notify_send" => {
-                let title = req.payload.get("title").and_then(|t| t.as_str()).unwrap_or("Aegis Desktop");
-                let body = req.payload.get("body").and_then(|b| b.as_str()).unwrap_or("Notification from Aegis Core");
+                let title = req
+                    .payload
+                    .get("title")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("Aegis Desktop");
+                let body = req
+                    .payload
+                    .get("body")
+                    .and_then(|b| b.as_str())
+                    .unwrap_or("Notification from Aegis Core");
 
                 let config = NotificationConfig {
                     title: title.to_string(),
                     body: body.to_string(),
-                    icon: req.payload.get("icon").and_then(|i| i.as_str()).map(|s| s.to_string()),
+                    icon: req
+                        .payload
+                        .get("icon")
+                        .and_then(|i| i.as_str())
+                        .map(|s| s.to_string()),
                     urgency: crate::tray::NotificationUrgency::Normal,
-                    timeout_ms: req.payload.get("timeout_ms").and_then(|t| t.as_u64()).map(|t| t as u32),
+                    timeout_ms: req
+                        .payload
+                        .get("timeout_ms")
+                        .and_then(|t| t.as_u64())
+                        .map(|t| t as u32),
                 };
 
                 match NotificationEngine::send(&config) {
-                    Ok(_) => IpcResponse::ok(&req.id, json!({
-                        "delivered": true,
-                        "title": title,
-                        "body": body,
-                        "platform": std::env::consts::OS
-                    })),
+                    Ok(_) => IpcResponse::ok(
+                        &req.id,
+                        json!({
+                            "delivered": true,
+                            "title": title,
+                            "body": body,
+                            "platform": std::env::consts::OS
+                        }),
+                    ),
                     Err(e) => IpcResponse::err(&req.id, &format!("Notification failed: {}", e)),
                 }
             }
 
-            "tray_status" => {
-                IpcResponse::ok(&req.id, TrayDaemon::get_status())
-            }
+            "tray_status" => IpcResponse::ok(&req.id, TrayDaemon::get_status()),
 
             // ─── AUTO-UPDATER IPC (v0.13) ──────────────────────────────────
-
-            "updater_status" => {
-                IpcResponse::ok(&req.id, self.updater.get_status())
-            }
+            "updater_status" => IpcResponse::ok(&req.id, self.updater.get_status()),
 
             "updater_check" => {
                 // Accept a manifest JSON directly in the payload for air-gapped checking
@@ -493,7 +621,9 @@ impl IpcRouter {
                         let result = self.updater.check_update_available(&manifest);
                         IpcResponse::ok(&req.id, serde_json::to_value(&result).unwrap_or(json!({})))
                     }
-                    Err(e) => IpcResponse::err(&req.id, &format!("Invalid manifest payload: {}", e)),
+                    Err(e) => {
+                        IpcResponse::err(&req.id, &format!("Invalid manifest payload: {}", e))
+                    }
                 }
             }
 
@@ -502,25 +632,31 @@ impl IpcRouter {
                     Some(p) => std::path::PathBuf::from(p),
                     None => return IpcResponse::err(&req.id, "Missing 'filePath' parameter"),
                 };
-                let expected_sha256 = match req.payload.get("expectedSha256").and_then(|h| h.as_str()) {
-                    Some(h) => h,
-                    None => return IpcResponse::err(&req.id, "Missing 'expectedSha256' parameter"),
-                };
+                let expected_sha256 =
+                    match req.payload.get("expectedSha256").and_then(|h| h.as_str()) {
+                        Some(h) => h,
+                        None => {
+                            return IpcResponse::err(&req.id, "Missing 'expectedSha256' parameter")
+                        }
+                    };
 
                 match self.updater.verify_integrity(&file_path, expected_sha256) {
-                    Ok(_) => IpcResponse::ok(&req.id, json!({
-                        "verified": true,
-                        "filePath": file_path.to_string_lossy(),
-                        "sha256": expected_sha256
-                    })),
+                    Ok(_) => IpcResponse::ok(
+                        &req.id,
+                        json!({
+                            "verified": true,
+                            "filePath": file_path.to_string_lossy(),
+                            "sha256": expected_sha256
+                        }),
+                    ),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }
 
             // ─── PERMISSION MANAGER IPC (v0.13 / v0.14) ────────────────────
-
-            "permissions_status" => {
-                IpcResponse::ok(&req.id, json!({
+            "permissions_status" => IpcResponse::ok(
+                &req.id,
+                json!({
                     "permissionManagerVersion": "v0.14.0",
                     "activeCapabilities": {
                         "fs": { "read": true, "write": true, "paths": ["./sandbox/**", "./sandbox_*/**"] },
@@ -532,27 +668,29 @@ impl IpcRouter {
                         "multiWindow": { "allowed": true },
                         "plugins": { "allowed": true },
                         "notifications": { "allowed": true },
-                        "autoUpdater": { "allowed": true, "autoApply": false },
-                        "hardwareKey": { "allowed": true, "standard": "FIDO2 / WebAuthn L3" },
+                        "autoUpdater": { "allowed": false, "autoApply": false },
+                        "hardwareKey": { "allowed": false, "standard": "FIDO2 / WebAuthn L3" },
                         "multiProfile": { "allowed": true, "isolation": "STRICT_DIRECTORY" },
                         "wasmSandbox": { "allowed": true, "memoryLimitMb": 16 }
                     },
                     "policySource": "aegis.config.json",
-                    "runtimeOverridesEnabled": true,
+                    "runtimeOverridesEnabled": false,
                     "note": "Runtime profile isolation active in v0.14.0"
-                }))
-            }
+                }),
+            ),
 
             // ─── HARDWARE SECURITY KEY / FIDO2 IPC (v0.14) ─────────────────
-
             "hardware_key_list" => {
                 let detected = self.hardware_keys.scan_and_detect_keys();
-                IpcResponse::ok(&req.id, json!({
-                    "keys": detected,
-                    "fido2Active": true,
-                    "deviceCount": detected.len(),
-                    "subsystem": "FIDO2 / WebAuthn / CTAP2.1"
-                }))
+                IpcResponse::ok(
+                    &req.id,
+                    json!({
+                        "keys": detected,
+                        "fido2Active": true,
+                        "deviceCount": detected.len(),
+                        "subsystem": "FIDO2 / WebAuthn / CTAP2.1"
+                    }),
+                )
             }
 
             "hardware_key_enroll" => {
@@ -565,15 +703,23 @@ impl IpcRouter {
                     None => return IpcResponse::err(&req.id, "Missing 'pin' parameter"),
                 };
                 match self.hardware_keys.enroll_key(key_id, pin) {
-                    Ok(key_info) => IpcResponse::ok(&req.id, json!({ "enrolled": true, "key": key_info })),
+                    Ok(key_info) => {
+                        IpcResponse::ok(&req.id, json!({ "enrolled": true, "key": key_info }))
+                    }
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }
 
             "hardware_key_challenge" => {
-                let rp = req.payload.get("relyingParty").and_then(|r| r.as_str()).unwrap_or("aegis.desktop.local");
-                let chal = self.hardware_keys.generate_challenge(rp);
-                IpcResponse::ok(&req.id, json!(chal))
+                let rp = req
+                    .payload
+                    .get("relyingParty")
+                    .and_then(|r| r.as_str())
+                    .unwrap_or("aegis.desktop.local");
+                match self.hardware_keys.generate_challenge(rp) {
+                    Ok(chal) => IpcResponse::ok(&req.id, json!(chal)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
             }
 
             "hardware_key_verify" => {
@@ -581,25 +727,47 @@ impl IpcRouter {
                     Some(c) => c,
                     None => return IpcResponse::err(&req.id, "Missing 'challengeId' parameter"),
                 };
-                let pin = req.payload.get("pin").and_then(|p| p.as_str()).unwrap_or("");
+                let pin = req
+                    .payload
+                    .get("pin")
+                    .and_then(|p| p.as_str())
+                    .unwrap_or("");
                 // WebAuthn assertion fields — must come from the physical authenticator device
-                let client_data_json = req.payload.get("clientDataJSON").and_then(|v| v.as_str()).unwrap_or("");
-                let authenticator_data = req.payload.get("authenticatorData").and_then(|v| v.as_str()).unwrap_or("");
-                let signature = req.payload.get("signature").and_then(|v| v.as_str()).unwrap_or("");
-                match self.hardware_keys.verify_signature(chal_id, pin, client_data_json, authenticator_data, signature) {
+                let client_data_json = req
+                    .payload
+                    .get("clientDataJSON")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let authenticator_data = req
+                    .payload
+                    .get("authenticatorData")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let signature = req
+                    .payload
+                    .get("signature")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                match self.hardware_keys.verify_signature(
+                    chal_id,
+                    pin,
+                    client_data_json,
+                    authenticator_data,
+                    signature,
+                ) {
                     Ok(resp) => IpcResponse::ok(&req.id, json!(resp)),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }
 
             // ─── MULTI-PROFILE ISOLATION IPC (v0.14) ───────────────────────
-
-            "profile_list" => {
-                IpcResponse::ok(&req.id, json!({
+            "profile_list" => IpcResponse::ok(
+                &req.id,
+                json!({
                     "profiles": self.profile_manager.list_profiles(),
                     "activeProfile": self.profile_manager.get_active_profile()
-                }))
-            }
+                }),
+            ),
 
             "profile_switch" => {
                 let id = match req.payload.get("profileId").and_then(|i| i.as_str()) {
@@ -610,10 +778,13 @@ impl IpcRouter {
                     Ok(profile) => {
                         let new_sandbox = self.profile_manager.get_active_sandbox_path();
                         self.security.set_sandbox_root(new_sandbox);
-                        IpcResponse::ok(&req.id, json!({
-                            "switched": true,
-                            "activeProfile": profile
-                        }))
+                        IpcResponse::ok(
+                            &req.id,
+                            json!({
+                                "switched": true,
+                                "activeProfile": profile
+                            }),
+                        )
                     }
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
@@ -624,26 +795,37 @@ impl IpcRouter {
                     Some(i) => i,
                     None => return IpcResponse::err(&req.id, "Missing 'profileId' parameter"),
                 };
-                let name = req.payload.get("name").and_then(|n| n.as_str()).unwrap_or(id);
-                let desc = req.payload.get("description").and_then(|d| d.as_str()).unwrap_or("Custom isolated profile");
+                let name = req
+                    .payload
+                    .get("name")
+                    .and_then(|n| n.as_str())
+                    .unwrap_or(id);
+                let desc = req
+                    .payload
+                    .get("description")
+                    .and_then(|d| d.as_str())
+                    .unwrap_or("Custom isolated profile");
                 match self.profile_manager.create_profile(id, name, desc) {
-                    Ok(profile) => IpcResponse::ok(&req.id, json!({
-                        "created": true,
-                        "profile": profile
-                    })),
+                    Ok(profile) => IpcResponse::ok(
+                        &req.id,
+                        json!({
+                            "created": true,
+                            "profile": profile
+                        }),
+                    ),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }
 
             // ─── WASM PLUGIN SANDBOX IPC (v0.14) ───────────────────────────
-
-            "wasm_list" => {
-                IpcResponse::ok(&req.id, json!({
+            "wasm_list" => IpcResponse::ok(
+                &req.id,
+                json!({
                     "modules": self.wasm_sandbox.list_modules(),
                     "vmStatus": "OPERATIONAL",
                     "gasMeterEnabled": true
-                }))
-            }
+                }),
+            ),
 
             "wasm_execute" => {
                 let module_id = match req.payload.get("moduleId").and_then(|m| m.as_str()) {
@@ -657,7 +839,10 @@ impl IpcRouter {
                     Some("INTERPRETER") => ExecutionTier::Interpreter,
                     _ => ExecutionTier::Auto,
                 };
-                match self.wasm_sandbox.execute_module_with_tier(module_id, input_payload, tier) {
+                match self
+                    .wasm_sandbox
+                    .execute_module_with_tier(module_id, input_payload, tier)
+                {
                     Ok(res) => IpcResponse::ok(&req.id, json!(res)),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
@@ -670,20 +855,27 @@ impl IpcRouter {
                 };
                 let default_input = json!({});
                 let input_payload = req.payload.get("input").unwrap_or(&default_input);
-                match self.wasm_sandbox.execute_module_with_tier(module_id, input_payload, ExecutionTier::WgpuJit) {
+                match self.wasm_sandbox.execute_module_with_tier(
+                    module_id,
+                    input_payload,
+                    ExecutionTier::WgpuJit,
+                ) {
                     Ok(res) => IpcResponse::ok(&req.id, json!(res)),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }
 
             // ─── BIOMETRIC ENCLAVE IPC (v0.15) ─────────────────────────────
-
             "enclave_status" => {
                 IpcResponse::ok(&req.id, json!(self.biometric_enclave.get_status()))
             }
 
             "enclave_authenticate" => {
-                let reason = req.payload.get("reason").and_then(|r| r.as_str()).unwrap_or("Access Aegis Confidential Subsystem");
+                let reason = req
+                    .payload
+                    .get("reason")
+                    .and_then(|r| r.as_str())
+                    .unwrap_or("Access Aegis Confidential Subsystem");
                 match self.biometric_enclave.authenticate(reason) {
                     Ok(auth_res) => IpcResponse::ok(&req.id, json!(auth_res)),
                     Err(e) => IpcResponse::err(&req.id, &e),
@@ -691,7 +883,6 @@ impl IpcRouter {
             }
 
             // ─── ENCRYPTED IPC STREAM IPC (v0.15) ──────────────────────────
-
             "stream_encrypt" => {
                 let plaintext = match req.payload.get("plaintext").and_then(|p| p.as_str()) {
                     Some(p) => p,
@@ -706,9 +897,13 @@ impl IpcRouter {
                     Some(v) => v,
                     None => return IpcResponse::err(&req.id, "Missing 'envelope' parameter"),
                 };
-                match serde_json::from_value::<crate::ipc::encrypted_stream::EncryptedEnvelope>(envelope_val.clone()) {
+                match serde_json::from_value::<crate::ipc::encrypted_stream::EncryptedEnvelope>(
+                    envelope_val.clone(),
+                ) {
                     Ok(env) => match EncryptedStream::decrypt_payload(&env, &req.nonce) {
-                        Ok(decrypted) => IpcResponse::ok(&req.id, json!({ "plaintext": decrypted })),
+                        Ok(decrypted) => {
+                            IpcResponse::ok(&req.id, json!({ "plaintext": decrypted }))
+                        }
                         Err(e) => IpcResponse::err(&req.id, &e),
                     },
                     Err(e) => IpcResponse::err(&req.id, &format!("Invalid envelope schema: {}", e)),
@@ -716,24 +911,31 @@ impl IpcRouter {
             }
 
             // ─── AIR-GAPPED CRASH REPORTER IPC (v0.15) ─────────────────────
-
-            "crash_list" => {
-                IpcResponse::ok(&req.id, json!({
+            "crash_list" => IpcResponse::ok(
+                &req.id,
+                json!({
                     "crashes": self.crash_reporter.list_crashes(),
                     "zeroTelemetry": true,
                     "storageLocation": "./sandbox/crashes/"
-                }))
-            }
+                }),
+            ),
 
             "crash_record" => {
-                let kind = req.payload.get("errorKind").and_then(|k| k.as_str()).unwrap_or("ControlledDiagnosticTrap");
-                let trace = req.payload.get("stackTrace").and_then(|s| s.as_str()).unwrap_or("User initiated air-gap diagnostic capture");
+                let kind = req
+                    .payload
+                    .get("errorKind")
+                    .and_then(|k| k.as_str())
+                    .unwrap_or("ControlledDiagnosticTrap");
+                let trace = req
+                    .payload
+                    .get("stackTrace")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("User initiated air-gap diagnostic capture");
                 let report = self.crash_reporter.record_crash(kind, trace);
                 IpcResponse::ok(&req.id, json!(report))
             }
 
             // ─── ZERO-KNOWLEDGE SECRETS MANAGER IPC (v0.16) ──────────────────
-
             "secrets_list" => {
                 let list = self.secret_manager.list_secrets();
                 IpcResponse::ok(&req.id, json!({ "secrets": list }))
@@ -748,11 +950,17 @@ impl IpcRouter {
                     Some(v) => v,
                     None => return IpcResponse::err(&req.id, "Missing 'value' parameter"),
                 };
-                let master_pass = match req.payload.get("masterPassphrase").and_then(|p| p.as_str()) {
+                let master_pass = match req.payload.get("masterPassphrase").and_then(|p| p.as_str())
+                {
                     Some(p) => p,
-                    None => return IpcResponse::err(&req.id, "Missing 'masterPassphrase' parameter"),
+                    None => {
+                        return IpcResponse::err(&req.id, "Missing 'masterPassphrase' parameter")
+                    }
                 };
-                let meta = self.secret_manager.store_secret(key, value, master_pass);
+                let meta = match self.secret_manager.store_secret(key, value, master_pass) {
+                    Ok(v) => v,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
                 IpcResponse::ok(&req.id, json!(meta))
             }
 
@@ -761,9 +969,12 @@ impl IpcRouter {
                     Some(k) => k,
                     None => return IpcResponse::err(&req.id, "Missing 'key' parameter"),
                 };
-                let master_pass = match req.payload.get("masterPassphrase").and_then(|p| p.as_str()) {
+                let master_pass = match req.payload.get("masterPassphrase").and_then(|p| p.as_str())
+                {
                     Some(p) => p,
-                    None => return IpcResponse::err(&req.id, "Missing 'masterPassphrase' parameter"),
+                    None => {
+                        return IpcResponse::err(&req.id, "Missing 'masterPassphrase' parameter")
+                    }
                 };
                 match self.secret_manager.retrieve_secret(key, master_pass) {
                     Ok(val) => IpcResponse::ok(&req.id, json!({ "key": key, "value": val })),
@@ -772,10 +983,12 @@ impl IpcRouter {
             }
 
             // ─── NETWORK ISOLATION & FIREWALL POLICY IPC (v0.16) ─────────────
-
             "firewall_rules" => {
                 let rules = self.network_engine.list_rules();
-                IpcResponse::ok(&req.id, json!({ "rules": rules, "mode": "STRICT_ZERO_TRUST" }))
+                IpcResponse::ok(
+                    &req.id,
+                    json!({ "rules": rules, "mode": "STRICT_ZERO_TRUST" }),
+                )
             }
 
             "firewall_evaluate" => {
@@ -783,11 +996,19 @@ impl IpcRouter {
                     Some(h) => h,
                     None => return IpcResponse::err(&req.id, "Missing 'host' parameter"),
                 };
-                let port = req.payload.get("port").and_then(|p| p.as_u64()).unwrap_or(443) as u16;
-                let nonce = req.payload.get("nonce").and_then(|n| n.as_str()).unwrap_or(&req.nonce);
+                let port = req
+                    .payload
+                    .get("port")
+                    .and_then(|p| p.as_u64())
+                    .unwrap_or(443) as u16;
+                let nonce = req
+                    .payload
+                    .get("nonce")
+                    .and_then(|n| n.as_str())
+                    .unwrap_or(&req.nonce);
                 let proof_val = req.payload.get("attestationProof");
-                let proof: Option<TpmAttestationProof> = proof_val
-                    .and_then(|v| serde_json::from_value(v.clone()).ok());
+                let proof: Option<TpmAttestationProof> =
+                    proof_val.and_then(|v| serde_json::from_value(v.clone()).ok());
 
                 let eval = self.network_engine.evaluate_connection_with_attestation(
                     host,
@@ -800,7 +1021,6 @@ impl IpcRouter {
             }
 
             // ─── TPM 2.0 REMOTE ATTESTATION IPC (v0.17) ─────────────────────
-
             "tpm_measurements" => {
                 let measurements = self.tpm_engine.get_measurements();
                 IpcResponse::ok(&req.id, json!({ "pcrs": measurements, "tpmFamily": "2.0" }))
@@ -809,13 +1029,19 @@ impl IpcRouter {
             "tpm_generate_quote" => {
                 let nonce = match req.payload.get("nonce").and_then(|n| n.as_str()) {
                     Some(n) => n,
-                    None => return IpcResponse::err(&req.id, "Missing 'nonce' parameter for TPM quote"),
+                    None => {
+                        return IpcResponse::err(&req.id, "Missing 'nonce' parameter for TPM quote")
+                    }
                 };
                 let requested_pcrs: Vec<u32> = req
                     .payload
                     .get("pcrs")
                     .and_then(|p| p.as_array())
-                    .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|u| u as u32)).collect())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_u64().map(|u| u as u32))
+                            .collect()
+                    })
                     .unwrap_or_else(|| vec![0, 7, 10, 11]);
 
                 match self.tpm_engine.generate_quote(nonce, &requested_pcrs) {
@@ -827,7 +1053,12 @@ impl IpcRouter {
             "tpm_verify_quote" => {
                 let nonce = match req.payload.get("nonce").and_then(|n| n.as_str()) {
                     Some(n) => n,
-                    None => return IpcResponse::err(&req.id, "Missing 'nonce' parameter for TPM quote verification"),
+                    None => {
+                        return IpcResponse::err(
+                            &req.id,
+                            "Missing 'nonce' parameter for TPM quote verification",
+                        )
+                    }
                 };
                 let proof_val = match req.payload.get("proof") {
                     Some(v) => v,
@@ -838,12 +1069,13 @@ impl IpcRouter {
                         Ok(res) => IpcResponse::ok(&req.id, json!(res)),
                         Err(e) => IpcResponse::err(&req.id, &e),
                     },
-                    Err(e) => IpcResponse::err(&req.id, &format!("Invalid TPM proof schema: {}", e)),
+                    Err(e) => {
+                        IpcResponse::err(&req.id, &format!("Invalid TPM proof schema: {}", e))
+                    }
                 }
             }
 
             // ─── PLUGIN SIGNATURE & PROVENANCE IPC (v0.16) ───────────────────
-
             "plugin_signers" => {
                 let signers = self.sig_verifier.list_trusted_signers();
                 IpcResponse::ok(&req.id, json!({ "trustedSigners": signers }))
@@ -862,7 +1094,9 @@ impl IpcRouter {
                     Some(s) => s,
                     None => return IpcResponse::err(&req.id, "Missing 'signature' parameter"),
                 };
-                let res = self.sig_verifier.verify_plugin_manifest(plugin_id, manifest, sig);
+                let res = self
+                    .sig_verifier
+                    .verify_plugin_manifest(plugin_id, manifest, sig);
                 IpcResponse::ok(&req.id, json!(res))
             }
 
@@ -872,7 +1106,11 @@ impl IpcRouter {
                     .payload
                     .get("platforms")
                     .and_then(|p| p.as_array())
-                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
                     .unwrap_or_default();
 
                 let mut config = MultiOsPackageConfig::default();
@@ -886,7 +1124,8 @@ impl IpcRouter {
                     config.version = version.to_string();
                 }
 
-                let project_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+                let project_root =
+                    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
                 match MultiOsPipeline::stage_packages(&project_root, &config, &platforms) {
                     Ok(report) => IpcResponse::ok(&req.id, json!(report)),
                     Err(e) => IpcResponse::err(&req.id, &e),
@@ -933,42 +1172,71 @@ impl IpcRouter {
             }
 
             "hsm_login" => {
-                let slot_id = req.payload.get("slotId").and_then(|s| s.as_u64()).unwrap_or(0);
+                let slot_id = req
+                    .payload
+                    .get("slotId")
+                    .and_then(|s| s.as_u64())
+                    .unwrap_or(0);
                 let pin = match req.payload.get("pin").and_then(|p| p.as_str()) {
                     Some(p) => p,
-                    None => return IpcResponse::err(&req.id, "Missing 'pin' parameter for HSM authentication"),
+                    None => {
+                        return IpcResponse::err(
+                            &req.id,
+                            "Missing 'pin' parameter for HSM authentication",
+                        )
+                    }
                 };
                 match self.hsm_engine.login_token(slot_id, pin) {
-                    Ok(success) => IpcResponse::ok(&req.id, json!({ "slotId": slot_id, "loggedIn": success })),
+                    Ok(success) => {
+                        IpcResponse::ok(&req.id, json!({ "slotId": slot_id, "loggedIn": success }))
+                    }
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }
 
             "hsm_logout" => {
-                let slot_id = req.payload.get("slotId").and_then(|s| s.as_u64()).unwrap_or(0);
+                let slot_id = req
+                    .payload
+                    .get("slotId")
+                    .and_then(|s| s.as_u64())
+                    .unwrap_or(0);
                 match self.hsm_engine.logout_token(slot_id) {
-                    Ok(_) => IpcResponse::ok(&req.id, json!({ "slotId": slot_id, "loggedIn": false })),
+                    Ok(_) => {
+                        IpcResponse::ok(&req.id, json!({ "slotId": slot_id, "loggedIn": false }))
+                    }
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }
 
             "hsm_keys" => {
-                let slot_id = req.payload.get("slotId").and_then(|s| s.as_u64()).unwrap_or(0);
+                let slot_id = req
+                    .payload
+                    .get("slotId")
+                    .and_then(|s| s.as_u64())
+                    .unwrap_or(0);
                 match self.hsm_engine.list_keys(slot_id) {
-                    Ok(keys) => IpcResponse::ok(&req.id, json!({ "slotId": slot_id, "keys": keys })),
+                    Ok(keys) => {
+                        IpcResponse::ok(&req.id, json!({ "slotId": slot_id, "keys": keys }))
+                    }
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }
 
             "hsm_sign" => {
-                let slot_id = req.payload.get("slotId").and_then(|s| s.as_u64()).unwrap_or(0);
+                let slot_id = req
+                    .payload
+                    .get("slotId")
+                    .and_then(|s| s.as_u64())
+                    .unwrap_or(0);
                 let key_id = match req.payload.get("keyId").and_then(|k| k.as_str()) {
                     Some(k) => k,
                     None => return IpcResponse::err(&req.id, "Missing 'keyId' parameter"),
                 };
                 let payload = match req.payload.get("payload").and_then(|p| p.as_str()) {
                     Some(p) => p,
-                    None => return IpcResponse::err(&req.id, "Missing 'payload' parameter to sign"),
+                    None => {
+                        return IpcResponse::err(&req.id, "Missing 'payload' parameter to sign")
+                    }
                 };
                 match self.hsm_engine.sign_payload(slot_id, key_id, payload) {
                     Ok(res) => IpcResponse::ok(&req.id, json!(res)),

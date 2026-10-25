@@ -14,12 +14,9 @@ impl HandshakeSession {
             .unwrap_or_default()
             .as_millis() as u64;
 
-        // Generate secure 256-bit token
-        let mut hasher = Sha256::new();
-        hasher.update(now.to_le_bytes());
-        hasher.update(b"AEGIS_CRYPTOGRAPHIC_NONCE_SALT_V1");
-        hasher.update(std::process::id().to_le_bytes());
-        let token = format!("{:x}", hasher.finalize());
+        let mut random = [0u8; 32];
+        getrandom::getrandom(&mut random).expect("OS secure random source is required");
+        let token = hex::encode(random);
 
         Self {
             session_token: Mutex::new(token),
@@ -37,6 +34,11 @@ impl HandshakeSession {
         if active.len() != incoming_nonce.len() {
             return false;
         }
-        active.as_bytes().iter().zip(incoming_nonce.as_bytes()).fold(0, |acc, (a, b)| acc | (a ^ b)) == 0
+        active
+            .as_bytes()
+            .iter()
+            .zip(incoming_nonce.as_bytes())
+            .fold(0, |acc, (a, b)| acc | (a ^ b))
+            == 0
     }
 }

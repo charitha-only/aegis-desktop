@@ -10,15 +10,17 @@ pub mod ratelimit;
 pub mod validator;
 pub mod vault;
 
-pub use attestation::{TpmAttestationEngine, TpmAttestationProof, AttestationVerification};
+pub use attestation::{AttestationVerification, TpmAttestationEngine, TpmAttestationProof};
 pub use capabilities::{CapabilityManifest, SecurityEngine};
 pub use enclave::BiometricEnclave;
 pub use handshake::HandshakeSession;
 pub use hardware_key::HardwareKeyEngine;
-pub use hsm_pkcs11::{HsmPkcs11Engine, HsmSlotInfo, HsmKeyObject, HsmSignatureResult};
+pub use hsm_pkcs11::{HsmKeyObject, HsmPkcs11Engine, HsmSignatureResult, HsmSlotInfo};
 pub use plugin_sig::SignatureVerifier;
 pub use privacy::PrivacyShield;
 pub use ratelimit::RateLimiter;
 pub use validator::OriginValidator;
 pub use vault::VaultEngine;
 
+#[cfg(test)]
+mod regression_tests;

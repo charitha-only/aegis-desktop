@@ -36,3 +36,10 @@ desktop.ini
 .env
 .env.local
 .env.*.local
+
+# Local application data and build artifacts
+/dist-bundle/
+/sandbox_*/
+/profiles.json*
+/trusted-signers.json
+/.aegis_updates/

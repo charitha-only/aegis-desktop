@@ -1,7 +1,7 @@
+use crate::security::attestation::{TpmAttestationEngine, TpmAttestationProof};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Mutex;
-use crate::security::attestation::{TpmAttestationEngine, TpmAttestationProof};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FirewallRule {
@@ -135,13 +135,16 @@ impl NetworkPolicyEngine {
         // 1. Evaluate explicit BLOCK rules
         for rule in rules.iter().filter(|r| r.action == "BLOCK") {
             let pat = rule.domain_pattern.replace("*", "");
-            if host.ends_with(&pat) || host == rule.domain_pattern {
+            if domain_matches(host, &rule.domain_pattern) {
                 return NetworkEvaluation {
                     target_host: host.to_string(),
                     port,
                     allowed: false,
                     matched_rule: Some(rule.id.clone()),
-                    reason: format!("Violates policy '{}': Outbound telemetry and tracking strictly prohibited", rule.description),
+                    reason: format!(
+                        "Violates policy '{}': Outbound telemetry and tracking strictly prohibited",
+                        rule.description
+                    ),
                     attestation_token: None,
                     tpm_verified: false,
                 };
@@ -151,7 +154,7 @@ impl NetworkPolicyEngine {
         // 2. Evaluate explicit ALLOW rules
         for rule in rules.iter().filter(|r| r.action == "ALLOW") {
             let pat = rule.domain_pattern.replace("*", "");
-            if host.ends_with(&pat) || host == rule.domain_pattern {
+            if domain_matches(host, &rule.domain_pattern) {
                 // If rule requires enterprise TPM remote attestation:
                 if rule.requires_tpm_attestation {
                     match (attestation_proof, attestation_engine) {
@@ -219,7 +222,8 @@ impl NetworkPolicyEngine {
             port,
             allowed: false,
             matched_rule: None,
-            reason: "Default Zero-Trust Stance: Deny-by-default outbound network policy".to_string(),
+            reason: "Default Zero-Trust Stance: Deny-by-default outbound network policy"
+                .to_string(),
             attestation_token: None,
             tpm_verified: false,
         }
@@ -235,55 +239,12 @@ impl NetworkPolicyEngine {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_enterprise_zero_trust_denies_without_attestation() {
-        let engine = NetworkPolicyEngine::new();
-        let eval = engine.evaluate_connection("gateway.corp.internal", 443);
-        assert!(!eval.allowed);
-        assert!(eval.reason.contains("POLICY_DENY_ATTESTATION_REQUIRED"));
-    }
-
-    #[test]
-    fn test_enterprise_zero_trust_allows_with_valid_tpm_attestation() {
-        let net_engine = NetworkPolicyEngine::new();
-        let tpm_engine = TpmAttestationEngine::new();
-        let nonce = "zt_session_challenge_5510";
-
-        let proof = tpm_engine.generate_quote(nonce, &[0, 7, 10, 11]).expect("quote");
-        let eval = net_engine.evaluate_connection_with_attestation(
-            "gateway.corp.internal",
-            443,
-            Some(&proof),
-            &tpm_engine,
-            nonce,
-        );
-
-        assert!(eval.allowed);
-        assert!(eval.tpm_verified);
-        assert!(eval.attestation_token.is_some());
-        assert!(eval.attestation_token.unwrap().starts_with("zt_attest_"));
-    }
-
-    #[test]
-    fn test_enterprise_zero_trust_blocks_with_invalid_nonce_replay() {
-        let net_engine = NetworkPolicyEngine::new();
-        let tpm_engine = TpmAttestationEngine::new();
-
-        let proof = tpm_engine.generate_quote("original_challenge", &[0, 7, 10]).expect("quote");
-        let eval = net_engine.evaluate_connection_with_attestation(
-            "gateway.corp.internal",
-            443,
-            Some(&proof),
-            &tpm_engine,
-            "forged_or_different_nonce",
-        );
-
-        assert!(!eval.allowed);
-        assert!(!eval.tpm_verified);
-        assert!(eval.reason.contains("POLICY_DENY_ATTESTATION_FAILED"));
+fn domain_matches(host: &str, pattern: &str) -> bool {
+    let host = host.trim_end_matches('.').to_ascii_lowercase();
+    let pattern = pattern.to_ascii_lowercase();
+    if let Some(base) = pattern.strip_prefix("*.") {
+        host.ends_with(&format!(".{base}")) && host.len() > base.len() + 1
+    } else {
+        host == pattern
     }
 }

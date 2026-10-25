@@ -9,8 +9,8 @@
     "dev:ui": "npm --prefix src-ui run dev",
     "dev:core": "cargo run --manifest-path src-core/Cargo.toml",
     "build": "node aegis-cli/bin/aegis.js build",
-    "build:release": "cargo build --release --manifest-path src-core/Cargo.toml && npm --prefix src-ui run build",
-    "bundle": "npm run build:release && cargo run --manifest-path src-core/Cargo.toml -- --bundle",
+    "build:release": "node aegis-cli/bin/aegis.js build-release",
+    "bundle": "node aegis-cli/bin/aegis.js bundle",
     "test:security": "node aegis-cli/bin/aegis.js test-security"
   },
   "keywords": [

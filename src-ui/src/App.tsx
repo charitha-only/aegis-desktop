@@ -50,6 +50,7 @@ interface AuditLog {
   details: string;
 }
 
+const unavailableTabs: string[] = ['hardwareKey','enclave','stream','tpmAttestation','wgpuJit','p2pMarket','hsmPkcs11','updater','packagePipeline'];
 export default function App() {
   const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit' | 'packagePipeline' | 'p2pMarket' | 'hsmPkcs11'>('security');
   const [connected, setConnected] = useState(false);
@@ -78,7 +79,7 @@ export default function App() {
 
   // Notifications State (v0.13)
   const [notifTitle, setNotifTitle] = useState('Aegis Security Alert');
-  const [notifBody, setNotifBody] = useState('Zero-Trust policy enforcement active. All capabilities verified.');
+  const [notifBody, setNotifBody] = useState('Sandboxed policy enforcement active. All capabilities verified.');
   const [trayStatus, setTrayStatus] = useState<any>(null);
 
   // Permissions State (v0.13)
@@ -115,7 +116,7 @@ export default function App() {
   const [enclaveLoading, setEnclaveLoading] = useState(false);
 
   // Encrypted IPC Stream State (v0.15)
-  const [streamPlaintext, setStreamPlaintext] = useState('Aegis v0.15 — Zero-Trust Encrypted IPC payload 🔐');
+  const [streamPlaintext, setStreamPlaintext] = useState('Aegis v0.15 — Sandboxed Encrypted IPC payload 🔐');
   const [streamCiphertext, setStreamCiphertext] = useState('');
   const [streamTag, setStreamTag] = useState('');
   const [streamDecryptResult, setStreamDecryptResult] = useState<any>(null);
@@ -127,7 +128,7 @@ export default function App() {
   const [crashMessage, setCrashMessage] = useState('Simulated sandbox assertion violation in module wasm-crypto-accelerator');
   const [crashLoading, setCrashLoading] = useState(false);
 
-  // Zero-Knowledge Secrets Manager State (v0.16)
+  // Local encrypted Secrets Manager State (v0.16)
   const [secretsList, setSecretsList] = useState<any[]>([]);
   const [newSecretKey, setNewSecretKey] = useState('PROD_DATABASE_MASTER_URL');
   const [newSecretValue, setNewSecretValue] = useState('postgres://enterprise_admin:kdf_salted_pass@internal.db:5432/aegis_core');
@@ -151,7 +152,7 @@ export default function App() {
   const [sigVerifyResult, setSigVerifyResult] = useState<any>(null);
   const [sigLoading, setSigLoading] = useState(false);
 
-  // Native WebKit / Wry State (v0.17)
+  // Browser runtime State (v0.17)
   const [runtimeInfo, setRuntimeInfo] = useState<any>(null);
 
   // TPM 2.0 Remote Attestation State (v0.17)
@@ -168,7 +169,7 @@ export default function App() {
   // WGPU Compute JIT State (v0.17)
   const [wgpuModuleId, setWgpuModuleId] = useState('wasm-crypto-accelerator');
   const [wgpuElementCount, setWgpuElementCount] = useState(1024);
-  const [wgpuTier, setWgpuTier] = useState<'WGPU_JIT' | 'INTERPRETER' | 'AUTO'>('WGPU_JIT');
+  const [wgpuTier, setWgpuTier] = useState<'WGPU_JIT' | 'INTERPRETER' | 'AUTO'>('INTERPRETER');
   const [wgpuResult, setWgpuResult] = useState<any>(null);
   const [wgpuLoading, setWgpuLoading] = useState(false);
 
@@ -246,7 +247,7 @@ export default function App() {
       addLog('SUCCESS', 'p2p_market_install', `Consensus verified! Downloaded and installed '${pluginId}' from P2P swarm`);
       refreshP2pMarket();
     } else {
-      addLog('BLOCKED', 'p2p_market_install', res.error || 'Installation blocked by Zero-Trust policy');
+      addLog('BLOCKED', 'p2p_market_install', res.error || 'Installation blocked by Sandboxed policy');
     }
     setP2pLoading(false);
   };
@@ -304,7 +305,7 @@ export default function App() {
     setHsmLoading(false);
   };
 
-  // Vault State (v0.11 Zero-Knowledge Encryption)
+  // Vault State (v0.11 Local encrypted Encryption)
   const [vaultFileName, setVaultFileName] = useState('confidential_notes.vault');
   const [vaultContent, setVaultContent] = useState('TOP_SECRET: Aegis Vault payload encrypted at rest with PBKDF2/SHA-256 and HMAC tags.');
   const [vaultPassphrase, setVaultPassphrase] = useState('ProfessorAegis2026!');
@@ -817,10 +818,10 @@ export default function App() {
     }
   };
 
-  // Zero-Knowledge Encrypted Vault Handlers
+  // Local encrypted Encrypted Vault Handlers
   const handleVaultEncrypt = async () => {
     if (!vaultFileName || !vaultPassphrase) return;
-    addLog('INFO', 'vault_encrypt', `Encrypting ${vaultFileName} with 10,000 PBKDF2 rounds & HMAC tag...`);
+    addLog('INFO', 'vault_encrypt', `Encrypting ${vaultFileName} with Argon2id rounds & HMAC tag...`);
     const res = await aegis.vaultEncryptStore(vaultFileName, vaultContent, vaultPassphrase);
     if (res.success) {
       addLog('SUCCESS', 'vault_encrypted', `Safely stored inside ./sandbox/${res.data?.filename}`);
@@ -878,7 +879,7 @@ export default function App() {
     addLog('INFO', 'window_dialog', `Triggering OS-native ${type.toUpperCase()} modal dialog...`);
     const res = await aegis.showNativeDialog(
       `Aegis Desktop [v0.12 Security Alert]`,
-      `This is an authenticated native system notification delivered from the Rust Core engine.\n\nAll capabilities remain locked under Zero-Trust policy.`,
+      `This is an authenticated native system notification delivered from the Rust Core engine.\n\nAll capabilities remain locked under Sandboxed policy.`,
       type
     );
     if (res.success) {
@@ -898,7 +899,7 @@ export default function App() {
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
               AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.18 BETA</span>
             </div>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Zero-Trust Framework</div>
+            <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Sandboxed Framework</div>
           </div>
         </div>
 
@@ -1348,7 +1349,7 @@ export default function App() {
           <div style={{ marginTop: 'auto', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#38bdf8', marginBottom: '6px' }}>
               <Lock style={{ width: '12px', height: '12px' }} />
-              Zero-Trust Architecture
+              Sandboxed Architecture
             </div>
             <div style={{ fontSize: '10px', color: '#64748b', lineHeight: '1.4' }}>
               Every IPC invocation passes through strict Rust capability verification & cryptographic nonces.
@@ -1359,7 +1360,12 @@ export default function App() {
         {/* Content Area */}
         <main style={{ flex: 1, padding: '24px 32px', overflowY: 'auto' }}>
           {/* TAB 1: SECURITY & DEFENSE */}
-          {activeTab === 'security' && (
+          {unavailableTabs.includes(activeTab) && (
+ <section role="status" style={{padding:32,color:'#f8fafc',background:'#172033',borderRadius:12}}>
+ <h2>Integration unavailable</h2><p>This feature is disabled until a real provider is implemented and tested. No hardware authentication, GPU acceleration or plugin installation has taken place.</p>
+ <p>Use Files, Profiles, Vault or the Wasm interpreter. Windows portable packaging is available through the documented build command.</p></section>
+)}
+{activeTab === 'security' && (
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
@@ -1599,10 +1605,10 @@ export default function App() {
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
-                  Zero-Knowledge Encrypted Vault & Air-Gap Privacy
+                  Local encrypted Encrypted Vault & Air-Gap Privacy
                 </h1>
                 <p style={{ fontSize: '13px', color: '#94a3b8' }}>
-                  Hardware-grade local encryption at rest with 10,000 PBKDF2/SHA-256 rounds, HMAC integrity verification, and mathematical zero-telemetry enforcement.
+                  Explicit vault encryption uses Argon2id and XChaCha20-Poly1305. Ordinary sandbox files are not encrypted.
                 </p>
               </div>
 
@@ -1640,7 +1646,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Zero-Knowledge Vault Encrypt / Decrypt Tool */}
+              {/* Local encrypted Vault Encrypt / Decrypt Tool */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
                   <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1796,7 +1802,7 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              {/* Native WebKit / Wry & Tao Runtime Inspection (v0.17) */}
+              {/* Browser runtime & Tao Runtime Inspection (v0.17) */}
               <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1804,8 +1810,8 @@ export default function App() {
                       <Globe style={{ width: '18px', height: '18px', color: '#fff' }} />
                     </div>
                     <div>
-                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>macOS & Linux Native WebKit (Wry / Tao Engine)</h3>
-                      <p style={{ fontSize: '12px', color: '#64748b' }}>Native WebKit webview integration replacing legacy Edge App Mode fallbacks</p>
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Browser runtime</h3>
+                      <p style={{ fontSize: '12px', color: '#64748b' }}>External browser launch; an embedded native webview is not implemented</p>
                     </div>
                   </div>
                   <button
@@ -1826,7 +1832,7 @@ export default function App() {
                     <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                       <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>WebKit Integration</div>
                       <div style={{ fontSize: '14px', fontWeight: 700, color: runtimeInfo.is_native_webkit ? '#34d399' : '#38bdf8' }}>
-                        {runtimeInfo.is_native_webkit ? 'Native WebKit Active' : 'Edge Chromium Active'}
+                        {runtimeInfo.is_native_webkit ? 'Native WebKit available' : 'External browser fallback'}
                       </div>
                       <div style={{ fontSize: '10px', color: '#475569', marginTop: '2px' }}>OS Platform: {runtimeInfo.os_family}</div>
                     </div>
@@ -2183,7 +2189,7 @@ export default function App() {
                   Runtime Capability & Permission Guard
                 </h1>
                 <p style={{ fontSize: '13px', color: '#94a3b8' }}>
-                  Granular Zero-Trust capabilities configured strictly inside <code style={{ color: '#fca5a5' }}>aegis.config.json</code>. No capability can be elevated at runtime by untrusted frontend scripts.
+                  Granular Sandboxed capabilities configured strictly inside <code style={{ color: '#fca5a5' }}>aegis.config.json</code>. No capability can be elevated at runtime by untrusted frontend scripts.
                 </p>
               </div>
 
@@ -2206,8 +2212,8 @@ export default function App() {
                     { cap: 'fs', name: 'File System Sandbox', desc: 'Read/write scoped strictly to sandbox/ directory', granted: true },
                     { cap: 'shell', name: 'Raw Shell Execution', desc: 'Arbitrary system command spawning', granted: false },
                     { cap: 'systemInfo', name: 'Hardware Telemetry', desc: 'Read CPU, RAM, and OS telemetry', granted: true },
-                    { cap: 'crypto', name: 'Hardware Cryptography', desc: 'SHA-256 and PBKDF2 native operations', granted: true },
-                    { cap: 'encryptedVault', name: 'Zero-Knowledge Vault', desc: 'Encrypted at-rest secure local storage', granted: true },
+                    { cap: 'crypto', name: 'Cryptographic utilities', desc: 'SHA-256 and authenticated vault operations', granted: true },
+                    { cap: 'encryptedVault', name: 'Local encrypted Vault', desc: 'Encrypted at-rest secure local storage', granted: true },
                     { cap: 'bundler', name: 'Native Executable Bundler', desc: 'InnoSetup & standalone packager', granted: true },
                     { cap: 'multiWindow', name: 'Multi-Window & Native Dialogs', desc: 'Spawn auxiliary windows & message boxes', granted: true },
                     { cap: 'plugins', name: 'Rust Plugin Engine', desc: 'Registered in-memory native plugins', granted: true },
@@ -2231,7 +2237,7 @@ export default function App() {
           )}
 
           {/* TAB 4f: AUTO-UPDATER (NEW IN v0.13) */}
-          {activeTab === 'updater' && (
+          {activeTab === 'updater' && !unavailableTabs.includes(activeTab) && (
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
@@ -2282,7 +2288,7 @@ export default function App() {
                   )}
 
                   <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#7dd3fc', marginBottom: '4px' }}>🛡️ Zero-Trust Verification Rule</div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#7dd3fc', marginBottom: '4px' }}>🛡️ Sandboxed Verification Rule</div>
                     <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.5' }}>
                       Update manifests require valid SemVer format, cryptographic SHA-256 checksum matching, and isolated staging before any replacement occurs.
                     </div>
@@ -2320,7 +2326,7 @@ export default function App() {
           )}
 
           {/* TAB 4g: HARDWARE SECURITY KEY / FIDO2 (NEW IN v0.14) */}
-          {activeTab === 'hardwareKey' && (
+          {activeTab === 'hardwareKey' && !unavailableTabs.includes(activeTab) && (
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
@@ -2772,7 +2778,7 @@ export default function App() {
             </div>
           )}
           {/* TAB v0.15-A: BIOMETRIC ENCLAVE */}
-          {activeTab === 'enclave' && (
+          {activeTab === 'enclave' && !unavailableTabs.includes(activeTab) && (
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
@@ -2859,7 +2865,7 @@ export default function App() {
           )}
 
           {/* TAB v0.15-B: ENCRYPTED IPC STREAM */}
-          {activeTab === 'stream' && (
+          {activeTab === 'stream' && !unavailableTabs.includes(activeTab) && (
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
@@ -3059,7 +3065,7 @@ export default function App() {
                     <Key style={{ width: '20px', height: '20px', color: '#fff' }} />
                   </div>
                   <div>
-                    <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#f8fafc' }}>Zero-Knowledge Secrets Manager</h2>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#f8fafc' }}>Local encrypted Secrets Manager</h2>
                     <p style={{ fontSize: '12px', color: '#64748b' }}>Memory-hard key derivation (1500 rounds) • Versioned secret rotation • Pure in-memory ciphertexts</p>
                   </div>
                 </div>
@@ -3227,7 +3233,7 @@ export default function App() {
                     disabled={firewallLoading}
                     style={{ width: '100%', background: 'linear-gradient(135deg, #0284c7, #0369a1)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', marginBottom: '16px' }}
                   >
-                    {firewallLoading ? '⏳ Inspecting Rules...' : '🛡️ Evaluate Zero-Trust Policy'}
+                    {firewallLoading ? '⏳ Inspecting Rules...' : '🛡️ Evaluate Sandboxed Policy'}
                   </button>
 
                   {evalResult && (
@@ -3382,7 +3388,7 @@ export default function App() {
           {/* ═════════════════════════════════════════════════════════════════ */}
           {/* TPM 2.0 REMOTE ATTESTATION TAB (v0.17)                           */}
           {/* ═════════════════════════════════════════════════════════════════ */}
-          {activeTab === 'tpmAttestation' && (
+          {activeTab === 'tpmAttestation' && !unavailableTabs.includes(activeTab) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -3495,11 +3501,11 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Quote Verifier & Zero-Trust Simulator */}
+                {/* Quote Verifier & Sandboxed Simulator */}
                 <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '12px', padding: '22px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                     <Shield style={{ width: '20px', height: '20px', color: '#10b981' }} />
-                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Verify Proof & Test Zero-Trust Policy</h3>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Verify Proof & Test Sandboxed Policy</h3>
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
@@ -3527,7 +3533,7 @@ export default function App() {
 
                   <hr style={{ borderColor: 'rgba(255,255,255,0.08)', margin: '14px 0' }} />
 
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#f8fafc', marginBottom: '8px' }}>Zero-Trust Network Firewall Evaluation</div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#f8fafc', marginBottom: '8px' }}>Sandboxed Network Firewall Evaluation</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px', marginBottom: '12px' }}>
                     <input
                       type="text"
@@ -3577,7 +3583,7 @@ export default function App() {
           {/* ═════════════════════════════════════════════════════════════════ */}
           {/* WGPU COMPUTE JIT STUDIO TAB (v0.17)                              */}
           {/* ═════════════════════════════════════════════════════════════════ */}
-          {activeTab === 'wgpuJit' && (
+          {activeTab === 'wgpuJit' && !unavailableTabs.includes(activeTab) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -3706,7 +3712,7 @@ export default function App() {
             </div>
           )}
           {/* TAB: AUTOMATED MULTI-OS PACKAGING PIPELINE (v0.18) */}
-          {activeTab === 'packagePipeline' && (
+          {activeTab === 'packagePipeline' && !unavailableTabs.includes(activeTab) && (
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#c084fc', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
@@ -3847,7 +3853,7 @@ export default function App() {
           )}
 
           {/* TAB: DISTRIBUTED P2P PLUGIN MARKETPLACE (v0.18) */}
-          {activeTab === 'p2pMarket' && (
+          {activeTab === 'p2pMarket' && !unavailableTabs.includes(activeTab) && (
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
@@ -3946,7 +3952,7 @@ export default function App() {
           )}
 
           {/* TAB: HARDWARE SECURITY MODULE (HSM) PKCS#11 (v0.18) */}
-          {activeTab === 'hsmPkcs11' && (
+          {activeTab === 'hsmPkcs11' && !unavailableTabs.includes(activeTab) && (
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ec4899', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>

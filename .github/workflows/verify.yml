@@ -1,0 +1,16 @@
+name: Verify runtime and UI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: cargo test --locked --manifest-path src-core/Cargo.toml
+      - run: npm ci --prefix src-ui
+      - run: npm --prefix src-ui run build
