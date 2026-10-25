@@ -1,7 +1,11 @@
+#![recursion_limit = "256"]
+
 mod bundler;
 mod crash;
 mod ipc;
 mod network;
+mod package_pipeline;
+mod p2p_market;
 mod plugin;
 mod profile;
 mod secrets;
@@ -15,12 +19,14 @@ mod window;
 use crash::CrashReporter;
 use ipc::IpcRouter;
 use network::NetworkPolicyEngine;
+use package_pipeline::MultiOsPipeline;
+use p2p_market::P2PPluginMarketplace;
 use plugin::{PluginRegistry, register_builtin_plugins};
 use profile::ProfileManager;
 use secrets::SecretManager;
 use security::{
-    BiometricEnclave, CapabilityManifest, HandshakeSession, HardwareKeyEngine, OriginValidator,
-    SecurityEngine, SignatureVerifier, TpmAttestationEngine,
+    BiometricEnclave, CapabilityManifest, HandshakeSession, HardwareKeyEngine, HsmPkcs11Engine,
+    OriginValidator, SecurityEngine, SignatureVerifier, TpmAttestationEngine,
 };
 use server::CoreServer;
 use std::fs;
@@ -32,7 +38,7 @@ use window::{WindowConfig, WindowManager};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("     🛡️  AEGIS DESKTOP CORE v0.17.0 • HIGH-SECURITY RUNTIME  ");
+    println!("     🛡️  AEGIS DESKTOP CORE v0.18.0 • HIGH-SECURITY RUNTIME  ");
     println!("============================================================");
 
     // 1. Locate and parse aegis.config.json
@@ -103,6 +109,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2g. Initialize v0.17 Subsystems
     let tpm_engine = Arc::new(TpmAttestationEngine::new());
 
+    // 2h. Initialize v0.18 Subsystems
+    let package_pipeline = Arc::new(MultiOsPipeline);
+    let p2p_market = Arc::new(P2PPluginMarketplace::new());
+    let hsm_engine = Arc::new(HsmPkcs11Engine::new());
+
     let router = Arc::new(IpcRouter::new(
         Arc::clone(&security_engine),
         Arc::clone(&handshake_session),
@@ -117,6 +128,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         network_engine,
         sig_verifier,
         tpm_engine,
+        package_pipeline,
+        p2p_market,
+        hsm_engine,
     ));
 
     // 2. Bind the Secure Loopback Bridge

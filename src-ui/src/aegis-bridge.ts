@@ -1,11 +1,11 @@
 /**
- * Aegis Desktop IPC Bridge Client v0.16
+ * Aegis Desktop IPC Bridge Client v0.18
  * Secure typed communication with Rust Backend Core
  *
- * v0.16 additions:
- *  - SecretManager     — zero-knowledge memory-hard key derivation & versioned secret rotation
- *  - NetworkPolicy     — dynamic zero-trust firewall policy engine & outbound traffic inspection
- *  - SignatureVerifier — ECDSA cryptographic manifest provenance verification
+ * v0.18 additions:
+ *  - MultiOsPipeline     — automated macOS DMG, Linux AppImage/Debian packaging pipeline
+ *  - P2PPluginMarketplace — content-addressed IPFS/BitTorrent plugin registry with multi-sig consensus
+ *  - HsmPkcs11Engine     — native PKCS#11 hardware token integration (YubiHSM & SmartCards)
  */
 
 export interface IpcResponse<T = any> {
@@ -33,6 +33,9 @@ export interface SecurityStatus {
     encryptedVault?: boolean;
     bundler?: boolean;
     multiWindow?: boolean;
+    multiOsPipeline?: boolean;
+    p2pPluginMarketplace?: boolean;
+    hsmPkcs11?: boolean;
   };
 }
 
@@ -409,6 +412,122 @@ class AegisBridge {
 
   public async wasmExecuteWithTier(moduleId: string, input: Record<string, any> = {}, tier: 'WGPU_JIT' | 'INTERPRETER' | 'AUTO' = 'AUTO'): Promise<IpcResponse<any>> {
     return this.invoke('wasm_execute', { moduleId, input, tier });
+  }
+
+  // ─── Automated Multi-OS Packaging Pipeline (v0.18) ────────
+  public async packagePipelineStage(params: {
+    platforms?: string[];
+    name?: string;
+    appId?: string;
+    version?: string;
+  } = {}): Promise<IpcResponse<{
+    app_name: string;
+    version: string;
+    output_root: string;
+    artifacts: Array<{
+      platform: string;
+      format: string;
+      target_file_or_dir: string;
+      size_estimate_bytes: number;
+      status: string;
+      manifest_digest: string;
+    }>;
+    success: boolean;
+    timestamp: number;
+  }>> {
+    return this.invoke('package_pipeline_stage', params);
+  }
+
+  // ─── Distributed P2P Plugin Marketplace (v0.18) ───────────
+  public async p2pMarketList(): Promise<IpcResponse<{
+    plugins: Array<{
+      plugin_id: string;
+      name: string;
+      version: string;
+      author: string;
+      description: string;
+      cid: string;
+      bittorrent_infohash: string;
+      size_bytes: number;
+      required_signatures: number;
+      signatures: Array<{
+        signer_identity: string;
+        signature_hex: string;
+        timestamp: number;
+      }>;
+      verified: boolean;
+      seeders_count: number;
+      download_status: string;
+    }>;
+    peers: Array<{
+      peer_id: string;
+      address: string;
+      reputation_score: number;
+      is_online: boolean;
+      latency_ms: number;
+    }>;
+  }>> {
+    return this.invoke('p2p_market_list', {});
+  }
+
+  public async p2pMarketSign(pluginId: string, signerDid: string): Promise<IpcResponse<any>> {
+    return this.invoke('p2p_market_sign', { pluginId, signerDid });
+  }
+
+  public async p2pMarketInstall(pluginId: string): Promise<IpcResponse<any>> {
+    return this.invoke('p2p_market_install', { pluginId });
+  }
+
+  // ─── Hardware Security Module (HSM) PKCS#11 (v0.18) ───────
+  public async hsmSlots(): Promise<IpcResponse<{
+    slots: Array<{
+      slot_id: number;
+      token_present: boolean;
+      manufacturer_id: string;
+      model: string;
+      serial_number: string;
+      hardware_version: string;
+      firmware_version: string;
+      label: string;
+      is_initialized: boolean;
+      is_user_logged_in: boolean;
+    }>;
+  }>> {
+    return this.invoke('hsm_slots', {});
+  }
+
+  public async hsmLogin(slotId: number, pin: string): Promise<IpcResponse<{ slotId: number; loggedIn: boolean }>> {
+    return this.invoke('hsm_login', { slotId, pin });
+  }
+
+  public async hsmLogout(slotId: number): Promise<IpcResponse<{ slotId: number; loggedIn: boolean }>> {
+    return this.invoke('hsm_logout', { slotId });
+  }
+
+  public async hsmKeys(slotId: number): Promise<IpcResponse<{
+    slotId: number;
+    keys: Array<{
+      key_id: string;
+      key_type: string;
+      label: string;
+      is_extractable: boolean;
+      operations_allowed: string[];
+      created_at: number;
+    }>;
+  }>> {
+    return this.invoke('hsm_keys', { slotId });
+  }
+
+  public async hsmSign(slotId: number, key_id: string, payload: string): Promise<IpcResponse<{
+    key_id: string;
+    mechanism: string;
+    payload_hash_hex: string;
+    signature_hex: string;
+    token_serial: string;
+    timestamp: number;
+    verified_by_token: boolean;
+  }>> {
+    return this.invoke('hsm_sign', { slotId, keyId: key_id, payload });
   }
 
   // Security Defense Simulators

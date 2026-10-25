@@ -2,13 +2,15 @@ use super::encrypted_stream::EncryptedStream;
 use super::protocol::{IpcRequest, IpcResponse};
 use crate::crash::CrashReporter;
 use crate::network::NetworkPolicyEngine;
+use crate::package_pipeline::{MultiOsPackageConfig, MultiOsPipeline};
+use crate::p2p_market::P2PPluginMarketplace;
 use crate::plugin::PluginRegistry;
 use crate::profile::ProfileManager;
 use crate::secrets::SecretManager;
 use crate::security::{
     attestation::TpmAttestationProof,
-    BiometricEnclave, HandshakeSession, HardwareKeyEngine, PrivacyShield, SecurityEngine,
-    SignatureVerifier, TpmAttestationEngine, VaultEngine,
+    BiometricEnclave, HandshakeSession, HardwareKeyEngine, HsmPkcs11Engine, PrivacyShield,
+    SecurityEngine, SignatureVerifier, TpmAttestationEngine, VaultEngine,
 };
 use crate::tray::{NotificationConfig, NotificationEngine, TrayDaemon};
 use crate::updater::{AutoUpdater, UpdateManifest};
@@ -32,6 +34,9 @@ pub struct IpcRouter {
     network_engine: Arc<NetworkPolicyEngine>,
     sig_verifier: Arc<SignatureVerifier>,
     tpm_engine: Arc<TpmAttestationEngine>,
+    package_pipeline: Arc<MultiOsPipeline>,
+    p2p_market: Arc<P2PPluginMarketplace>,
+    hsm_engine: Arc<HsmPkcs11Engine>,
 }
 
 impl IpcRouter {
@@ -49,6 +54,9 @@ impl IpcRouter {
         network_engine: Arc<NetworkPolicyEngine>,
         sig_verifier: Arc<SignatureVerifier>,
         tpm_engine: Arc<TpmAttestationEngine>,
+        package_pipeline: Arc<MultiOsPipeline>,
+        p2p_market: Arc<P2PPluginMarketplace>,
+        hsm_engine: Arc<HsmPkcs11Engine>,
     ) -> Self {
         Self {
             security,
@@ -64,6 +72,9 @@ impl IpcRouter {
             network_engine,
             sig_verifier,
             tpm_engine,
+            package_pipeline,
+            p2p_market,
+            hsm_engine,
         }
     }
 
@@ -117,7 +128,10 @@ impl IpcRouter {
                         "biometricEnclave": true,
                         "tpmRemoteAttestation": true,
                         "encryptedIpc": true,
-                        "crashReporter": true
+                        "crashReporter": true,
+                        "multiOsPipeline": true,
+                        "p2pPluginMarketplace": true,
+                        "hsmPkcs11": true
                     }
                 });
                 IpcResponse::ok(&req.id, status)
@@ -850,6 +864,116 @@ impl IpcRouter {
                 };
                 let res = self.sig_verifier.verify_plugin_manifest(plugin_id, manifest, sig);
                 IpcResponse::ok(&req.id, json!(res))
+            }
+
+            // ─── AUTOMATED MULTI-OS PACKAGING PIPELINE IPC (v0.18) ────────
+            "package_pipeline_stage" => {
+                let platforms: Vec<String> = req
+                    .payload
+                    .get("platforms")
+                    .and_then(|p| p.as_array())
+                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                    .unwrap_or_default();
+
+                let mut config = MultiOsPackageConfig::default();
+                if let Some(name) = req.payload.get("name").and_then(|n| n.as_str()) {
+                    config.name = name.to_string();
+                }
+                if let Some(app_id) = req.payload.get("appId").and_then(|a| a.as_str()) {
+                    config.app_id = app_id.to_string();
+                }
+                if let Some(version) = req.payload.get("version").and_then(|v| v.as_str()) {
+                    config.version = version.to_string();
+                }
+
+                let project_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+                match MultiOsPipeline::stage_packages(&project_root, &config, &platforms) {
+                    Ok(report) => IpcResponse::ok(&req.id, json!(report)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ─── DISTRIBUTED P2P PLUGIN MARKETPLACE IPC (v0.18) ────────────
+            "p2p_market_list" => {
+                let plugins = self.p2p_market.list_plugins();
+                let peers = self.p2p_market.list_peers();
+                IpcResponse::ok(&req.id, json!({ "plugins": plugins, "peers": peers }))
+            }
+
+            "p2p_market_sign" => {
+                let plugin_id = match req.payload.get("pluginId").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'pluginId' parameter"),
+                };
+                let signer_did = match req.payload.get("signerDid").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'signerDid' parameter"),
+                };
+                match self.p2p_market.sign_plugin(plugin_id, signer_did) {
+                    Ok(listing) => IpcResponse::ok(&req.id, json!(listing)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "p2p_market_install" => {
+                let plugin_id = match req.payload.get("pluginId").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'pluginId' parameter"),
+                };
+                match self.p2p_market.install_plugin(plugin_id) {
+                    Ok(listing) => IpcResponse::ok(&req.id, json!(listing)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ─── HARDWARE SECURITY MODULE (HSM) PKCS#11 IPC (v0.18) ────────
+            "hsm_slots" => {
+                let slots = self.hsm_engine.list_slots();
+                IpcResponse::ok(&req.id, json!({ "slots": slots }))
+            }
+
+            "hsm_login" => {
+                let slot_id = req.payload.get("slotId").and_then(|s| s.as_u64()).unwrap_or(0);
+                let pin = match req.payload.get("pin").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'pin' parameter for HSM authentication"),
+                };
+                match self.hsm_engine.login_token(slot_id, pin) {
+                    Ok(success) => IpcResponse::ok(&req.id, json!({ "slotId": slot_id, "loggedIn": success })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "hsm_logout" => {
+                let slot_id = req.payload.get("slotId").and_then(|s| s.as_u64()).unwrap_or(0);
+                match self.hsm_engine.logout_token(slot_id) {
+                    Ok(_) => IpcResponse::ok(&req.id, json!({ "slotId": slot_id, "loggedIn": false })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "hsm_keys" => {
+                let slot_id = req.payload.get("slotId").and_then(|s| s.as_u64()).unwrap_or(0);
+                match self.hsm_engine.list_keys(slot_id) {
+                    Ok(keys) => IpcResponse::ok(&req.id, json!({ "slotId": slot_id, "keys": keys })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "hsm_sign" => {
+                let slot_id = req.payload.get("slotId").and_then(|s| s.as_u64()).unwrap_or(0);
+                let key_id = match req.payload.get("keyId").and_then(|k| k.as_str()) {
+                    Some(k) => k,
+                    None => return IpcResponse::err(&req.id, "Missing 'keyId' parameter"),
+                };
+                let payload = match req.payload.get("payload").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'payload' parameter to sign"),
+                };
+                match self.hsm_engine.sign_payload(slot_id, key_id, payload) {
+                    Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
             }
 
             "execute_shell" => {

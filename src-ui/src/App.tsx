@@ -29,6 +29,9 @@ import {
   Layers,
   Globe,
   FileCheck,
+  Package,
+  Share2,
+  HardDrive,
 } from 'lucide-react';
 import {
   aegis,
@@ -48,7 +51,7 @@ interface AuditLog {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit' | 'packagePipeline' | 'p2pMarket' | 'hsmPkcs11'>('security');
   const [connected, setConnected] = useState(false);
   const [nonce, setNonce] = useState<string | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
@@ -168,6 +171,138 @@ export default function App() {
   const [wgpuTier, setWgpuTier] = useState<'WGPU_JIT' | 'INTERPRETER' | 'AUTO'>('WGPU_JIT');
   const [wgpuResult, setWgpuResult] = useState<any>(null);
   const [wgpuLoading, setWgpuLoading] = useState(false);
+
+  // Automated Multi-OS Packaging Pipeline State (v0.18)
+  const [pipelineAppName, setPipelineAppName] = useState('AegisEnterprise');
+  const [pipelineAppId, setPipelineAppId] = useState('com.aegis.enterprise');
+  const [pipelineVersion, setPipelineVersion] = useState('0.18.0');
+  const [pipelineSelectedPlatforms, setPipelineSelectedPlatforms] = useState<string[]>(['windows', 'macos', 'linux', 'debian']);
+  const [pipelineReport, setPipelineReport] = useState<any>(null);
+  const [pipelineLoading, setPipelineLoading] = useState(false);
+
+  // Distributed P2P Plugin Marketplace State (v0.18)
+  const [p2pPlugins, setP2pPlugins] = useState<any[]>([]);
+  const [p2pPeers, setP2pPeers] = useState<any[]>([]);
+  const [p2pSelectedPlugin, setP2pSelectedPlugin] = useState<string>('plugin.zk.telemetry-filter');
+  const [p2pSignerDid, setP2pSignerDid] = useState<string>('did:key:z6MkjTBxS4xW88nWD4pQoAky7v3yW5uK6vyuhEB1');
+  const [p2pLoading, setP2pLoading] = useState(false);
+
+  // Hardware Security Module (HSM) PKCS#11 State (v0.18)
+  const [hsmSlotsList, setHsmSlotsList] = useState<any[]>([]);
+  const [hsmSelectedSlot, setHsmSelectedSlot] = useState<number>(0);
+  const [hsmPin, setHsmPin] = useState<string>('123456');
+  const [hsmKeysList, setHsmKeysList] = useState<any[]>([]);
+  const [hsmPayloadToSign, setHsmPayloadToSign] = useState<string>('AUTHENTICATED_TRANSACTION_PAYLOAD_HASH_0x892a');
+  const [hsmSignatureResult, setHsmSignatureResult] = useState<any>(null);
+  const [hsmLoading, setHsmLoading] = useState(false);
+
+  // Handlers for v0.18
+  const handleStagePipeline = async () => {
+    setPipelineLoading(true);
+    const res = await aegis.packagePipelineStage({
+      name: pipelineAppName,
+      appId: pipelineAppId,
+      version: pipelineVersion,
+      platforms: pipelineSelectedPlatforms,
+    });
+    if (res.success && res.data) {
+      setPipelineReport(res.data);
+      addLog('SUCCESS', 'package_pipeline_stage', `Multi-OS bundles staged for ${res.data.artifacts.length} target platform(s)`);
+    } else {
+      addLog('BLOCKED', 'package_pipeline_stage', res.error || 'Pipeline staging failed');
+    }
+    setPipelineLoading(false);
+  };
+
+  const refreshP2pMarket = async () => {
+    setP2pLoading(true);
+    const res = await aegis.p2pMarketList();
+    if (res.success && res.data) {
+      setP2pPlugins(res.data.plugins || []);
+      setP2pPeers(res.data.peers || []);
+      addLog('INFO', 'p2p_market_list', `Discovered ${res.data.plugins.length} P2P plugins across ${res.data.peers.length} active swarm peers`);
+    } else {
+      addLog('BLOCKED', 'p2p_market_list', res.error || 'Failed to list P2P plugins');
+    }
+    setP2pLoading(false);
+  };
+
+  const handleP2pSign = async (pluginId: string) => {
+    setP2pLoading(true);
+    const res = await aegis.p2pMarketSign(pluginId, p2pSignerDid);
+    if (res.success && res.data) {
+      addLog('SUCCESS', 'p2p_market_sign', `Endorsed plugin '${pluginId}' with DID multi-sig signature`);
+      refreshP2pMarket();
+    } else {
+      addLog('BLOCKED', 'p2p_market_sign', res.error || 'Multi-sig endorsement rejected');
+    }
+    setP2pLoading(false);
+  };
+
+  const handleP2pInstall = async (pluginId: string) => {
+    setP2pLoading(true);
+    const res = await aegis.p2pMarketInstall(pluginId);
+    if (res.success && res.data) {
+      addLog('SUCCESS', 'p2p_market_install', `Consensus verified! Downloaded and installed '${pluginId}' from P2P swarm`);
+      refreshP2pMarket();
+    } else {
+      addLog('BLOCKED', 'p2p_market_install', res.error || 'Installation blocked by Zero-Trust policy');
+    }
+    setP2pLoading(false);
+  };
+
+  const refreshHsmSlots = async () => {
+    setHsmLoading(true);
+    const res = await aegis.hsmSlots();
+    if (res.success && res.data) {
+      setHsmSlotsList(res.data.slots || []);
+      addLog('INFO', 'hsm_slots', `Found ${res.data.slots.length} PKCS#11 hardware security module token slots`);
+    } else {
+      addLog('BLOCKED', 'hsm_slots', res.error || 'Failed to query PKCS#11 slots');
+    }
+    setHsmLoading(false);
+  };
+
+  const handleHsmLogin = async () => {
+    setHsmLoading(true);
+    const res = await aegis.hsmLogin(hsmSelectedSlot, hsmPin);
+    if (res.success && res.data) {
+      addLog('SUCCESS', 'hsm_login', `PIN verified! User session opened on PKCS#11 token slot ${hsmSelectedSlot}`);
+      refreshHsmSlots();
+      // Load keys
+      const keysRes = await aegis.hsmKeys(hsmSelectedSlot);
+      if (keysRes.success && keysRes.data) {
+        setHsmKeysList(keysRes.data.keys || []);
+      }
+    } else {
+      addLog('BLOCKED', 'hsm_login', res.error || 'PKCS#11 login authentication failed');
+    }
+    setHsmLoading(false);
+  };
+
+  const handleHsmLogout = async () => {
+    setHsmLoading(true);
+    const res = await aegis.hsmLogout(hsmSelectedSlot);
+    if (res.success) {
+      addLog('INFO', 'hsm_logout', `Session closed on HSM slot ${hsmSelectedSlot}`);
+      setHsmKeysList([]);
+      setHsmSignatureResult(null);
+      refreshHsmSlots();
+    }
+    setHsmLoading(false);
+  };
+
+  const handleHsmSign = async (keyId: string) => {
+    setHsmLoading(true);
+    const res = await aegis.hsmSign(hsmSelectedSlot, keyId, hsmPayloadToSign);
+    if (res.success && res.data) {
+      setHsmSignatureResult(res.data);
+      addLog('SUCCESS', 'hsm_sign', `Hardware signature calculated inside silicon: mechanism=${res.data.mechanism}`);
+    } else {
+      addLog('BLOCKED', 'hsm_sign', res.error || 'Hardware signing failed');
+    }
+    setHsmLoading(false);
+  };
 
   // Vault State (v0.11 Zero-Knowledge Encryption)
   const [vaultFileName, setVaultFileName] = useState('confidential_notes.vault');
@@ -761,7 +896,7 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
-              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.17 BETA</span>
+              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.18 BETA</span>
             </div>
             <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Zero-Trust Framework</div>
           </div>
@@ -1164,6 +1299,50 @@ export default function App() {
           >
             <Zap style={{ width: '18px', height: '18px', color: '#f59e0b' }} />
             WGPU Compute JIT
+          </button>
+
+          <div style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '1px', padding: '8px 12px 4px' }}>v0.18 New</div>
+
+          <button
+            onClick={() => setActiveTab('packagePipeline')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'packagePipeline' ? 'linear-gradient(90deg, rgba(168, 85, 247, 0.25), rgba(168, 85, 247, 0.05))' : 'transparent',
+              color: activeTab === 'packagePipeline' ? '#d8b4fe' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Package style={{ width: '18px', height: '18px', color: '#c084fc' }} />
+            Multi-OS Pipeline
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('p2pMarket'); refreshP2pMarket(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'p2pMarket' ? 'linear-gradient(90deg, rgba(56, 189, 248, 0.25), rgba(56, 189, 248, 0.05))' : 'transparent',
+              color: activeTab === 'p2pMarket' ? '#7dd3fc' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Share2 style={{ width: '18px', height: '18px', color: '#38bdf8' }} />
+            P2P Plugin Market
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('hsmPkcs11'); refreshHsmSlots(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'hsmPkcs11' ? 'linear-gradient(90deg, rgba(236, 72, 153, 0.25), rgba(236, 72, 153, 0.05))' : 'transparent',
+              color: activeTab === 'hsmPkcs11' ? '#f472b6' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <HardDrive style={{ width: '18px', height: '18px', color: '#ec4899' }} />
+            HSM PKCS#11 Enclave
           </button>
 
           <div style={{ marginTop: 'auto', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
@@ -3520,6 +3699,376 @@ export default function App() {
                   ) : (
                     <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic', padding: '40px 0', textAlign: 'center' }}>
                       Click "Execute Compute Kernel" to run the JIT shader compilation benchmark.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {/* TAB: AUTOMATED MULTI-OS PACKAGING PIPELINE (v0.18) */}
+          {activeTab === 'packagePipeline' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#c084fc', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <Package style={{ width: '14px', height: '14px' }} />
+                  Automated Multi-OS Packaging Pipeline • v0.18
+                </div>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#f8fafc', margin: '4px 0 8px' }}>
+                  Cross-Platform Release Compiler
+                </h1>
+                <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, maxWidth: '820px' }}>
+                  One-click automated compilation and bundle staging for macOS DMG (.app container + Info.plist), Linux AppImage (AppDir + AppRun), Debian packages (.deb + DEBIAN/control), and Windows InnoSetup portable distributions.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#f1f5f9', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Settings style={{ width: '16px', height: '16px', color: '#c084fc' }} />
+                    Multi-Platform Staging Configuration
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Application Identifier</label>
+                      <input
+                        type="text"
+                        value={pipelineAppId}
+                        onChange={(e) => setPipelineAppId(e.target.value)}
+                        style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 10px', color: '#e2e8f0', fontSize: '12px', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Binary / App Name</label>
+                        <input
+                          type="text"
+                          value={pipelineAppName}
+                          onChange={(e) => setPipelineAppName(e.target.value)}
+                          style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 10px', color: '#e2e8f0', fontSize: '12px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Version</label>
+                        <input
+                          type="text"
+                          value={pipelineVersion}
+                          onChange={(e) => setPipelineVersion(e.target.value)}
+                          style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 10px', color: '#e2e8f0', fontSize: '12px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Target Packaging Platforms</label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        {[
+                          { id: 'macos', label: '🍎 macOS (.app / DMG)' },
+                          { id: 'linux', label: '🐧 Linux (AppImage)' },
+                          { id: 'debian', label: '📦 Linux (.deb Debian)' },
+                          { id: 'windows', label: '🪟 Windows (InnoSetup)' },
+                        ].map((plat) => (
+                          <label key={plat.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#cbd5e1', cursor: 'pointer', background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '6px' }}>
+                            <input
+                              type="checkbox"
+                              checked={pipelineSelectedPlatforms.includes(plat.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setPipelineSelectedPlatforms([...pipelineSelectedPlatforms, plat.id]);
+                                } else {
+                                  setPipelineSelectedPlatforms(pipelineSelectedPlatforms.filter((p) => p !== plat.id));
+                                }
+                              }}
+                            />
+                            {plat.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleStagePipeline}
+                      disabled={pipelineLoading || pipelineSelectedPlatforms.length === 0}
+                      style={{
+                        marginTop: '8px',
+                        background: 'linear-gradient(135deg, #a855f7, #6366f1)',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '10px 16px',
+                        color: '#fff',
+                        fontWeight: 600,
+                        fontSize: '12px',
+                        cursor: pipelineLoading ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                      }}
+                    >
+                      <RefreshCw style={{ width: '14px', height: '14px' }} className={pipelineLoading ? 'animate-spin' : ''} />
+                      {pipelineLoading ? 'Compiling Multi-OS Bundles...' : 'Run Automated Packaging Pipeline'}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#f1f5f9', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <CheckCircle2 style={{ width: '16px', height: '16px', color: '#34d399' }} />
+                    Packaging Artifacts & Manifest Digests
+                  </div>
+
+                  {pipelineReport ? (
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#34d399', fontWeight: 600, marginBottom: '10px' }}>
+                        ✅ {pipelineReport.artifacts.length} Target Package(s) Successfully Staged in /dist-bundle/multi-os/
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '280px', overflowY: 'auto' }}>
+                        {pipelineReport.artifacts.map((art: any, i: number) => (
+                          <div key={i} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#f1f5f9' }}>{art.platform} • {art.format}</span>
+                              <span style={{ fontSize: '10px', background: 'rgba(16,185,129,0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px' }}>{art.status}</span>
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#64748b', wordBreak: 'break-all' }}>Path: {art.target_file_or_dir}</div>
+                            <div style={{ fontSize: '10px', color: '#818cf8', marginTop: '4px', fontFamily: 'monospace' }}>SHA-256 Digest: {art.manifest_digest.substring(0, 32)}...</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic', padding: '40px 0', textAlign: 'center' }}>
+                      No pipeline run yet. Select target platforms and click "Run Automated Packaging Pipeline".
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: DISTRIBUTED P2P PLUGIN MARKETPLACE (v0.18) */}
+          {activeTab === 'p2pMarket' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <Share2 style={{ width: '14px', height: '14px' }} />
+                  Distributed P2P Plugin Marketplace • v0.18
+                </div>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#f8fafc', margin: '4px 0 8px' }}>
+                  Content-Addressed Decentralized Registry
+                </h1>
+                <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, maxWidth: '820px' }}>
+                  IPFS and BitTorrent info-hash content-addressed plugin discovery with m-of-n decentralized multi-sig validation before runtime installation.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#f1f5f9' }}>
+                      Decentralized Plugin Swarm ({p2pPlugins.length} Packages)
+                    </div>
+                    <button
+                      onClick={refreshP2pMarket}
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', color: '#94a3b8', fontSize: '11px', cursor: 'pointer' }}
+                    >
+                      Refresh Swarm
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {p2pPlugins.map((plugin) => (
+                      <div key={plugin.plugin_id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', padding: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>{plugin.name} <span style={{ fontSize: '11px', color: '#38bdf8' }}>v{plugin.version}</span></div>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>Author: {plugin.author} • Seeders: {plugin.seeders_count}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '10px', background: plugin.verified ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: plugin.verified ? '#34d399' : '#f87171', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                              {plugin.signatures.length}/{plugin.required_signatures} Multi-Sigs
+                            </span>
+                            {plugin.download_status === 'INSTALLED' ? (
+                              <span style={{ fontSize: '11px', color: '#34d399', fontWeight: 600 }}>Installed</span>
+                            ) : (
+                              <button
+                                onClick={() => handleP2pInstall(plugin.plugin_id)}
+                                disabled={p2pLoading || !plugin.verified}
+                                style={{
+                                  background: plugin.verified ? '#0284c7' : 'rgba(255,255,255,0.05)',
+                                  color: plugin.verified ? '#fff' : '#64748b',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '4px 10px',
+                                  fontSize: '11px',
+                                  cursor: plugin.verified ? 'pointer' : 'not-allowed',
+                                }}
+                              >
+                                Install (P2P)
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px' }}>{plugin.description}</div>
+                        <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>IPFS CID: {plugin.cid}</div>
+
+                        <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => handleP2pSign(plugin.plugin_id)}
+                            style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)', color: '#38bdf8', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                          >
+                            + Endorse with DID Signature
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#f1f5f9', marginBottom: '16px' }}>
+                    Active P2P Swarm Peers
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {p2pPeers.map((peer, i) => (
+                      <div key={i} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px', padding: '8px 10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: '#f1f5f9' }}>{peer.peer_id.substring(0, 16)}...</span>
+                          <span style={{ fontSize: '10px', color: '#34d399' }}>{peer.latency_ms} ms</span>
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#64748b' }}>Reputation: {peer.reputation_score}/100</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: HARDWARE SECURITY MODULE (HSM) PKCS#11 (v0.18) */}
+          {activeTab === 'hsmPkcs11' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ec4899', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <HardDrive style={{ width: '14px', height: '14px' }} />
+                  Hardware Security Module (HSM) PKCS#11 Integration • v0.18
+                </div>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#f8fafc', margin: '4px 0 8px' }}>
+                  Tamper-Resistant Cryptographic Silicon
+                </h1>
+                <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, maxWidth: '820px' }}>
+                  Direct native PKCS#11 cryptographic token driver for YubiHSM 2, Nitrokey HSM, and smart card enclaves. Keys are permanently non-extractable and all signing occurs inside hardware.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#f1f5f9' }}>
+                      Connected PKCS#11 Slots & Tokens
+                    </div>
+                    <button
+                      onClick={refreshHsmSlots}
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', color: '#94a3b8', fontSize: '11px', cursor: 'pointer' }}
+                    >
+                      Rescan Bus
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+                    {hsmSlotsList.map((slot) => (
+                      <div
+                        key={slot.slot_id}
+                        onClick={() => setHsmSelectedSlot(slot.slot_id)}
+                        style={{
+                          background: hsmSelectedSlot === slot.slot_id ? 'rgba(236,72,153,0.15)' : 'rgba(0,0,0,0.3)',
+                          border: `1px solid ${hsmSelectedSlot === slot.slot_id ? '#ec4899' : 'rgba(255,255,255,0.05)'}`,
+                          borderRadius: '8px',
+                          padding: '12px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: '#f1f5f9' }}>{slot.model}</span>
+                          <span style={{ fontSize: '10px', background: slot.is_user_logged_in ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: slot.is_user_logged_in ? '#34d399' : '#f87171', padding: '2px 6px', borderRadius: '4px' }}>
+                            {slot.is_user_logged_in ? 'SESSION UNLOCKED' : 'LOCKED'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{slot.label}</div>
+                        <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>Serial: {slot.serial_number} • Vendor: {slot.manufacturer_id}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '14px' }}>
+                    <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Token User PIN Authentication</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="password"
+                        value={hsmPin}
+                        onChange={(e) => setHsmPin(e.target.value)}
+                        placeholder="Token PIN..."
+                        style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 10px', color: '#e2e8f0', fontSize: '12px' }}
+                      />
+                      <button
+                        onClick={handleHsmLogin}
+                        disabled={hsmLoading}
+                        style={{ background: '#ec4899', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 14px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Unlock Token
+                      </button>
+                      <button
+                        onClick={handleHsmLogout}
+                        disabled={hsmLoading}
+                        style={{ background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', fontSize: '11px', cursor: 'pointer' }}
+                      >
+                        Lock
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#f1f5f9', marginBottom: '14px' }}>
+                    Hardware Silicon Keys & On-Chip Signing
+                  </div>
+
+                  {hsmKeysList.length > 0 ? (
+                    <div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                        {hsmKeysList.map((key) => (
+                          <div key={key.key_id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px', padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#f1f5f9' }}>{key.label}</span>
+                              <span style={{ fontSize: '10px', background: 'rgba(236,72,153,0.15)', color: '#f472b6', padding: '2px 6px', borderRadius: '4px' }}>{key.key_type}</span>
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>Key ID: {key.key_id} • Non-Extractable: YES</div>
+                            <button
+                              onClick={() => handleHsmSign(key.key_id)}
+                              disabled={hsmLoading}
+                              style={{ marginTop: '8px', background: 'rgba(236,72,153,0.2)', border: '1px solid rgba(236,72,153,0.4)', color: '#f472b6', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' }}
+                            >
+                              Sign Payload On-Chip
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {hsmSignatureResult && (
+                        <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', padding: '12px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 600, color: '#34d399', marginBottom: '4px' }}>
+                            ✅ Silicon-Bound Assertion Generated ({hsmSignatureResult.mechanism})
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#cbd5e1', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                            Signature: {hsmSignatureResult.signature_hex}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>Token Serial: {hsmSignatureResult.token_serial}</div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic', padding: '40px 0', textAlign: 'center' }}>
+                      Unlock token slot with PIN to read hardware key objects.
                     </div>
                   )}
                 </div>

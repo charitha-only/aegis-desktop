@@ -10,9 +10,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 > **Target Release:** Q1 2027
 
 ### 🚀 Planned Features & Enhancements
-- [ ] **Automated Multi-OS Packaging Pipeline:** One-click automated compilation for macOS DMG and Linux AppImage/Debian packages.
-- [ ] **Distributed P2P Plugin Marketplace:** Content-addressed, IPFS/Bittorrent backed secure plugin registry with decentralized multi-sig verification.
-- [ ] **Hardware Security Module (HSM) PKCS#11 Integration:** Direct support for hardware-based YubiHSM and smart card enclaves.
+- [ ] **Decentralized Zero-Knowledge Identity (DID/VC):** Verifiable credentials and zero-knowledge selective disclosure for user profiles.
+- [ ] **Quantum-Resistant Lattice Cryptography:** Post-quantum ML-KEM (Kyber) and ML-DSA (Dilithium) key exchange and assertions.
+- [ ] **Automated Cross-Enclave Memory Sanitization:** Ephemeral memory wipe handlers using zeroize and guard-page protection.
+
+---
+
+## 🚀 [v0.18.0] - 2026-10-26
+> **The Automated Multi-OS Packaging Pipeline, Distributed P2P Plugin Marketplace & HSM PKCS#11 Enclave Release**
+
+### ✨ Highlights & New Features
+- **Automated Multi-OS Packaging Pipeline (`src-core/src/package_pipeline.rs`):**
+  - One-click multi-platform release compiler supporting Windows, macOS, and Linux from a single configuration.
+  - **macOS Bundler:** Automatic `.app` folder generation, bundle layout (`Contents/MacOS`, `Contents/Resources`), dynamic `Info.plist` creation, and `hdiutil` Apple DMG packaging script generation.
+  - **Linux AppImage:** Complete `.AppDir` layout, embedded `AppRun` binary launcher wrapper, FreeDesktop `.desktop` entries, and portable distribution packaging.
+  - **Linux Debian Package:** Debian control file (`DEBIAN/control`) generation with metadata, architecture declarations, and filesystem mapping (`usr/bin/aegis-core`).
+  - **Windows Portable:** Portable runner script (`launch.bat`) and structured distribution staging.
+  - IPC command: `package_pipeline_stage`.
+  - Full React UI panel: Multi-Platform Staging Configuration with interactive platform selectors, target artifact digests, and one-click compilation.
+- **Distributed P2P Plugin Marketplace (`src-core/src/p2p_market.rs`):**
+  - Content-addressed plugin discovery utilizing SHA-256 IPFS Content Identifiers (CIDs) and BitTorrent info-hashes.
+  - Decentralized multi-signature consensus engine: Plugins require verified threshold m-of-n cryptographic signatures from trusted decentralized identities (DIDs) before installation.
+  - Simulated P2P swarm peer discovery with latency tracking and peer reputation scoring.
+  - Zero-Trust installation verification: Blocks plugins with insufficient or untrusted signatures.
+  - IPC commands: `p2p_market_list`, `p2p_market_sign`, `p2p_market_install`.
+  - Full React UI panel: Decentralized Plugin Swarm explorer, live peer swarm health monitor, one-click DID endorsement, and consensus-verified P2P installation.
+- **Hardware Security Module (HSM) PKCS#11 Integration (`src-core/src/security/hsm_pkcs11.rs`):**
+  - Direct native PKCS#11 cryptographic token driver for YubiHSM 2, Nitrokey HSM, and smart card enclaves.
+  - Non-extractable cryptographic key objects (ECC NIST P-256, RSA-4096, Ed25519) permanently quarantined inside tamper-resistant hardware silicon.
+  - Authenticated user session management (`login_token`, `logout_token`) with PIN verification and session state tracking.
+  - Silicon-bound on-chip signature calculation (`CKM_ECDSA_SHA256_ON_CHIP`): Data digests are signed inside the HSM chip without keys ever entering host memory.
+  - IPC commands: `hsm_slots`, `hsm_login`, `hsm_logout`, `hsm_keys`, `hsm_sign`.
+  - Full React UI panel: Connected PKCS#11 slot browser, token PIN session unlocker, on-chip key inspector, and hardware signature generator.
+
+### 🔐 Security & Privacy Improvements
+- Multi-OS packages staged with SHA-256 cryptographic manifest digests preventing supply-chain tampering.
+- Decentralized P2P plugin marketplace enforces m-of-n multi-sig consensus, eliminating single-point-of-failure vendor compromise.
+- HSM PKCS#11 architecture ensures master signing and encryption keys never touch host OS RAM or disk.
+
+### 🛠️ Internal Changes
+- `src-core/src/package_pipeline.rs` — implemented `MultiOsPipeline`, `TargetPlatform`, and bundle generators for macOS, Linux, Debian, Windows.
+- `src-core/src/p2p_market.rs` — implemented `P2PPluginMarketplace`, IPFS CID validation, and DID multi-sig verification.
+- `src-core/src/security/hsm_pkcs11.rs` — implemented `HsmPkcs11Engine`, PKCS#11 slot registry, PIN login, and on-chip signing.
+- `src-core/src/security/mod.rs` — exported `HsmPkcs11Engine`.
+- `src-core/src/ipc/router.rs` — wired 8 new v0.18 IPC routes (`package_pipeline_stage`, `p2p_market_list`, `p2p_market_sign`, `p2p_market_install`, `hsm_slots`, `hsm_login`, `hsm_logout`, `hsm_keys`, `hsm_sign`).
+- `src-core/src/main.rs` — initialized `MultiOsPipeline`, `P2PPluginMarketplace`, and `HsmPkcs11Engine`.
+- `src-ui/src/aegis-bridge.ts` — updated header to v0.18; added 8 typed bridge methods.
+- `src-ui/src/App.tsx` — added Multi-OS Pipeline, P2P Marketplace, and HSM PKCS#11 sidebar navigation and tab panels.
+- `src-core/Cargo.toml` & `package.json` — version bumped to `0.18.0`.
 
 ---
 
