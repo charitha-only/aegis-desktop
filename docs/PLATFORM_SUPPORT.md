@@ -9,6 +9,7 @@ The product targets Windows, Linux and macOS. This table describes implementatio
 | Packaged app-data directory resolution | `LOCALAPPDATA/AegisDesktop/<app-id>` | `XDG_DATA_HOME/AegisDesktop/<app-id>`; fallback `~/.local/share` | `~/Library/Application Support/AegisDesktop/<app-id>` |
 | Optional embedded application webview | Wry/WebView2 preview; hosted fixture passed | GTK4/WebKit6 preview; virtual-display fixture passed | Wry/WKWebView preview; hosted fixture passed |
 | Opt-in text clipboard writes | Native provider preview | X11 provider preview; native Wayland not enabled | Native provider preview |
+| Optional single-file picker | Windows shell helper preview | XDG Portal helper preview | AppKit helper preview |
 | Retained-session OS lock monitoring | WTS/power adapter; hosted lock test | Not implemented | Not implemented |
 | Installer acceptance | Disposable hosted runner tests | Not implemented | Not implemented |
 | Native portable directory | Supported | Implementation added; native CI acceptance required | Implementation added; native CI acceptance required |
@@ -24,6 +25,8 @@ Window requests are validated before invoking a browser: only local HTTP URLs wi
 Retained vault sessions outside Windows are unavailable until real OS lifecycle monitors exist; fresh-passphrase encrypted-file operations remain available. Platform adapters, supported OS versions, architecture coverage and acceptance criteria must be established before advertising production support.
 
 Clipboard writes require their own default-denied capability and bounded text input. There is no clipboard-read API or guarantee of secret expiry/history removal. See [the clipboard contract and test scope](CLIPBOARD.md).
+
+The optional file picker uses default-denied permission and profile-scoped asynchronous requests. Native provider builds and non-GUI helper tests are distinct from interactive selection/accessibility acceptance, which remains pending. A selected path grants no filesystem access. See [the file-picker contract](FILE_DIALOGS.md).
 
 See [the roadmap](ROADMAP.md) for planned milestones. Existing Windows release checks remain separate so portable checks cannot silently replace installer/signature/lifecycle coverage.
 
