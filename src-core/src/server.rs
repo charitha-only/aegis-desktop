@@ -121,7 +121,12 @@ impl CoreServer {
                 .map(|h| h.value.as_str().to_string());
 
             let is_allowed_origin = match &origin_header {
-                Some(orig) => self.validator.is_allowed(Some(orig)),
+                // With port=0, the bound port differs from the requested one.
+                // The exact application origin is always allowed after Host validation.
+                Some(orig) => {
+                    orig == &format!("http://{}", self.server.server_addr())
+                        || self.validator.is_allowed(Some(orig))
+                }
                 None => true, // direct non-browser native bridge or local test
             };
 

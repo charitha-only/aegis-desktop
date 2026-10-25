@@ -1,6 +1,6 @@
 {
   "name": "Aegis Desktop Application",
-  "version": "0.25.0",
+  "version": "0.25.1",
   "description": "Experimental local desktop application foundation",
   "window": {
     "title": "Aegis Core • Enterprise Desktop",

@@ -27,6 +27,39 @@ mod tempfile {
         }
     }
 }
+
+#[test]
+fn portable_bundles_use_the_native_binary_and_reject_other_targets() {
+    let d = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(d.path().join("src-core/target/release")).unwrap();
+    std::fs::create_dir_all(d.path().join("src-ui/dist")).unwrap();
+    let executable = if cfg!(windows) {
+        "aegis-core.exe"
+    } else {
+        "aegis-core"
+    };
+    std::fs::write(
+        d.path().join("src-core/target/release").join(executable),
+        b"fixture executable",
+    )
+    .unwrap();
+    std::fs::write(d.path().join("src-ui/dist/index.html"), "fixture UI").unwrap();
+    std::fs::write(d.path().join("aegis.config.json"), "{}").unwrap();
+    let mut manifest = crate::bundler::BundleManifest::default();
+    manifest.target_platforms = vec!["unsupported-target".into()];
+    assert!(
+        crate::bundler::BundleEngine::bundle(d.path(), &manifest).is_err(),
+        "Bundler must not label a host binary as a different target"
+    );
+    manifest.target_platforms = vec![std::env::consts::OS.into()];
+    let report = crate::bundler::BundleEngine::bundle(d.path(), &manifest).unwrap();
+    assert!(report.success);
+    assert_eq!(
+        std::fs::read(std::path::Path::new(&report.output_dir).join(executable)).unwrap(),
+        b"fixture executable"
+    );
+    assert_eq!(report.installer_script_path.is_some(), cfg!(windows));
+}
 use super::*;
 #[test]
 fn hardware_providers_fail_closed() {

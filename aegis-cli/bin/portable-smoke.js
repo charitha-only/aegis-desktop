@@ -9,7 +9,10 @@ import {once} from 'node:events';
 // Real release-binary IPC checks; all writes stay in an owned temporary project.
 const binary = path.resolve(process.argv[2] || `src-core/target/release/aegis-core${process.platform === 'win32' ? '.exe' : ''}`);
 const fixture = await mkdtemp(path.join(tmpdir(), 'aegis-portable-'));
-const child = spawn(binary, ['--port=0'], {cwd: fixture, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe']});
+const child = spawn(binary, ['--port=0'], {cwd: fixture, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: {
+  ...process.env, HOME: fixture, LOCALAPPDATA: path.join(fixture, 'local'), APPDATA: path.join(fixture, 'roaming'),
+  XDG_DATA_HOME: path.join(fixture, 'data'), XDG_CONFIG_HOME: path.join(fixture, 'config'), XDG_CACHE_HOME: path.join(fixture, 'cache'),
+}});
 const ended = once(child, 'exit');
 try {
   const base = await new Promise((resolve, reject) => {
@@ -25,6 +28,9 @@ try {
     child.stderr.resume();
   });
   const handshake = await fetch(`${base}/handshake`, {signal: AbortSignal.timeout(5000)}).then(r => r.json());
+  const browserHandshake = await fetch(`${base}/handshake`, {headers: {Origin: base}, signal: AbortSignal.timeout(5000)});
+  assert.equal(browserHandshake.status, 200, 'The actual bound application origin must work with a dynamically allocated port');
+  assert.equal((await fetch(`${base}/handshake`, {headers: {Origin: 'https://untrusted.example'}, signal: AbortSignal.timeout(5000)})).status, 403);
   let seq = 0;
   const call = async (command, payload = {}) => fetch(`${base}/ipc`, {
     method: 'POST', headers: {'Content-Type': 'application/json'},

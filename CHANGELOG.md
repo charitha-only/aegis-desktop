@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.1] - 2026-10-26
+
+- Add native-host portable directories for Linux/macOS while preserving Windows Inno Setup output. Reject unsupported target claims and remove debug/foreign-binary fallback. Native installers/notarized applications are not claimed.
+- Exercise an isolated real portable bundle in three-OS CI; keep all fixture data in temporary directories.
+- Fix same-origin browser requests when the server chooses a dynamic port; retain rejection of unrelated origins.
+- Add a core-only benchmark harness with tested percentile statistics and per-OS CI artifacts. Full UI and physical constrained-device performance gates remain.
+- Record the unshipped native-window prototype's dependency and build blockers rather than relaxing the audit policy.
+
 ## [v0.25.0] - 2026-10-26
 
 - Introduce portable data/config/cache resolution and typed platform IPC interfaces. Document filesystem, permission, case-collision, recovery and unavailable-provider contracts.

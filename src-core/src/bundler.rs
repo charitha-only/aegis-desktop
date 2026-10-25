@@ -44,9 +44,18 @@ impl BundleEngine {
     ///  - `dist-bundle/<AppName>/` — portable distribution directory
     ///  - `dist-bundle/<AppName>-installer.iss` — InnoSetup script (Windows)
     pub fn bundle(project_root: &Path, manifest: &BundleManifest) -> Result<BundleReport, String> {
-        if !cfg!(target_os = "windows") {
-            return Err("UNAVAILABLE: only Windows packaging is supported".into());
+        if !manifest
+            .target_platforms
+            .iter()
+            .any(|target| target == std::env::consts::OS)
+        {
+            return Err("Native bundle target must include the current operating system".into());
         }
+        let executable = if cfg!(windows) {
+            "aegis-core.exe"
+        } else {
+            "aegis-core"
+        };
         for field in [&manifest.name, &manifest.version] {
             if field.is_empty()
                 || !field
@@ -65,7 +74,8 @@ impl BundleEngine {
             return Err("Invalid installer metadata".into());
         }
         if !project_root
-            .join("src-core/target/release/aegis-core.exe")
+            .join("src-core/target/release")
+            .join(executable)
             .is_file()
         {
             return Err("Release binary missing: run npm run build:release first".into());
@@ -95,53 +105,15 @@ impl BundleEngine {
             message: String::new(),
         };
 
-        // 2. Copy Rust binary (src-core/target/release/aegis-core.exe on Windows)
-        let binary_candidates = [
-            project_root
-                .join("src-core")
-                .join("target")
-                .join("release")
-                .join("aegis-core.exe"),
-            project_root
-                .join("src-core")
-                .join("target")
-                .join("release")
-                .join("aegis-core"),
-            project_root
-                .join("src-core")
-                .join("target")
-                .join("debug")
-                .join("aegis-core.exe"),
-            project_root
-                .join("src-core")
-                .join("target")
-                .join("debug")
-                .join("aegis-core"),
-        ];
-
-        let mut binary_bundled = false;
-        for candidate in &binary_candidates {
-            if candidate.exists() {
-                let dest = bundle_root.join("aegis-core.exe");
-                fs::copy(candidate, &dest).map_err(|e| format!("Failed to copy binary: {}", e))?;
-                report
-                    .files_bundled
-                    .push(dest.to_string_lossy().to_string());
-                binary_bundled = true;
-                break;
-            }
-        }
-
-        if !binary_bundled {
-            // Create placeholder note for documentation
-            let note_path = bundle_root.join("BUILD_FIRST.txt");
-            let note = "Run 'cargo build --release' in src-core/ to compile the Rust binary before bundling.\n";
-            fs::write(&note_path, note)
-                .map_err(|e| format!("Failed to write build note: {}", e))?;
-            report
-                .files_bundled
-                .push(note_path.to_string_lossy().to_string());
-        }
+        // Only copy the validated release binary for this host, never a debug/foreign fallback.
+        let binary = project_root
+            .join("src-core/target/release")
+            .join(executable);
+        let destination = bundle_root.join(executable);
+        fs::copy(&binary, &destination).map_err(|e| format!("Failed to copy binary: {e}"))?;
+        report
+            .files_bundled
+            .push(destination.to_string_lossy().into_owned());
 
         // 3. Copy frontend dist/ (src-ui/dist/)
         let frontend_dist = project_root.join("src-ui").join("dist");
@@ -180,26 +152,33 @@ impl BundleEngine {
         fs::write(sandbox_dest.join(".keep"), "")
             .map_err(|e| format!("Failed to write sandbox marker: {}", e))?;
 
-        // 6. Write app launcher batch script (Windows)
-        let launcher_path = bundle_root.join(format!("Launch {}.bat", manifest.name));
-        let launcher_content = format!(
-            "@echo off\r\ntitle {} v{}\r\ncd /d \"%~dp0\"\r\nstart \"\" aegis-core.exe --spawn-window\r\n",
-            manifest.name, manifest.version
-        );
+        let (launcher_path, launcher_content) = if cfg!(windows) {
+            (bundle_root.join(format!("Launch {}.bat", manifest.name)), format!("@echo off\r\ntitle {} v{}\r\ncd /d \"%~dp0\"\r\nstart \"\" aegis-core.exe --spawn-window\r\n", manifest.name, manifest.version))
+        } else {
+            (bundle_root.join("launch.sh"), "#!/bin/sh\ncd \"$(dirname \"$0\")\" || exit 1\nexec ./aegis-core --spawn-window \"$@\"\n".to_string())
+        };
         fs::write(&launcher_path, launcher_content)
-            .map_err(|e| format!("Failed to write launcher script: {}", e))?;
+            .map_err(|e| format!("Failed to write launcher: {e}"))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&launcher_path, fs::Permissions::from_mode(0o700))
+                .map_err(|e| e.to_string())?;
+        }
         report
             .files_bundled
-            .push(launcher_path.to_string_lossy().to_string());
+            .push(launcher_path.to_string_lossy().into_owned());
 
-        // 7. Generate InnoSetup installer script
-        let iss_content = Self::generate_innosetup_script(manifest, &bundle_root);
-        let iss_path = project_root
-            .join("dist-bundle")
-            .join(format!("{}-installer.iss", manifest.name));
-        fs::write(&iss_path, iss_content)
-            .map_err(|e| format!("Failed to write InnoSetup script: {}", e))?;
-        report.installer_script_path = Some(iss_path.to_string_lossy().to_string());
+        // Inno Setup is Windows-only; Unix output is an unsigned portable directory.
+        if cfg!(windows) {
+            let iss_content = Self::generate_innosetup_script(manifest, &bundle_root);
+            let iss_path = project_root
+                .join("dist-bundle")
+                .join(format!("{}-installer.iss", manifest.name));
+            fs::write(&iss_path, iss_content)
+                .map_err(|e| format!("Failed to write InnoSetup script: {e}"))?;
+            report.installer_script_path = Some(iss_path.to_string_lossy().into_owned());
+        }
 
         // 8. Write bundle manifest
         let manifest_json =

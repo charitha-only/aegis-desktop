@@ -10,6 +10,7 @@ The product targets Windows, Linux and macOS. This table describes implementatio
 | Embedded application webview | Not implemented | Not implemented | Not implemented |
 | Retained-session OS lock monitoring | WTS/power adapter; hosted lock test | Not implemented | Not implemented |
 | Installer acceptance | Disposable hosted runner tests | Not implemented | Not implemented |
+| Native portable directory | Supported | Implementation added; native CI acceptance required | Implementation added; native CI acceptance required |
 | Publisher-signed Aegis distribution | Setup available; credentials needed | Not implemented | Not implemented; notarization needed |
 | Physical low-resource device benchmarks | Pending | Pending | Pending |
 
@@ -22,3 +23,5 @@ Window requests are validated before invoking a browser: only local HTTP URLs wi
 Retained vault sessions outside Windows are unavailable until real OS lifecycle monitors exist; fresh-passphrase encrypted-file operations remain available. Platform adapters, supported OS versions, architecture coverage and acceptance criteria must be established before advertising production support.
 
 See [the roadmap](ROADMAP.md) for planned milestones. Existing Windows release checks remain separate so portable checks cannot silently replace installer/signature/lifecycle coverage.
+
+Portable bundles use the host release binary, built UI, configuration and a launcher. Linux/macOS output is an unsigned directory, not an AppImage, Debian package, notarized .app or DMG. No cross-compilation is implied. Execute `node aegis-cli/bin/package-smoke.js` after building the core/UI to bundle and boot a disposable fixture without mixing existing bundle output or application data.
