@@ -34,12 +34,22 @@ impl SecretManager {
         value: &str,
         password: &str,
     ) -> Result<SecretMetadata, String> {
+        if key.is_empty() || key.len() > 128 {
+            return Err("Secret identity must be 1-128 bytes".into());
+        }
         let mut secrets = self.secrets.lock().unwrap();
         if secrets.len() >= 128 && !secrets.contains_key(key) {
             return Err("Secret quota exceeded".into());
         }
         if value.len() > 65536 {
             return Err("Secret exceeds 64 KiB".into());
+        }
+        if let Some(old) = secrets.get(key) {
+            let plain = zeroize::Zeroizing::new(
+                crate::security::VaultEngine::decrypt(&old.envelope, password)
+                    .map_err(|_| "Existing secret password required for replacement")?,
+            );
+            drop(plain);
         }
         let envelope = crate::security::VaultEngine::encrypt(value, password)?;
         let now = SystemTime::now()
@@ -70,6 +80,9 @@ impl SecretManager {
             &s.get(key).ok_or("Secret not found")?.envelope,
             password,
         )
+    }
+    pub fn clear(&self) {
+        self.secrets.lock().unwrap().clear();
     }
     pub fn list_secrets(&self) -> Vec<SecretMetadata> {
         self.secrets

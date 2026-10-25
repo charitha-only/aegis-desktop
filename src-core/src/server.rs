@@ -125,7 +125,9 @@ impl CoreServer {
                 None => true, // direct non-browser native bridge or local test
             };
 
-            let cors_origin = origin_header.clone().unwrap_or_else(|| "*".to_string());
+            let cors_origin = origin_header
+                .clone()
+                .unwrap_or_else(|| format!("http://{}", self.server.server_addr()));
 
             if !is_allowed_origin {
                 let _ = request.respond(Response::empty(StatusCode(403)));
@@ -234,7 +236,11 @@ impl CoreServer {
                     })
                     .to_string();
 
-                    let resp = Response::from_string(payload)
+                    let resp = sensitive_response(payload)
+                        .with_header(Header::from_bytes("Cache-Control", "no-store").unwrap())
+                        .with_header(
+                            Header::from_bytes("X-Content-Type-Options", "nosniff").unwrap(),
+                        )
                         .with_header(
                             Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..])
                                 .unwrap(),
@@ -250,7 +256,21 @@ impl CoreServer {
                 }
 
                 (Method::Post, "/ipc") => {
-                    let mut body = String::new();
+                    let content_type = request
+                        .headers()
+                        .iter()
+                        .find(|h| h.field.equiv("Content-Type"))
+                        .map(|h| h.value.as_str().split(';').next().unwrap_or(""))
+                        .unwrap_or("");
+                    if content_type != "application/json" {
+                        let _ = request.respond(Response::empty(StatusCode(415)));
+                        continue;
+                    }
+                    if request.body_length().is_none_or(|n| n > 1024 * 1024) {
+                        let _ = request.respond(Response::empty(StatusCode(413)));
+                        continue;
+                    }
+                    let mut body = zeroize::Zeroizing::new(String::new());
                     use std::io::Read;
                     if request
                         .as_reader()
@@ -273,7 +293,11 @@ impl CoreServer {
                         };
 
                         let res_json = serde_json::to_string(&ipc_res).unwrap();
-                        let resp = Response::from_string(res_json)
+                        let resp = sensitive_response(res_json)
+                            .with_header(Header::from_bytes("Cache-Control", "no-store").unwrap())
+                            .with_header(
+                                Header::from_bytes("X-Content-Type-Options", "nosniff").unwrap(),
+                            )
                             .with_header(
                                 Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..])
                                     .unwrap(),
@@ -303,4 +327,30 @@ impl CoreServer {
             }
         }
     }
+}
+
+struct WipingBody {
+    bytes: zeroize::Zeroizing<Vec<u8>>,
+    position: usize,
+}
+impl std::io::Read for WipingBody {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let n = buf.len().min(self.bytes.len() - self.position);
+        buf[..n].copy_from_slice(&self.bytes[self.position..self.position + n]);
+        self.position += n;
+        Ok(n)
+    }
+}
+fn sensitive_response(text: String) -> Response<WipingBody> {
+    let length = text.len();
+    Response::new(
+        StatusCode(200),
+        vec![],
+        WipingBody {
+            bytes: zeroize::Zeroizing::new(text.into_bytes()),
+            position: 0,
+        },
+        Some(length),
+        None,
+    )
 }

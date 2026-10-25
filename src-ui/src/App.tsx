@@ -92,7 +92,7 @@ export default function App() {
   // Hardware Security Key / FIDO2 State (v0.14)
   const [hwKeys, setHwKeys] = useState<any[]>([]);
   const [fidoChallenge, setFidoChallenge] = useState<any>(null);
-  const [fidoPin, setFidoPin] = useState('123456');
+  const [fidoPin, setFidoPin] = useState('');
   const [fidoVerificationResult, setFidoVerificationResult] = useState<any>(null);
   const [hwKeyLoading, setHwKeyLoading] = useState(false);
 
@@ -131,8 +131,8 @@ export default function App() {
   // Local encrypted Secrets Manager State (v0.16)
   const [secretsList, setSecretsList] = useState<any[]>([]);
   const [newSecretKey, setNewSecretKey] = useState('PROD_DATABASE_MASTER_URL');
-  const [newSecretValue, setNewSecretValue] = useState('postgres://enterprise_admin:kdf_salted_pass@internal.db:5432/aegis_core');
-  const [secretsMasterPass, setSecretsMasterPass] = useState('AegisKdfEnterpriseRootPass2026!');
+  const [newSecretValue, setNewSecretValue] = useState('');
+  const [secretsMasterPass, setSecretsMasterPass] = useState('');
   const [retrieveSecretKey, setRetrieveSecretKey] = useState('PRIMARY_API_TOKEN');
   const [retrievedSecretVal, setRetrievedSecretVal] = useState<string | null>(null);
   const [secretsLoading, setSecretsLoading] = useState(false);
@@ -191,7 +191,7 @@ export default function App() {
   // Hardware Security Module (HSM) PKCS#11 State (v0.18)
   const [hsmSlotsList, setHsmSlotsList] = useState<any[]>([]);
   const [hsmSelectedSlot, setHsmSelectedSlot] = useState<number>(0);
-  const [hsmPin, setHsmPin] = useState<string>('123456');
+  const [hsmPin, setHsmPin] = useState<string>('');
   const [hsmKeysList, setHsmKeysList] = useState<any[]>([]);
   const [hsmPayloadToSign, setHsmPayloadToSign] = useState<string>('AUTHENTICATED_TRANSACTION_PAYLOAD_HASH_0x892a');
   const [hsmSignatureResult, setHsmSignatureResult] = useState<any>(null);
@@ -308,7 +308,7 @@ export default function App() {
   // Vault State (v0.11 Local encrypted Encryption)
   const [vaultFileName, setVaultFileName] = useState('confidential_notes.vault');
   const [vaultContent, setVaultContent] = useState('TOP_SECRET: Aegis Vault payload encrypted at rest with PBKDF2/SHA-256 and HMAC tags.');
-  const [vaultPassphrase, setVaultPassphrase] = useState('ProfessorAegis2026!');
+  const [vaultPassphrase, setVaultPassphrase] = useState('');
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [vaultRawCiphertext, setVaultRawCiphertext] = useState<string | null>(null);
   const [vaultDecryptedText, setVaultDecryptedText] = useState<string | null>(null);
@@ -691,7 +691,7 @@ export default function App() {
     setSecretsLoading(true);
     const res = await aegis.secretsRetrieve(retrieveSecretKey, secretsMasterPass);
     if (res.success && res.data) {
-      setRetrievedSecretVal(res.data.value);
+      setRetrievedSecretVal(res.data.value);setSecretsMasterPass('');
       addLog('SUCCESS', 'secrets_retrieve', `Decrypted secret '${res.data.key}' successfully`);
     } else {
       setRetrievedSecretVal(null);
@@ -837,11 +837,11 @@ export default function App() {
 
   const handleVaultDecrypt = async () => {
     if (!vaultFileName || !vaultPassphrase) return;
-    addLog('INFO', 'vault_decrypt', `Authenticating HMAC-SHA256 tag and decrypting ${vaultFileName}...`);
+    addLog('INFO', 'vault_decrypt', `Authenticating encrypted vault and decrypting ${vaultFileName}...`);
     const res = await aegis.vaultDecryptRetrieve(vaultFileName, vaultPassphrase);
     if (res.success && res.data) {
-      setVaultDecryptedText(res.data.decryptedContent);
-      addLog('SUCCESS', 'vault_decrypted', 'HMAC tag authenticated & data decrypted successfully!');
+      setVaultDecryptedText(res.data.decryptedContent);setVaultPassphrase('');
+      addLog('SUCCESS', 'vault_decrypted', 'Authenticated encryption verified & data decrypted successfully!');
     } else {
       setVaultDecryptedText(null);
       addLog('BLOCKED', 'vault_auth_failed', res.error || 'Decryption failed: Tag mismatch or incorrect password');
@@ -886,6 +886,15 @@ export default function App() {
       addLog('SUCCESS', 'window_dialog', 'Native system dialog displayed');
     }
   };
+
+  // UI cleanup reduces retention; JavaScript strings cannot be reliably zeroized.
+  useEffect(() => {
+    const clearSensitive = () => {setVaultPassphrase('');setVaultDecryptedText(null);setVaultContent('');setSecretsMasterPass('');setNewSecretValue('');setRetrievedSecretVal(null);};
+    const hidden = () => {if(document.hidden) clearSensitive();};
+    const timer=window.setTimeout(clearSensitive,60000);
+    document.addEventListener('visibilitychange',hidden);window.addEventListener('blur',clearSensitive);
+    return () => {window.clearTimeout(timer);document.removeEventListener('visibilitychange',hidden);window.removeEventListener('blur',clearSensitive);};
+  }, [activeTab, activeProfile, vaultDecryptedText, retrievedSecretVal]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', background: 'radial-gradient(circle at 50% 10%, #1e1e38 0%, #0a0b14 100%)' }}>

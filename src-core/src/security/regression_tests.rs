@@ -144,3 +144,128 @@ fn configured_read_scope_is_enforced() {
     assert!(s.check_fs_read("permitted/a.txt").is_ok());
     assert!(s.check_fs_read("other.txt").is_err());
 }
+
+#[test]
+fn atomic_vault_backup_and_authenticated_overwrite() {
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("test.vault");
+    let first = VaultEngine::encrypt("first", "passphrase123").unwrap();
+    let second = VaultEngine::encrypt("second", "passphrase123").unwrap();
+    crate::storage::atomic_vault_write(&p, first.as_bytes(), "passphrase123").unwrap();
+    assert!(crate::storage::atomic_vault_write(&p, second.as_bytes(), "wrong").is_err());
+    assert_eq!(std::fs::read_to_string(&p).unwrap(), first);
+    crate::storage::atomic_vault_write(&p, second.as_bytes(), "passphrase123").unwrap();
+    assert_eq!(
+        std::fs::read_to_string(crate::storage::backup_path(&p)).unwrap(),
+        first
+    );
+    assert_eq!(std::fs::read_to_string(&p).unwrap(), second);
+    assert!(!std::fs::read_dir(d.path()).unwrap().any(|e| e
+        .unwrap()
+        .file_name()
+        .to_string_lossy()
+        .starts_with(".aegis-tmp-")));
+}
+#[test]
+fn storage_lock_prevents_concurrent_writes() {
+    let d = tempfile::tempdir().unwrap();
+    let lock = std::fs::OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .truncate(false)
+        .open(d.path().join(".aegis-write.lock"))
+        .unwrap();
+    lock.try_lock().unwrap();
+    let p = d.path().join("file");
+    assert!(crate::storage::atomic_write(&p, b"x", false).is_err());
+    assert!(!p.exists());
+    drop(lock);
+    crate::storage::atomic_write(&p, b"x", false).unwrap();
+}
+#[test]
+fn ipc_debug_output_is_redacted() {
+    use crate::ipc::protocol::{IpcRequest, IpcResponse};
+    let req = IpcRequest {
+        id: "1".into(),
+        command: "vault".into(),
+        nonce: "secret_nonce".into(),
+        payload: serde_json::json!({"password":"master_secret"}),
+    };
+    let debug = format!("{req:?}");
+    assert!(!debug.contains("master_secret"));
+    assert!(!debug.contains("secret_nonce"));
+    let response = IpcResponse::ok("1", serde_json::json!({"plaintext":"secret_value"}));
+    assert!(!format!("{response:?}").contains("secret_value"));
+}
+#[test]
+fn reserved_names_are_not_storage_paths() {
+    let d = tempfile::tempdir().unwrap();
+    let s = SecurityEngine::new(CapabilityManifest::default(), d.path());
+    for p in ["CON.txt", "NUL", "sub/COM1.log", ".aegis-write.lock"] {
+        assert!(s.check_fs_write(p).is_err(), "{p}");
+    }
+}
+#[test]
+fn secrets_require_password_to_replace_and_clear() {
+    let s = crate::secrets::SecretManager::new();
+    s.store_secret("k", "first", "passphrase123").unwrap();
+    assert!(s.store_secret("k", "second", "incorrectpass").is_err());
+    assert_eq!(s.retrieve_secret("k", "passphrase123").unwrap(), "first");
+    s.clear();
+    assert!(s.retrieve_secret("k", "passphrase123").is_err());
+}
+#[test]
+fn authentication_failure_limit_resets() {
+    let l = RateLimiter::new(20, 60, 60);
+    for _ in 0..5 {
+        l.record_nonce_failure("sensitive");
+    }
+    assert!(l.is_locked_out("sensitive"));
+    l.clear_nonce_failures("sensitive");
+    assert!(!l.is_locked_out("sensitive"));
+}
+#[test]
+fn bounded_storage_read_rejects_large_file() {
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("large");
+    let f = std::fs::File::create(&p).unwrap();
+    f.set_len(crate::storage::MAX_FILE_BYTES as u64 + 1)
+        .unwrap();
+    assert!(crate::storage::read_bounded(&p).is_err());
+}
+
+#[test]
+fn legacy_v2_parameters_and_short_password_remain_readable() {
+    use chacha20poly1305::{
+        aead::{Aead, Payload},
+        KeyInit, XChaCha20Poly1305, XNonce,
+    };
+    let password = "old-pass";
+    let salt = [7u8; 16];
+    let nonce = [9u8; 24];
+    let mut key = [0u8; 32];
+    argon2::Argon2::default()
+        .hash_password_into(password.as_bytes(), &salt, &mut key)
+        .unwrap();
+    let data = XChaCha20Poly1305::new((&key).into())
+        .encrypt(
+            XNonce::from_slice(&nonce),
+            Payload {
+                msg: b"v0.19 fixture",
+                aad: b"AEGIS_VAULT_V2",
+            },
+        )
+        .unwrap();
+    let envelope = format!(
+        "AEGIS_VAULT_V2:{}:{}:{}",
+        hex::encode(salt),
+        hex::encode(nonce),
+        hex::encode(data)
+    );
+    assert_eq!(
+        VaultEngine::decrypt(&envelope, password).unwrap(),
+        "v0.19 fixture"
+    );
+    assert!(VaultEngine::encrypt("new", password).is_err());
+}

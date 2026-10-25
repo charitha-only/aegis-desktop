@@ -170,9 +170,7 @@ impl ProfileManager {
         let mut saved: Vec<_> = p.values().cloned().collect();
         saved.push(cfg.clone());
         let data = serde_json::to_vec_pretty(&saved).map_err(|e| e.to_string())?;
-        let temp = self.base_dir.join("profiles.json.tmp");
-        fs::write(&temp, data).map_err(|e| e.to_string())?;
-        fs::rename(&temp, self.base_dir.join("profiles.json")).map_err(|e| e.to_string())?;
+        crate::storage::atomic_write(&self.base_dir.join("profiles.json"), &data, false)?;
         p.insert(id.to_string(), cfg.clone());
         Ok(cfg)
     }

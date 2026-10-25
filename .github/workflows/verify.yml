@@ -14,3 +14,20 @@ jobs:
       - run: cargo test --locked --manifest-path src-core/Cargo.toml
       - run: npm ci --prefix src-ui
       - run: npm --prefix src-ui run build
+      - run: npm run bundle
+      - name: Sensitive framework smoke checks against portable binary
+        shell: pwsh
+        run: |
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'aegis-isolated-smoke'
+          $env:AEGIS_BRIDGE_URL = 'http://127.0.0.1:48399'
+          $binary = Join-Path $PWD 'dist-bundle/AegisDesktopApplication/aegis-core.exe'
+          $process = Start-Process -FilePath $binary -ArgumentList '--port=48399' -WindowStyle Hidden -PassThru
+          try {
+            $ready = $false
+            for ($i=0; $i -lt 50; $i++) {
+              try { Invoke-RestMethod "$env:AEGIS_BRIDGE_URL/handshake" | Out-Null; $ready=$true; break } catch { Start-Sleep -Milliseconds 200 }
+            }
+            if (-not $ready) { throw 'Portable core failed to start' }
+            npm run test:sensitive
+            if ($LASTEXITCODE -ne 0) { throw 'Sensitive smoke checks failed' }
+          } finally { Stop-Process -Id $process.Id -ErrorAction SilentlyContinue }

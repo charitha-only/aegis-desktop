@@ -216,6 +216,8 @@ class AegisBridge {
     return this.invoke('vault_encrypt_store', { filename, content, passphrase });
   }
 
+  public async vaultRestoreBackup(filename:string,passphrase:string):Promise<IpcResponse>{return this.invoke('vault_restore_backup',{filename,passphrase});}
+  public async vaultRotatePassphrase(filename:string,oldPassphrase:string,newPassphrase:string):Promise<IpcResponse>{return this.invoke('vault_rotate_passphrase',{filename,oldPassphrase,newPassphrase});}
   public async vaultDecryptRetrieve(filename: string, passphrase: string): Promise<IpcResponse<{ filename: string; decryptedContent: string; integrityVerified: boolean }>> {
     return this.invoke('vault_decrypt_retrieve', { filename, passphrase });
   }

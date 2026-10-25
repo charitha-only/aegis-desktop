@@ -37,6 +37,7 @@ pub struct IpcRouter {
     package_pipeline: Arc<MultiOsPipeline>,
     p2p_market: Arc<P2PPluginMarketplace>,
     hsm_engine: Arc<HsmPkcs11Engine>,
+    sensitive_limiter: crate::security::RateLimiter,
 }
 
 impl IpcRouter {
@@ -75,6 +76,7 @@ impl IpcRouter {
             package_pipeline,
             p2p_market,
             hsm_engine,
+            sensitive_limiter: crate::security::RateLimiter::new(20, 60, 60),
         }
     }
 
@@ -87,6 +89,19 @@ impl IpcRouter {
             );
         }
 
+        if req.command.starts_with("vault_")
+            || req.command == "secrets_store"
+            || req.command == "secrets_retrieve"
+        {
+            if self.sensitive_limiter.is_locked_out("sensitive")
+                || self.sensitive_limiter.check_request().is_err()
+            {
+                return IpcResponse::err(
+                    &req.id,
+                    "Sensitive operation limit reached; retry after 60 seconds",
+                );
+            }
+        }
         // 2. Command Dispatching with Capability Verification
         if req.command.starts_with("hardware_key_")
             || req.command.starts_with("hsm_")
@@ -208,16 +223,42 @@ impl IpcRouter {
                             format!("{}.vault", filename)
                         };
 
+                        // Authenticate replacement before any mutation, including its backup.
+                        if let Ok(existing) = self.security.check_fs_write(&safe_filename) {
+                            if existing.exists() {
+                                let old = match crate::storage::read_bounded(&existing) {
+                                    Ok(v) => v,
+                                    Err(e) => return IpcResponse::err(&req.id, &e),
+                                };
+                                if VaultEngine::decrypt(&old, passphrase)
+                                    .map(zeroize::Zeroizing::new)
+                                    .is_err()
+                                {
+                                    self.sensitive_limiter.record_nonce_failure("sensitive");
+                                    return IpcResponse::err(&req.id,"Vault replacement requires the existing master passphrase; file was not changed");
+                                }
+                            }
+                        }
                         // Store safely inside isolated sandbox
                         if let Err(e) = self.security.check_write_quota(
                             &safe_filename,
-                            encrypted_envelope.len(),
+                            encrypted_envelope.len()
+                                + self
+                                    .security
+                                    .check_fs_read(&safe_filename)
+                                    .ok()
+                                    .and_then(|p| p.metadata().ok())
+                                    .map_or(0, |m| m.len() as usize),
                             self.profile_manager.get_active_profile().max_storage_bytes,
                         ) {
                             return IpcResponse::err(&req.id, &e);
                         }
                         match self.security.check_fs_write(&safe_filename) {
-                            Ok(safe_path) => match fs::write(&safe_path, &encrypted_envelope) {
+                            Ok(safe_path) => match crate::storage::atomic_vault_write(
+                                &safe_path,
+                                encrypted_envelope.as_bytes(),
+                                passphrase,
+                            ) {
                                 Ok(_) => IpcResponse::ok(
                                     &req.id,
                                     json!({
@@ -238,6 +279,117 @@ impl IpcRouter {
                 }
             }
 
+            "vault_rotate_passphrase" => {
+                if let Err(e) = self.security.check_crypto() {
+                    return IpcResponse::err(&req.id, &e);
+                }
+                let file = req
+                    .payload
+                    .get("filename")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if !file.ends_with(".vault") {
+                    return IpcResponse::err(&req.id, "A .vault filename is required");
+                }
+                let old_pass = req
+                    .payload
+                    .get("oldPassphrase")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let new_pass = req
+                    .payload
+                    .get("newPassphrase")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let path = match self.security.check_fs_read(file) {
+                    Ok(p) => p,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+                let envelope = match crate::storage::read_bounded(&path) {
+                    Ok(v) => v,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+                let plain = match VaultEngine::decrypt(&envelope, old_pass) {
+                    Ok(v) => zeroize::Zeroizing::new(v),
+                    Err(e) => {
+                        self.sensitive_limiter.record_nonce_failure("sensitive");
+                        return IpcResponse::err(&req.id, &e);
+                    }
+                };
+                let new = match VaultEngine::encrypt(&plain, new_pass) {
+                    Ok(v) => v,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+                if let Err(e) = self.security.check_write_quota(
+                    file,
+                    new.len() + envelope.len(),
+                    self.profile_manager.get_active_profile().max_storage_bytes,
+                ) {
+                    return IpcResponse::err(&req.id, &e);
+                }
+                let path = match self.security.check_fs_write(file) {
+                    Ok(p) => p,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+                match crate::storage::atomic_vault_write(&path, new.as_bytes(), old_pass) {
+                    Ok(()) => IpcResponse::ok(
+                        &req.id,
+                        json!({"rotated":true,"backupUsesPreviousPassphrase":true}),
+                    ),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+            "vault_restore_backup" => {
+                if let Err(e) = self.security.check_crypto() {
+                    return IpcResponse::err(&req.id, &e);
+                }
+                let file = req
+                    .payload
+                    .get("filename")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if !file.ends_with(".vault") {
+                    return IpcResponse::err(&req.id, "A .vault filename is required");
+                }
+                let pass = req
+                    .payload
+                    .get("passphrase")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let backup = match self.security.check_fs_read(&format!("{file}.bak")) {
+                    Ok(p) => p,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+                let data = match crate::storage::read_bounded(&backup) {
+                    Ok(v) => v,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+                if VaultEngine::decrypt(&data, pass)
+                    .map(zeroize::Zeroizing::new)
+                    .is_err()
+                {
+                    self.sensitive_limiter.record_nonce_failure("sensitive");
+                    return IpcResponse::err(
+                        &req.id,
+                        "Backup authentication failed; no file was changed",
+                    );
+                }
+                if let Err(e) = self.security.check_write_quota(
+                    file,
+                    data.len(),
+                    self.profile_manager.get_active_profile().max_storage_bytes,
+                ) {
+                    return IpcResponse::err(&req.id, &e);
+                }
+                let target = match self.security.check_fs_write(file) {
+                    Ok(p) => p,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+                match crate::storage::atomic_write(&target, data.as_bytes(), false) {
+                    Ok(()) => IpcResponse::ok(&req.id, json!({"restored":true,"filename":file})),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
             "vault_decrypt_retrieve" => {
                 match self.security.check_crypto() {
                     Ok(_) => {
@@ -266,17 +418,24 @@ impl IpcRouter {
 
                         // Read safely from sandbox
                         match self.security.check_fs_read(&safe_filename) {
-                            Ok(safe_path) => match fs::read_to_string(&safe_path) {
+                            Ok(safe_path) => match crate::storage::read_bounded(&safe_path) {
                                 Ok(envelope) => match VaultEngine::decrypt(&envelope, passphrase) {
-                                    Ok(plaintext) => IpcResponse::ok(
-                                        &req.id,
-                                        json!({
-                                            "filename": safe_filename,
-                                            "decryptedContent": plaintext,
-                                            "integrityVerified": true
-                                        }),
-                                    ),
-                                    Err(err) => IpcResponse::err(&req.id, &err),
+                                    Ok(plaintext) => {
+                                        let plaintext = zeroize::Zeroizing::new(plaintext);
+                                        self.sensitive_limiter.clear_nonce_failures("sensitive");
+                                        IpcResponse::ok(
+                                            &req.id,
+                                            json!({
+                                                "filename": safe_filename,
+                                                "decryptedContent": &*plaintext,
+                                                "integrityVerified": true
+                                            }),
+                                        )
+                                    }
+                                    Err(err) => {
+                                        self.sensitive_limiter.record_nonce_failure("sensitive");
+                                        IpcResponse::err(&req.id, &err)
+                                    }
                                 },
                                 Err(err) => IpcResponse::err(
                                     &req.id,
@@ -311,7 +470,7 @@ impl IpcRouter {
                 };
 
                 match self.security.check_fs_read(path) {
-                    Ok(safe_path) => match fs::read_to_string(&safe_path) {
+                    Ok(safe_path) => match crate::storage::read_bounded(&safe_path) {
                         Ok(content) => {
                             IpcResponse::ok(&req.id, json!({ "path": path, "content": content }))
                         }
@@ -328,6 +487,24 @@ impl IpcRouter {
                     Some(p) => p,
                     None => return IpcResponse::err(&req.id, "Missing 'path' parameter"),
                 };
+                if path.to_ascii_lowercase().ends_with(".vault")
+                    || path.to_ascii_lowercase().ends_with(".bak")
+                {
+                    return IpcResponse::err(
+                        &req.id,
+                        "Use authenticated vault operations for vault and backup files",
+                    );
+                }
+                if let Ok(existing) = self.security.check_fs_read(path) {
+                    if crate::storage::read_bounded(&existing)
+                        .is_ok_and(|s| s.starts_with("AEGIS_VAULT_V2:"))
+                    {
+                        return IpcResponse::err(
+                            &req.id,
+                            "Encrypted vault content requires authenticated vault operations",
+                        );
+                    }
+                }
                 let content = match req.payload.get("content").and_then(|c| c.as_str()) {
                     Some(c) => c,
                     None => return IpcResponse::err(&req.id, "Missing 'content' parameter"),
@@ -341,15 +518,17 @@ impl IpcRouter {
                     return IpcResponse::err(&req.id, &e);
                 }
                 match self.security.check_fs_write(path) {
-                    Ok(safe_path) => match fs::write(&safe_path, content) {
-                        Ok(_) => IpcResponse::ok(
-                            &req.id,
-                            json!({ "path": path, "bytesWritten": content.len() }),
-                        ),
-                        Err(err) => {
-                            IpcResponse::err(&req.id, &format!("Failed to write file: {}", err))
+                    Ok(safe_path) => {
+                        match crate::storage::atomic_write(&safe_path, content.as_bytes(), false) {
+                            Ok(_) => IpcResponse::ok(
+                                &req.id,
+                                json!({ "path": path, "bytesWritten": content.len() }),
+                            ),
+                            Err(err) => {
+                                IpcResponse::err(&req.id, &format!("Failed to write file: {}", err))
+                            }
                         }
-                    },
+                    }
                     Err(err) => IpcResponse::err(&req.id, &err),
                 }
             }
@@ -360,6 +539,9 @@ impl IpcRouter {
                     if let Ok(read_dir) = fs::read_dir(sandbox_dir) {
                         for entry in read_dir.flatten() {
                             if let Ok(name) = entry.file_name().into_string() {
+                                if name.starts_with(".aegis-") {
+                                    continue;
+                                }
                                 let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
                                 let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
                                 entries.push(json!({
@@ -786,6 +968,7 @@ impl IpcRouter {
                     Ok(profile) => {
                         let new_sandbox = self.profile_manager.get_active_sandbox_path();
                         self.security.set_sandbox_root(new_sandbox);
+                        self.secret_manager.clear();
                         IpcResponse::ok(
                             &req.id,
                             json!({
@@ -934,11 +1117,7 @@ impl IpcRouter {
                     .get("errorKind")
                     .and_then(|k| k.as_str())
                     .unwrap_or("ControlledDiagnosticTrap");
-                let trace = req
-                    .payload
-                    .get("stackTrace")
-                    .and_then(|s| s.as_str())
-                    .unwrap_or("User initiated air-gap diagnostic capture");
+                let trace = "Application diagnostic event; caller trace omitted to avoid persisting secrets";
                 let report = self.crash_reporter.record_crash(kind, trace);
                 IpcResponse::ok(&req.id, json!(report))
             }

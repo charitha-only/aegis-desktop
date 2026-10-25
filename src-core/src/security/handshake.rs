@@ -2,7 +2,7 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct HandshakeSession {
-    session_token: Mutex<String>,
+    session_token: Mutex<zeroize::Zeroizing<String>>,
     created_at: u64,
 }
 
@@ -18,13 +18,13 @@ impl HandshakeSession {
         let token = hex::encode(random);
 
         Self {
-            session_token: Mutex::new(token),
+            session_token: Mutex::new(zeroize::Zeroizing::new(token)),
             created_at: now,
         }
     }
 
     pub fn get_token(&self) -> String {
-        self.session_token.lock().unwrap().clone()
+        self.session_token.lock().unwrap().to_string()
     }
 
     pub fn validate_nonce(&self, incoming_nonce: &str) -> bool {

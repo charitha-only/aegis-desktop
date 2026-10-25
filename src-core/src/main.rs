@@ -11,6 +11,7 @@ mod profile;
 mod secrets;
 mod security;
 mod server;
+mod storage;
 mod tray;
 mod updater;
 mod wasm;
@@ -134,6 +135,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let security_engine = Arc::new(SecurityEngine::new(manifest, &base_dir));
     let handshake_session = Arc::new(HandshakeSession::new());
     allowed_origins.push(format!("http://127.0.0.1:{port}"));
+    if packaged {
+        allowed_origins = vec![format!("http://127.0.0.1:{port}")];
+        csp="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'".into();
+    }
     let origin_validator = Arc::new(OriginValidator::new(allowed_origins));
 
     // 2b. Initialize Plugin Registry

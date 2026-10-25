@@ -2,10 +2,10 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.19-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.19-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.20-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.20-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/Rust-1.89%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
 [![Vue](https://img.shields.io/badge/Vue.js-3.x-4FC08D?logo=vuedotjs)](https://vuejs.org/)
 [![Svelte](https://img.shields.io/badge/Svelte-5.x-FF3E00?logo=svelte)](https://svelte.dev/)
@@ -16,11 +16,11 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run-in-30-seconds) • [📜 What's New in v0.19 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
+[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run-in-30-seconds) • [📜 What's New in v0.20 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
 
 </div>
 
-> **v0.19.0 status:** This README preserves the original project presentation. Current functionality and limitations are documented in [Security fixes and verification](SECURITY_FIXES.md) and the [v0.19 changelog](CHANGELOG.md). Hardware authentication, HSM/PKCS#11, TPM, biometrics, GPU, P2P, encrypted IPC and auto-updates are unavailable; native macOS/Linux webviews and packages remain unimplemented. Earlier descriptions and performance figures below describe prototype goals and are not verified production guarantees. Windows uses an external browser backend. Vault encryption now uses Argon2id + XChaCha20-Poly1305; legacy V1 migration needs the original version.
+> **v0.20.0 status:** This README preserves the original project presentation. Current functionality and limitations are documented in [Security fixes and verification](SECURITY_FIXES.md) and the [v0.20 changelog](CHANGELOG.md). Hardware authentication, HSM/PKCS#11, TPM, biometrics, GPU, P2P, encrypted IPC and auto-updates are unavailable; native macOS/Linux webviews and packages remain unimplemented. Earlier descriptions and performance figures below describe prototype goals and are not verified production guarantees. Windows uses an external browser backend. Vault encryption now uses Argon2id + XChaCha20-Poly1305; legacy V1 migration needs the original version.
 
 
 ---
@@ -61,13 +61,14 @@ npm run dev
 
 ---
 
-## 📜 Version & Release Notes (`v0.19`)
+## 📜 Version & Release Notes (`v0.20`)
 
-The current version is **`v0.19.0` (Experimental)**.
+The current version is **`v0.20.0` (Experimental)**.
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.19`** | 🟢 **Current Version** | Security and correctness fixes: bounded wasmi runtime, authenticated V2 vaults, Ed25519 manifest verification, hardened IPC/filesystem access, persistent profiles and repaired Windows portable packaging. Unimplemented integrations fail closed. See [verification and limitations](SECURITY_FIXES.md). |
+| **`v0.20`** | 🟢 **Current Version** | Framework hardening for future sensitive-data apps: authenticated atomic vault updates, encrypted backup restore, password rotation, secret-buffer cleanup and restricted packaged IPC. No application or hardware provider is added. See [security review gates](SECURITY_REVIEW.md). |
+| **`v0.19`** | ⚪ **Previous Version** | Security and correctness fixes: bounded wasmi runtime, authenticated V2 vaults, Ed25519 manifest verification, hardened IPC/filesystem access, persistent profiles and repaired Windows portable packaging. Unimplemented integrations fail closed. See [verification and limitations](SECURITY_FIXES.md). |
 | **`v0.18`** | ⚪ **Previous Prototype** | **Multi-OS Pipeline, P2P Marketplace & HSM PKCS#11 Release:** Automated Multi-OS Packaging Pipeline for macOS DMG, Linux AppImage/Debian, and Windows Portable; Distributed P2P Plugin Marketplace with content-addressed IPFS CIDs and decentralized DID multi-sig consensus; Hardware Security Module (HSM) native PKCS#11 driver for YubiHSM 2 and smart cards with non-extractable keys and on-chip signing. 👉 [**View Full v0.18 Changelog**](CHANGELOG.md) |
 | **`v0.17`** | ⚪ *Previous Release* | Native Platform & GPU Acceleration Release: macOS & Linux native WebKit integration via Wry (0.47) + Tao (0.30); TPM 2.0 Remote Attestation Engine with PCR 0/7/10/11 cryptomarkers and AIK quote signing; WGPU-backed GPU-accelerated Wasm JIT compiler (12x–20x speedup). |
 | **`v0.16`** | ⚪ *Previous Release* | Network Firewall Policy Engine with domain-pattern rules, Zero-Trust connection evaluation, Plugin Signature & Provenance verification with cryptographic manifest digests and trusted root authority registry. |
@@ -77,7 +78,7 @@ The current version is **`v0.19.0` (Experimental)**.
 | **`v0.12`** | ⚪ *Previous Release* | Standalone Bundler & Multi-Window Release: One-click native `.exe` bundler & InnoSetup packager, Multi-Window Manager with window registry, new `bundle_status` & `window_list` IPC commands. 👉 [**View v0.12 Notes**](CHANGELOG.md#-v0120---2026-10-25) |
 | **`v0.11`** | ⚪ *Previous Release* | Cryptographic Hardening: Zero-Knowledge Encrypted Vault (PBKDF2/HMAC), Anti-DoS Sliding Window Rate Limiter, Air-Gap privacy shield. 👉 [**View v0.11 Notes**](CHANGELOG.md#-v0110---2026-10-25) |
 | **`v0.10`** | ⚪ *Previous Release* | Initial open-source release with Rust core engine, sandbox filesystem, and React/Vite UI. 👉 [**View v0.10 Notes**](CHANGELOG.md#-v0100---2026-10-25) |
-| **`v0.20`** | 🟡 *Next Roadmap (Q1 2027)* | Decentralized Zero-Knowledge Identity (DID/VC), Post-Quantum Lattice Cryptography (ML-KEM / ML-DSA), Ephemeral Memory Sanitization. 👉 [**View Upcoming Roadmap**](CHANGELOG.md) |
+| **`v0.21`** | 🟡 *Next Roadmap (Q1 2027)* | Decentralized Zero-Knowledge Identity (DID/VC), Post-Quantum Lattice Cryptography (ML-KEM / ML-DSA), Ephemeral Memory Sanitization. 👉 [**View Upcoming Roadmap**](CHANGELOG.md) |
 
 👉 **[Click here to view all Version Updates, Bug Fixes, and Roadmap in CHANGELOG.md](CHANGELOG.md)**
 

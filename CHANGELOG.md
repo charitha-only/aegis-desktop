@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.20.0] - 2026-10-26
+
+### Framework hardening (not a password-manager application)
+- Synchronize and atomically replace file writes; use OS file locks, temporary files and flush-before-rename. Preserve a single encrypted previous vault generation.
+- Require the existing master passphrase before replacing a vault or in-memory secret, including verification inside the vault write lock. Reject plaintext writes to vault/backup files.
+- Add vault_restore_backup and vault_rotate_passphrase primitives. Authenticate backups before restoration; password rotation retains an encrypted backup requiring the previous passphrase.
+- Pin V2 Argon2id parameters for compatibility; clear derived-key buffers, IPC payload strings and owned response buffers on drop. New encryption requires 12-character passphrases, with size limits before KDF/decoding.
+- Redact IPC Debug output; omit caller trace payloads from diagnostic storage; remove prefilled demo credentials and clear sensitive demo UI state on blur/hidden or after 60 seconds.
+- Restrict packaged origins and CSP to the app origin, remove remote font requests, prohibit cached IPC responses and require bounded JSON POST bodies. Limit expensive sensitive operations to 20 per minute, with cooldown after repeated authentication failures.
+- Reserve Windows device/internal storage names, bound stored-file reads, atomically save profile definitions and clear ephemeral secrets on profile switch.
+- Add sensitive-operation live smoke tests and document threat boundaries and release review gates in SECURITY_REVIEW.md. Native hardware providers and encrypted IPC transport remain unavailable; no production-readiness certification is claimed.
+
+---
+
 ## [v0.19.0] - 2026-10-26
 
 ### Security and correctness fixes
@@ -32,7 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## 🔮 [Upcoming Roadmap] - v0.20.0
+## 🔮 [Upcoming Roadmap] - v0.21.0
 > **Target Release:** Q1 2027
 
 ### 🚀 Planned Features & Enhancements

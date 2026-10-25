@@ -1,7 +1,8 @@
 [package]
 name = "aegis-core"
-version = "0.19.0"
+version = "0.20.0"
 edition = "2021"
+rust-version = "1.89"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -12,8 +13,9 @@ wasmi = "0.46"
 ed25519-dalek = "2"
 hex = "0.4"
 getrandom = "0.2"
-argon2 = "0.5"
+argon2 = { version = "0.5", features = ["zeroize"] }
 chacha20poly1305 = "0.10"
+zeroize = { version = "1.9", features = ["derive"] }
 
 [dev-dependencies]
 wat = "1"

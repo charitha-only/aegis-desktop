@@ -30,3 +30,9 @@ Real WebAuthn registration/assertion verification, vendor PKCS#11 providers, pla
 - File and custom profile persisted after process restart; cross-profile file read rejected.
 - npm audit reported zero known vulnerabilities after the Vite/React-plugin upgrade.
 - Generated Inno Setup script was not compiled or tested on a clean Windows installation. Hardware and non-Windows providers remain unavailable.
+
+## v0.20.0 follow-up
+
+See [sensitive-data framework review gates](SECURITY_REVIEW.md) for atomic authenticated vault replacement, encrypted backup/restore, password rotation, secret-buffer cleanup, strict packaged IPC and the remaining production-release requirements. This remains a framework, not a password-manager application.
+
+Local v0.20 validation: 24 Rust regression tests passed; optimized core and production UI builds passed; the isolated portable runtime passed the sensitive smoke suite (authenticated overwrite/backup/rotation, no-cache responses, strict CSP/origins, reserved names and profile secret clearing). Windows CI now repeats the portable sensitive smoke suite. This does not replace the pending independent review described in SECURITY_REVIEW.md.

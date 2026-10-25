@@ -36,7 +36,9 @@ impl RateLimiter {
 
         // Evict timestamps outside sliding window
         let window = self.window_duration;
-        state.request_timestamps.retain(|&t| now.duration_since(t) <= window);
+        state
+            .request_timestamps
+            .retain(|&t| now.duration_since(t) <= window);
 
         if state.request_timestamps.len() >= self.max_requests_per_window {
             return Err(format!(
@@ -54,7 +56,10 @@ impl RateLimiter {
     pub fn record_nonce_failure(&self, origin: &str) -> bool {
         let mut state = self.state.lock().unwrap();
         let now = Instant::now();
-        let entry = state.failed_nonces.entry(origin.to_string()).or_insert((0, now));
+        let entry = state
+            .failed_nonces
+            .entry(origin.to_string())
+            .or_insert((0, now));
 
         if now.duration_since(entry.1) > self.lockout_duration {
             entry.0 = 0; // reset expired penalty
@@ -64,6 +69,10 @@ impl RateLimiter {
         entry.1 = now;
 
         entry.0 >= 5 // Lockout trigger threshold
+    }
+
+    pub fn clear_nonce_failures(&self, origin: &str) {
+        self.state.lock().unwrap().failed_nonces.remove(origin);
     }
 
     /// Checks if an origin is locked out due to suspected brute-force attacks
