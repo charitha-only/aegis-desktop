@@ -27,6 +27,8 @@ import {
   ArrowUpCircle,
   Fingerprint,
   Layers,
+  Globe,
+  FileCheck,
 } from 'lucide-react';
 import {
   aegis,
@@ -46,7 +48,7 @@ interface AuditLog {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig'>('security');
   const [connected, setConnected] = useState(false);
   const [nonce, setNonce] = useState<string | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
@@ -121,6 +123,30 @@ export default function App() {
   const [crashKind, setCrashKind] = useState('assertion');
   const [crashMessage, setCrashMessage] = useState('Simulated sandbox assertion violation in module wasm-crypto-accelerator');
   const [crashLoading, setCrashLoading] = useState(false);
+
+  // Zero-Knowledge Secrets Manager State (v0.16)
+  const [secretsList, setSecretsList] = useState<any[]>([]);
+  const [newSecretKey, setNewSecretKey] = useState('PROD_DATABASE_MASTER_URL');
+  const [newSecretValue, setNewSecretValue] = useState('postgres://enterprise_admin:kdf_salted_pass@internal.db:5432/aegis_core');
+  const [secretsMasterPass, setSecretsMasterPass] = useState('AegisKdfEnterpriseRootPass2026!');
+  const [retrieveSecretKey, setRetrieveSecretKey] = useState('PRIMARY_API_TOKEN');
+  const [retrievedSecretVal, setRetrievedSecretVal] = useState<string | null>(null);
+  const [secretsLoading, setSecretsLoading] = useState(false);
+
+  // Network Firewall Policy Engine State (v0.16)
+  const [firewallRules, setFirewallRules] = useState<any[]>([]);
+  const [evalHost, setEvalHost] = useState('telemetry.tracker.com');
+  const [evalPort, setEvalPort] = useState(443);
+  const [evalResult, setEvalResult] = useState<any>(null);
+  const [firewallLoading, setFirewallLoading] = useState(false);
+
+  // Plugin Signature & Provenance State (v0.16)
+  const [trustedSigners, setTrustedSigners] = useState<any[]>([]);
+  const [testPluginId, setTestPluginId] = useState('crypto-signer-ext');
+  const [testPluginManifest, setTestPluginManifest] = useState('{"name":"crypto-signer-ext","version":"1.0.0","capabilities":["crypto:sha256"]}');
+  const [testPluginSignature, setTestPluginSignature] = useState('signer_aegis_official_sig_e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+  const [sigVerifyResult, setSigVerifyResult] = useState<any>(null);
+  const [sigLoading, setSigLoading] = useState(false);
 
   // Vault State (v0.11 Zero-Knowledge Encryption)
   const [vaultFileName, setVaultFileName] = useState('confidential_notes.vault');
@@ -400,6 +426,98 @@ export default function App() {
     setCrashLoading(false);
   };
 
+  // v0.16 Handlers — Secrets Manager
+  const refreshSecretsList = async () => {
+    setSecretsLoading(true);
+    const res = await aegis.secretsList();
+    if (res.success && res.data) {
+      setSecretsList(res.data.secrets || []);
+      addLog('INFO', 'secrets_list', `${res.data.secrets.length} secret(s) registered under memory-hard KDF`);
+    } else {
+      addLog('BLOCKED', 'secrets_list', res.error || 'Secrets list unavailable');
+    }
+    setSecretsLoading(false);
+  };
+
+  const handleStoreSecret = async () => {
+    if (!newSecretKey || !newSecretValue || !secretsMasterPass) return;
+    setSecretsLoading(true);
+    const res = await aegis.secretsStore(newSecretKey, newSecretValue, secretsMasterPass);
+    if (res.success && res.data) {
+      addLog('SUCCESS', 'secrets_store', `Secret '${res.data.key}' stored (v${res.data.version}) — SHA256 tag: ${res.data.digest_fingerprint.substring(0, 16)}...`);
+      refreshSecretsList();
+    } else {
+      addLog('BLOCKED', 'secrets_store', res.error || 'Failed to store secret');
+    }
+    setSecretsLoading(false);
+  };
+
+  const handleRetrieveSecret = async () => {
+    if (!retrieveSecretKey || !secretsMasterPass) return;
+    setSecretsLoading(true);
+    const res = await aegis.secretsRetrieve(retrieveSecretKey, secretsMasterPass);
+    if (res.success && res.data) {
+      setRetrievedSecretVal(res.data.value);
+      addLog('SUCCESS', 'secrets_retrieve', `Decrypted secret '${res.data.key}' successfully`);
+    } else {
+      setRetrievedSecretVal(null);
+      addLog('BLOCKED', 'secrets_retrieve', res.error || 'Decryption failed: Passphrase invalid or corrupted');
+    }
+    setSecretsLoading(false);
+  };
+
+  // v0.16 Handlers — Network Firewall Policy Engine
+  const refreshFirewallRules = async () => {
+    setFirewallLoading(true);
+    const res = await aegis.firewallRules();
+    if (res.success && res.data) {
+      setFirewallRules(res.data.rules || []);
+      addLog('INFO', 'firewall_rules', `Loaded ${res.data.rules.length} firewall rules (${res.data.mode})`);
+    } else {
+      addLog('BLOCKED', 'firewall_rules', res.error || 'Firewall rules unavailable');
+    }
+    setFirewallLoading(false);
+  };
+
+  const handleEvaluateConnection = async () => {
+    if (!evalHost) return;
+    setFirewallLoading(true);
+    const res = await aegis.firewallEvaluate(evalHost, evalPort);
+    if (res.success && res.data) {
+      setEvalResult(res.data);
+      addLog(res.data.allowed ? 'SUCCESS' : 'BLOCKED', 'firewall_evaluate', `${evalHost}:${evalPort} -> ${res.data.allowed ? 'ALLOWED' : 'BLOCKED'} (${res.data.reason})`);
+    } else {
+      addLog('BLOCKED', 'firewall_evaluate', res.error || 'Evaluation failed');
+    }
+    setFirewallLoading(false);
+  };
+
+  // v0.16 Handlers — Plugin Signature & Provenance
+  const refreshPluginSigners = async () => {
+    setSigLoading(true);
+    const res = await aegis.pluginSigners();
+    if (res.success && res.data) {
+      setTrustedSigners(res.data.trustedSigners || []);
+      addLog('INFO', 'plugin_signers', `Loaded ${res.data.trustedSigners.length} trusted root signers`);
+    } else {
+      addLog('BLOCKED', 'plugin_signers', res.error || 'Failed to load signers');
+    }
+    setSigLoading(false);
+  };
+
+  const handleVerifyPluginManifest = async () => {
+    if (!testPluginId || !testPluginManifest || !testPluginSignature) return;
+    setSigLoading(true);
+    const res = await aegis.pluginVerifyManifest(testPluginId, testPluginManifest, testPluginSignature);
+    if (res.success && res.data) {
+      setSigVerifyResult(res.data);
+      addLog(res.data.valid && res.data.trusted_vendor ? 'SUCCESS' : 'BLOCKED', 'plugin_verify', res.data.message);
+    } else {
+      addLog('BLOCKED', 'plugin_verify', res.error || 'Verification error');
+    }
+    setSigLoading(false);
+  };
+
   useEffect(() => {
     connectToCore();
   }, []);
@@ -545,7 +663,7 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
-              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.15 BETA</span>
+              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.16 BETA</span>
             </div>
             <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Zero-Trust Framework</div>
           </div>
@@ -876,6 +994,50 @@ export default function App() {
           >
             <FileText style={{ width: '18px', height: '18px', color: '#f59e0b' }} />
             Crash Reporter
+          </button>
+
+          <div style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '1px', padding: '8px 12px 4px' }}>v0.16 New</div>
+
+          <button
+            onClick={() => { setActiveTab('secrets'); refreshSecretsList(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'secrets' ? 'linear-gradient(90deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.05))' : 'transparent',
+              color: activeTab === 'secrets' ? '#6ee7b7' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Key style={{ width: '18px', height: '18px', color: '#10b981' }} />
+            Secrets Manager
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('network'); refreshFirewallRules(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'network' ? 'linear-gradient(90deg, rgba(14, 165, 233, 0.25), rgba(14, 165, 233, 0.05))' : 'transparent',
+              color: activeTab === 'network' ? '#7dd3fc' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Globe style={{ width: '18px', height: '18px', color: '#0ea5e9' }} />
+            Network Firewall
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('pluginSig'); refreshPluginSigners(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'pluginSig' ? 'linear-gradient(90deg, rgba(217, 70, 239, 0.25), rgba(217, 70, 239, 0.05))' : 'transparent',
+              color: activeTab === 'pluginSig' ? '#f0abfc' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <FileCheck style={{ width: '18px', height: '18px', color: '#d946ef' }} />
+            Plugin Provenance
           </button>
 
           <div style={{ marginTop: 'auto', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
@@ -2514,6 +2676,337 @@ export default function App() {
                   All crash diagnostics are stored exclusively at <code style={{ color: '#fcd34d' }}>./sandbox/crashes/</code>.
                   There are no outbound network calls, no telemetry endpoints, and no crash-upload background threads.
                   Aegis Desktop never sends any diagnostic data off-device.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* SECRETS MANAGER TAB (v0.16)                                      */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {activeTab === 'secrets' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{ background: 'linear-gradient(135deg, #10b981, #059669)', padding: '6px', borderRadius: '8px', display: 'flex' }}>
+                    <Key style={{ width: '20px', height: '20px', color: '#fff' }} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#f8fafc' }}>Zero-Knowledge Secrets Manager</h2>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>Memory-hard key derivation (1500 rounds) • Versioned secret rotation • Pure in-memory ciphertexts</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Store New Secret */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <Lock style={{ width: '20px', height: '20px', color: '#10b981' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Store / Rotate Secret</h3>
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Secret Key Identifier</label>
+                    <input
+                      type="text"
+                      value={newSecretKey}
+                      onChange={(e) => setNewSecretKey(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Secret Value (Plaintext)</label>
+                    <textarea
+                      value={newSecretValue}
+                      onChange={(e) => setNewSecretValue(e.target.value)}
+                      rows={3}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', resize: 'vertical', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Master Passphrase (KDF Seed)</label>
+                    <input
+                      type="password"
+                      value={secretsMasterPass}
+                      onChange={(e) => setSecretsMasterPass(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleStoreSecret}
+                    disabled={secretsLoading}
+                    style={{ width: '100%', background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                  >
+                    {secretsLoading ? '⏳ Deriving & Encrypting...' : '🔒 Seal Secret in Secure Memory'}
+                  </button>
+                </div>
+
+                {/* Retrieve Secret */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <Key style={{ width: '20px', height: '20px', color: '#10b981' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Decrypt & Retrieve Secret</h3>
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Target Secret Key</label>
+                    <input
+                      type="text"
+                      value={retrieveSecretKey}
+                      onChange={(e) => setRetrieveSecretKey(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleRetrieveSecret}
+                    disabled={secretsLoading}
+                    style={{ width: '100%', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#6ee7b7', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', marginBottom: '16px' }}
+                  >
+                    {secretsLoading ? '⏳ Recomputing KDF...' : '🔓 Decrypt Secret'}
+                  </button>
+
+                  {retrievedSecretVal && (
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600, marginBottom: '4px' }}>Decrypted Plaintext Value:</div>
+                      <div style={{ fontSize: '12px', color: '#f1f5f9', fontFamily: 'monospace', wordBreak: 'break-all' }}>{retrievedSecretVal}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Secrets Table */}
+              <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '12px', padding: '22px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Registered Secrets Register</h3>
+                  <button
+                    onClick={refreshSecretsList}
+                    disabled={secretsLoading}
+                    style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', color: '#6ee7b7', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}
+                  >
+                    {secretsLoading ? '⏳' : '↻ Refresh'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {secretsList.map((sec: any) => (
+                    <div key={sec.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#f1f5f9' }}>{sec.key}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>Fingerprint: {sec.digest_fingerprint?.substring(0, 24)}...</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '11px', background: 'rgba(16,185,129,0.15)', color: '#6ee7b7', padding: '2px 8px', borderRadius: '4px' }}>v{sec.version}</span>
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>{sec.memory_hard_iterations} KDF rounds</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* NETWORK FIREWALL TAB (v0.16)                                     */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {activeTab === 'network' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{ background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', padding: '6px', borderRadius: '8px', display: 'flex' }}>
+                    <Globe style={{ width: '20px', height: '20px', color: '#fff' }} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#f8fafc' }}>Dynamic Network Firewall Policy Engine</h2>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>Zero-trust egress boundary • Telemetry blackholing • Real-time traffic inspection</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Traffic Inspector */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(14,165,233,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <Shield style={{ width: '20px', height: '20px', color: '#0ea5e9' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Test Egress Connection</h3>
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Target Hostname / IP</label>
+                    <input
+                      type="text"
+                      value={evalHost}
+                      onChange={(e) => setEvalHost(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Destination Port</label>
+                    <input
+                      type="number"
+                      value={evalPort}
+                      onChange={(e) => setEvalPort(Number(e.target.value))}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleEvaluateConnection}
+                    disabled={firewallLoading}
+                    style={{ width: '100%', background: 'linear-gradient(135deg, #0284c7, #0369a1)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', marginBottom: '16px' }}
+                  >
+                    {firewallLoading ? '⏳ Inspecting Rules...' : '🛡️ Evaluate Zero-Trust Policy'}
+                  </button>
+
+                  {evalResult && (
+                    <div style={{ background: evalResult.allowed ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${evalResult.allowed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        {evalResult.allowed ? <CheckCircle2 style={{ width: '16px', height: '16px', color: '#34d399' }} /> : <AlertTriangle style={{ width: '16px', height: '16px', color: '#f87171' }} />}
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: evalResult.allowed ? '#34d399' : '#f87171' }}>
+                          Connection {evalResult.allowed ? 'PERMITTED' : 'HARD BLOCKED'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>{evalResult.reason}</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Firewall Rules List */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(14,165,233,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Active Policy Directives</h3>
+                    <button
+                      onClick={refreshFirewallRules}
+                      disabled={firewallLoading}
+                      style={{ background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.25)', color: '#7dd3fc', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}
+                    >
+                      {firewallLoading ? '⏳' : '↻ Refresh'}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {firewallRules.map((r: any) => (
+                      <div key={r.id} style={{ padding: '10px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: '#f1f5f9' }}>{r.domain_pattern}</span>
+                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: r.action === 'BLOCK' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)', color: r.action === 'BLOCK' ? '#f87171' : '#34d399' }}>{r.action}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>{r.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* PLUGIN SIGNATURE & PROVENANCE TAB (v0.16)                        */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {activeTab === 'pluginSig' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{ background: 'linear-gradient(135deg, #d946ef, #c026d3)', padding: '6px', borderRadius: '8px', display: 'flex' }}>
+                    <FileCheck style={{ width: '20px', height: '20px', color: '#fff' }} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#f8fafc' }}>Plugin Signature & Provenance Verification</h2>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>Cryptographic manifest digests • Enterprise root of trust • Tamper-evident extension security</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Verification Sandbox */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(217,70,239,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <ShieldCheck style={{ width: '20px', height: '20px', color: '#d946ef' }} />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Verify Manifest Signature</h3>
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Plugin Identifier</label>
+                    <input
+                      type="text"
+                      value={testPluginId}
+                      onChange={(e) => setTestPluginId(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Raw Manifest JSON</label>
+                    <textarea
+                      value={testPluginManifest}
+                      onChange={(e) => setTestPluginManifest(e.target.value)}
+                      rows={3}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', resize: 'vertical', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Hex Signature Payload</label>
+                    <input
+                      type="text"
+                      value={testPluginSignature}
+                      onChange={(e) => setTestPluginSignature(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleVerifyPluginManifest}
+                    disabled={sigLoading}
+                    style={{ width: '100%', background: 'linear-gradient(135deg, #c026d3, #a21caf)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', marginBottom: '16px' }}
+                  >
+                    {sigLoading ? '⏳ Verifying Provenance...' : '🔏 Authenticate Signer & Digest'}
+                  </button>
+
+                  {sigVerifyResult && (
+                    <div style={{ background: sigVerifyResult.valid && sigVerifyResult.trusted_vendor ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${sigVerifyResult.valid && sigVerifyResult.trusted_vendor ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        {sigVerifyResult.valid && sigVerifyResult.trusted_vendor ? <CheckCircle2 style={{ width: '16px', height: '16px', color: '#34d399' }} /> : <AlertTriangle style={{ width: '16px', height: '16px', color: '#f87171' }} />}
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: sigVerifyResult.valid && sigVerifyResult.trusted_vendor ? '#34d399' : '#f87171' }}>
+                          {sigVerifyResult.valid && sigVerifyResult.trusted_vendor ? 'TRUSTED ENTERPRISE SIGNER' : 'UNTRUSTED / INVALID SIGNATURE'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>{sigVerifyResult.message}</div>
+                      <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>Digest: {sigVerifyResult.computed_digest}</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Trusted Signers Registry */}
+                <div style={{ background: 'rgba(15,23,42,0.75)', border: '1px solid rgba(217,70,239,0.25)', borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc' }}>Trusted Root Authority Registry</h3>
+                    <button
+                      onClick={refreshPluginSigners}
+                      disabled={sigLoading}
+                      style={{ background: 'rgba(217,70,239,0.1)', border: '1px solid rgba(217,70,239,0.25)', color: '#f0abfc', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}
+                    >
+                      {sigLoading ? '⏳' : '↻ Refresh'}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {trustedSigners.map((s: any) => (
+                      <div key={s.key_id} style={{ padding: '10px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: '#f1f5f9' }}>{s.vendor}</span>
+                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'rgba(16,185,129,0.2)', color: '#34d399' }}>TRUSTED</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>Key ID: {s.key_id}</div>
+                        <div style={{ fontSize: '10px', color: '#475569', fontFamily: 'monospace', wordBreak: 'break-all', marginTop: '2px' }}>Fingerprint: {s.public_fingerprint}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

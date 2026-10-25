@@ -1,11 +1,11 @@
 /**
- * Aegis Desktop IPC Bridge Client v0.15
+ * Aegis Desktop IPC Bridge Client v0.16
  * Secure typed communication with Rust Backend Core
  *
- * v0.15 additions:
- *  - BiometricEnclave  — hardware-bound platform auth (Windows Hello / Apple SEP)
- *  - EncryptedStream   — nonce-derived session-key IPC encryption + HMAC
- *  - CrashReporter     — air-gapped zero-telemetry local crash diagnostics
+ * v0.16 additions:
+ *  - SecretManager     — zero-knowledge memory-hard key derivation & versioned secret rotation
+ *  - NetworkPolicy     — dynamic zero-trust firewall policy engine & outbound traffic inspection
+ *  - SignatureVerifier — ECDSA cryptographic manifest provenance verification
  */
 
 export interface IpcResponse<T = any> {
@@ -290,6 +290,37 @@ class AegisBridge {
 
   public async enclaveAuthenticate(reason: string = 'Aegis Desktop identity verification'): Promise<IpcResponse<{ success: boolean; method: string; message: string }>> {
     return this.invoke('enclave_authenticate', { reason });
+  }
+
+  // --- v0.16 Extensions: Zero-Knowledge Secrets Manager ---
+  public async secretsList(): Promise<IpcResponse<{ secrets: Array<{ key: string; version: number; created_at: number; rotated_at?: number; memory_hard_iterations: number; digest_fingerprint: string }> }>> {
+    return this.invoke('secrets_list');
+  }
+
+  public async secretsStore(key: string, value: string, masterPassphrase: string): Promise<IpcResponse<{ key: string; version: number; created_at: number; digest_fingerprint: string }>> {
+    return this.invoke('secrets_store', { key, value, masterPassphrase });
+  }
+
+  public async secretsRetrieve(key: string, masterPassphrase: string): Promise<IpcResponse<{ key: string; value: string }>> {
+    return this.invoke('secrets_retrieve', { key, masterPassphrase });
+  }
+
+  // --- v0.16 Extensions: Dynamic Network Firewall Policy Engine ---
+  public async firewallRules(): Promise<IpcResponse<{ rules: Array<{ id: string; domain_pattern: string; action: string; description: string }>; mode: string }>> {
+    return this.invoke('firewall_rules');
+  }
+
+  public async firewallEvaluate(host: string, port: number = 443): Promise<IpcResponse<{ target_host: string; port: number; allowed: boolean; matched_rule?: string; reason: string }>> {
+    return this.invoke('firewall_evaluate', { host, port });
+  }
+
+  // --- v0.16 Extensions: Plugin Cryptographic Signature & Provenance ---
+  public async pluginSigners(): Promise<IpcResponse<{ trustedSigners: Array<{ key_id: string; vendor: string; public_fingerprint: string; trusted: boolean }> }>> {
+    return this.invoke('plugin_signers');
+  }
+
+  public async pluginVerifyManifest(pluginId: string, manifest: string, signature: string): Promise<IpcResponse<{ plugin_id: string; valid: boolean; trusted_vendor: boolean; signer_vendor?: string; computed_digest: string; message: string }>> {
+    return this.invoke('plugin_verify_manifest', { pluginId, manifest, signature });
   }
 
   // Security Defense Simulators

@@ -1,9 +1,14 @@
 use super::encrypted_stream::EncryptedStream;
 use super::protocol::{IpcRequest, IpcResponse};
 use crate::crash::CrashReporter;
+use crate::network::NetworkPolicyEngine;
 use crate::plugin::PluginRegistry;
 use crate::profile::ProfileManager;
-use crate::security::{BiometricEnclave, HandshakeSession, HardwareKeyEngine, PrivacyShield, SecurityEngine, VaultEngine};
+use crate::secrets::SecretManager;
+use crate::security::{
+    BiometricEnclave, HandshakeSession, HardwareKeyEngine, PrivacyShield, SecurityEngine,
+    SignatureVerifier, VaultEngine,
+};
 use crate::tray::{NotificationConfig, NotificationEngine, TrayDaemon};
 use crate::updater::{AutoUpdater, UpdateManifest};
 use crate::wasm::WasmSandbox;
@@ -22,6 +27,9 @@ pub struct IpcRouter {
     wasm_sandbox: Arc<WasmSandbox>,
     biometric_enclave: Arc<BiometricEnclave>,
     crash_reporter: Arc<CrashReporter>,
+    secret_manager: Arc<SecretManager>,
+    network_engine: Arc<NetworkPolicyEngine>,
+    sig_verifier: Arc<SignatureVerifier>,
 }
 
 impl IpcRouter {
@@ -35,6 +43,9 @@ impl IpcRouter {
         wasm_sandbox: Arc<WasmSandbox>,
         biometric_enclave: Arc<BiometricEnclave>,
         crash_reporter: Arc<CrashReporter>,
+        secret_manager: Arc<SecretManager>,
+        network_engine: Arc<NetworkPolicyEngine>,
+        sig_verifier: Arc<SignatureVerifier>,
     ) -> Self {
         Self {
             security,
@@ -46,6 +57,9 @@ impl IpcRouter {
             wasm_sandbox,
             biometric_enclave,
             crash_reporter,
+            secret_manager,
+            network_engine,
+            sig_verifier,
         }
     }
 
@@ -641,6 +655,86 @@ impl IpcRouter {
                 let trace = req.payload.get("stackTrace").and_then(|s| s.as_str()).unwrap_or("User initiated air-gap diagnostic capture");
                 let report = self.crash_reporter.record_crash(kind, trace);
                 IpcResponse::ok(&req.id, json!(report))
+            }
+
+            // ─── ZERO-KNOWLEDGE SECRETS MANAGER IPC (v0.16) ──────────────────
+
+            "secrets_list" => {
+                let list = self.secret_manager.list_secrets();
+                IpcResponse::ok(&req.id, json!({ "secrets": list }))
+            }
+
+            "secrets_store" => {
+                let key = match req.payload.get("key").and_then(|k| k.as_str()) {
+                    Some(k) => k,
+                    None => return IpcResponse::err(&req.id, "Missing 'key' parameter"),
+                };
+                let value = match req.payload.get("value").and_then(|v| v.as_str()) {
+                    Some(v) => v,
+                    None => return IpcResponse::err(&req.id, "Missing 'value' parameter"),
+                };
+                let master_pass = match req.payload.get("masterPassphrase").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'masterPassphrase' parameter"),
+                };
+                let meta = self.secret_manager.store_secret(key, value, master_pass);
+                IpcResponse::ok(&req.id, json!(meta))
+            }
+
+            "secrets_retrieve" => {
+                let key = match req.payload.get("key").and_then(|k| k.as_str()) {
+                    Some(k) => k,
+                    None => return IpcResponse::err(&req.id, "Missing 'key' parameter"),
+                };
+                let master_pass = match req.payload.get("masterPassphrase").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'masterPassphrase' parameter"),
+                };
+                match self.secret_manager.retrieve_secret(key, master_pass) {
+                    Ok(val) => IpcResponse::ok(&req.id, json!({ "key": key, "value": val })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ─── NETWORK ISOLATION & FIREWALL POLICY IPC (v0.16) ─────────────
+
+            "firewall_rules" => {
+                let rules = self.network_engine.list_rules();
+                IpcResponse::ok(&req.id, json!({ "rules": rules, "mode": "STRICT_ZERO_TRUST" }))
+            }
+
+            "firewall_evaluate" => {
+                let host = match req.payload.get("host").and_then(|h| h.as_str()) {
+                    Some(h) => h,
+                    None => return IpcResponse::err(&req.id, "Missing 'host' parameter"),
+                };
+                let port = req.payload.get("port").and_then(|p| p.as_u64()).unwrap_or(443) as u16;
+                let eval = self.network_engine.evaluate_connection(host, port);
+                IpcResponse::ok(&req.id, json!(eval))
+            }
+
+            // ─── PLUGIN SIGNATURE & PROVENANCE IPC (v0.16) ───────────────────
+
+            "plugin_signers" => {
+                let signers = self.sig_verifier.list_trusted_signers();
+                IpcResponse::ok(&req.id, json!({ "trustedSigners": signers }))
+            }
+
+            "plugin_verify_manifest" => {
+                let plugin_id = match req.payload.get("pluginId").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'pluginId' parameter"),
+                };
+                let manifest = match req.payload.get("manifest").and_then(|m| m.as_str()) {
+                    Some(m) => m,
+                    None => return IpcResponse::err(&req.id, "Missing 'manifest' parameter"),
+                };
+                let sig = match req.payload.get("signature").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'signature' parameter"),
+                };
+                let res = self.sig_verifier.verify_plugin_manifest(plugin_id, manifest, sig);
+                IpcResponse::ok(&req.id, json!(res))
             }
 
             "execute_shell" => {

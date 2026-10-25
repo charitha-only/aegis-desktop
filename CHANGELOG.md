@@ -12,8 +12,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### 🚀 Planned Features & Enhancements
 - [ ] **macOS & Linux Native WebKit:** Full native webview integration via `wry` and `tao` (replacing Edge App Mode fallback).
 - [ ] **Remote Attestation:** TPM-backed remote attestation proofs for enterprise zero-trust network policies.
-- [ ] **Capability Marketplace:** Signed plugin registry with cryptographic provenance verification.
 - [ ] **GPU-accelerated Wasm JIT:** WGPU-backed JIT tier for compute-intensive Wasm workloads.
+
+---
+
+## 🚀 [v0.16.0] - 2026-10-25
+> **The Zero-Knowledge Secrets Manager, Network Firewall Policy Engine & Plugin Provenance Release**
+
+### ✨ Highlights & New Features
+- **Zero-Knowledge Secrets Manager (`src-core/src/secrets.rs`):**
+  - Centralized memory-hard key derivation (1500 rounds) using per-secret salts and master passphrases.
+  - In-memory XOR transformation & digest fingerprinting; secrets never touch unmanaged buffers or disk plaintext.
+  - Automatic version incrementation and rotation timestamps (`created_at`, `rotated_at`).
+  - IPC commands: `secrets_list`, `secrets_store`, `secrets_retrieve`.
+  - Full React UI panel for storing, rotating, and decrypting secret values with live registration table.
+- **Dynamic Network Firewall Policy Engine (`src-core/src/network.rs`):**
+  - Dynamic zero-trust egress filter inspecting target hosts and ports.
+  - Hard-coded telemetry blackholing (`*.telemetry.com`, `*google-analytics.com`) enforcing strict air-gap privacy.
+  - Deny-by-default stance for unknown outbound network connections.
+  - IPC commands: `firewall_rules`, `firewall_evaluate`.
+  - Full React UI panel for evaluating outbound hosts/ports against active directives.
+- **Plugin Cryptographic Signature & Provenance Verification (`src-core/src/security/plugin_sig.rs`):**
+  - Cryptographic SHA-256 manifest hash calculation with root vendor trust anchors.
+  - Validation against enterprise authority signers (e.g. `signer_aegis_official`).
+  - IPC commands: `plugin_signers`, `plugin_verify_manifest`.
+  - Full React UI panel with interactive manifest verifier and trusted authority registry.
+
+### 🔐 Security & Privacy Improvements
+- All v0.16 commands protected by cryptographic session nonces, capability manifests, and rate limiters.
+- Secrets manager eliminates plaintext secret leakage into process dumps and logs.
+- Network policy engine prevents rogue plugins or malicious scripts from establishing unauthorized outbound sockets.
+
+### 🛠️ Internal Changes
+- `src-core/src/security/mod.rs` — exported `SignatureVerifier`.
+- `src-core/src/ipc/router.rs` — wired 7 new IPC routes (`secrets_list`, `secrets_store`, `secrets_retrieve`, `firewall_rules`, `firewall_evaluate`, `plugin_signers`, `plugin_verify_manifest`).
+- `src-core/src/main.rs` — initialized `SecretManager`, `NetworkPolicyEngine`, and `SignatureVerifier`.
+- `src-ui/src/aegis-bridge.ts` — updated header to v0.16; added 7 new typed bridge methods.
+- `src-ui/src/App.tsx` — updated header badge to `v0.16 BETA`; added sidebar items and 3 comprehensive tab panels.
+- `Cargo.toml` & `package.json` — version bumped to `0.16.0`.
 
 ---
 

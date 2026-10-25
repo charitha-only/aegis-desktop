@@ -1,8 +1,10 @@
 mod bundler;
 mod crash;
 mod ipc;
+mod network;
 mod plugin;
 mod profile;
+mod secrets;
 mod security;
 mod server;
 mod tray;
@@ -12,9 +14,14 @@ mod window;
 
 use crash::CrashReporter;
 use ipc::IpcRouter;
+use network::NetworkPolicyEngine;
 use plugin::{PluginRegistry, register_builtin_plugins};
 use profile::ProfileManager;
-use security::{BiometricEnclave, CapabilityManifest, HandshakeSession, HardwareKeyEngine, OriginValidator, SecurityEngine};
+use secrets::SecretManager;
+use security::{
+    BiometricEnclave, CapabilityManifest, HandshakeSession, HardwareKeyEngine, OriginValidator,
+    SecurityEngine, SignatureVerifier,
+};
 use server::CoreServer;
 use std::fs;
 use std::path::Path;
@@ -25,7 +32,7 @@ use window::{WindowConfig, WindowManager};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("     🛡️  AEGIS DESKTOP CORE v0.15.0 • HIGH-SECURITY RUNTIME  ");
+    println!("     🛡️  AEGIS DESKTOP CORE v0.16.0 • HIGH-SECURITY RUNTIME  ");
     println!("============================================================");
 
     // 1. Locate and parse aegis.config.json
@@ -77,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     register_builtin_plugins(&plugin_registry);
 
     // 2c. Initialize Auto-Updater
-    let auto_updater = Arc::new(AutoUpdater::new("0.15.0", &base_dir));
+    let auto_updater = Arc::new(AutoUpdater::new("0.16.0", &base_dir));
 
     // 2d. Initialize v0.14 Subsystems
     let hardware_keys = Arc::new(HardwareKeyEngine::new());
@@ -87,6 +94,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2e. Initialize v0.15 Subsystems
     let biometric_enclave = Arc::new(BiometricEnclave::new());
     let crash_reporter = Arc::new(CrashReporter::new(&base_dir));
+
+    // 2f. Initialize v0.16 Subsystems
+    let secret_manager = Arc::new(SecretManager::new());
+    let network_engine = Arc::new(NetworkPolicyEngine::new());
+    let sig_verifier = Arc::new(SignatureVerifier::new());
 
     let router = Arc::new(IpcRouter::new(
         Arc::clone(&security_engine),
@@ -98,6 +110,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         wasm_sandbox,
         biometric_enclave,
         crash_reporter,
+        secret_manager,
+        network_engine,
+        sig_verifier,
     ));
 
     // 2. Bind the Secure Loopback Bridge
