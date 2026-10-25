@@ -2,7 +2,6 @@
 ///
 /// Provides background daemon mode with OS system tray icon support
 /// and native toast/balloon notifications across Windows, macOS, and Linux.
-
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
@@ -42,90 +41,150 @@ impl NotificationUrgency {
 
 pub struct NotificationEngine;
 
-impl NotificationEngine {
-    /// Send an OS-native notification/toast message.
-    pub fn send(config: &NotificationConfig) -> Result<(), String> {
-        #[cfg(target_os = "windows")]
-        return Self::send_windows(config);
-
-        #[cfg(target_os = "macos")]
-        return Self::send_macos(config);
-
-        #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
-        return Self::send_linux(config);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::platform::Platform;
+    #[test]
+    fn notification_requests_are_bounded_and_do_not_silently_ignore_icons() {
+        let mut config = NotificationConfig {
+            title: "hello".into(),
+            body: "message".into(),
+            icon: None,
+            urgency: NotificationUrgency::Normal,
+            timeout_ms: None,
+        };
+        config.title = "x".repeat(1025);
+        assert!(NotificationEngine::prepare(Platform::Windows, &config).is_err());
+        config.title = "hello".into();
+        config.body = "x".repeat(16385);
+        assert!(NotificationEngine::prepare(Platform::Linux, &config).is_err());
+        config.body = "message".into();
+        config.icon = Some("unimplemented.png".into());
+        assert!(NotificationEngine::prepare(Platform::Macos, &config).is_err());
     }
 
-    /// Windows: Use PowerShell BurntToast-style WinRT toast notification
-    #[cfg(target_os = "windows")]
-    fn send_windows(config: &NotificationConfig) -> Result<(), String> {
-        let title = config.title.replace('\'', "''").replace('"', "");
-        let body = config.body.replace('\'', "''").replace('"', "");
+    #[test]
+    fn notification_text_is_data_on_every_platform() {
+        let config = NotificationConfig {
+            title: "A user's $title <tag>".into(),
+            body: "Unicode: සිංහල\nsecond line".into(),
+            icon: None,
+            urgency: NotificationUrgency::Normal,
+            timeout_ms: None,
+        };
+        for platform in [Platform::Windows, Platform::Macos, Platform::Linux] {
+            let command = NotificationEngine::prepare(platform, &config).unwrap();
+            let args: Vec<_> = command
+                .get_args()
+                .map(|a| a.to_string_lossy().into_owned())
+                .collect();
+            match platform {
+                Platform::Windows => {
+                    let script = args.last().unwrap();
+                    assert!(!script.contains(&config.title));
+                    assert!(!script.contains(&config.body));
+                    let env: Vec<_> = command.get_envs().collect();
+                    assert!(env
+                        .iter()
+                        .any(|(key, value)| *key == "AEGIS_NOTIFICATION_TITLE"
+                            && *value == Some(std::ffi::OsStr::new(&config.title))));
+                }
+                Platform::Macos => {
+                    assert_eq!(
+                        &args[args.len() - 2..],
+                        &[config.title.clone(), config.body.clone()]
+                    );
+                    assert!(!args[1].contains(&config.title));
+                }
+                Platform::Linux => {
+                    assert_eq!(
+                        &args[args.len() - 3..],
+                        &["--".to_string(), config.title.clone(), config.body.clone()]
+                    );
+                }
+            }
+        }
+    }
+}
 
-        // Windows 10/11 Toast Notification via PowerShell WinRT API
-        let script = format!(
-            r#"
+impl NotificationEngine {
+    /// Prepare a native notification command without executing it. Text is always data.
+    pub fn prepare(
+        platform: crate::platform::Platform,
+        config: &NotificationConfig,
+    ) -> Result<Command, String> {
+        if config.title.len() > 1024
+            || config.body.len() > 16384
+            || config.title.contains('\0')
+            || config.body.contains('\0')
+        {
+            return Err("Notification text exceeds limits or contains a null character".into());
+        }
+        if config.icon.is_some() {
+            return Err("Custom notification icons are unavailable".into());
+        }
+        use crate::platform::Platform;
+        let mut command = match platform {
+            Platform::Windows => {
+                let mut command = Command::new("powershell");
+                command.args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", r#"
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
-$template = @"
-<toast>
-  <visual>
-    <binding template='ToastGeneric'>
-      <text>{title}</text>
-      <text>{body}</text>
-    </binding>
-  </visual>
-</toast>
-"@
-$xml = New-Object Windows.Data.Xml.Dom.XmlDocument
-$xml.LoadXml($template)
+$xml = [Windows.Data.Xml.Dom.XmlDocument]::new()
+$xml.LoadXml('<toast><visual><binding template="ToastGeneric"><text/><text/></binding></visual></toast>')
+$nodes = $xml.GetElementsByTagName('text')
+$nodes.Item(0).AppendChild($xml.CreateTextNode($env:AEGIS_NOTIFICATION_TITLE)) | Out-Null
+$nodes.Item(1).AppendChild($xml.CreateTextNode($env:AEGIS_NOTIFICATION_BODY)) | Out-Null
 $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-$notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Aegis Desktop')
-$notifier.Show($toast)
-"#,
-            title = title,
-            body = body,
-        );
-
-        Command::new("powershell")
-            .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script])
-            .spawn()
-            .map_err(|e| format!("Failed to spawn PowerShell notification: {}", e))?;
-
-        Ok(())
-    }
-
-    /// macOS: Use osascript display notification
-    #[cfg(target_os = "macos")]
-    fn send_macos(config: &NotificationConfig) -> Result<(), String> {
-        let script = format!(
-            "display notification \"{}\" with title \"{}\"",
-            config.body.replace('"', "\\\""),
-            config.title.replace('"', "\\\"")
-        );
-        Command::new("osascript")
-            .args(["-e", &script])
-            .spawn()
-            .map_err(|e| format!("osascript failed: {}", e))?;
-        Ok(())
-    }
-
-    /// Linux: Use notify-send (libnotify)
-    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
-    fn send_linux(config: &NotificationConfig) -> Result<(), String> {
-        let mut args = vec![
-            "--urgency".to_string(),
-            config.urgency.as_str().to_string(),
-            config.title.clone(),
-            config.body.clone(),
-        ];
-        if let Some(timeout) = config.timeout_ms {
-            args.push("--expire-time".to_string());
-            args.push(timeout.to_string());
+[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Aegis Desktop').Show($toast)
+"#]);
+                command
+                    .env("AEGIS_NOTIFICATION_TITLE", &config.title)
+                    .env("AEGIS_NOTIFICATION_BODY", &config.body);
+                command
+            }
+            Platform::Macos => {
+                let mut command = Command::new("osascript");
+                command.args(["-e", "on run argv\ndisplay notification (item 2 of argv) with title (item 1 of argv)\nend run", "--", &config.title, &config.body]);
+                command
+            }
+            Platform::Linux => {
+                let mut command = Command::new("notify-send");
+                command.args(["--urgency", config.urgency.as_str()]);
+                if let Some(timeout) = config.timeout_ms {
+                    command.args(["--expire-time", &timeout.to_string()]);
+                }
+                command.args(["--", &config.title, &config.body]);
+                command
+            }
+        };
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000);
         }
-        Command::new("notify-send")
-            .args(&args)
+        Ok(command)
+    }
+
+    /// Success means the notification helper was started, not that a user saw a toast.
+    pub fn send(config: &NotificationConfig) -> Result<(), String> {
+        use crate::platform::Platform;
+        let platform = if cfg!(target_os = "windows") {
+            Platform::Windows
+        } else if cfg!(target_os = "macos") {
+            Platform::Macos
+        } else if cfg!(target_os = "linux") {
+            Platform::Linux
+        } else {
+            return Err("Notifications are unsupported on this OS".into());
+        };
+        let mut child = Self::prepare(platform, config)?
             .spawn()
-            .map_err(|e| format!("notify-send failed: {}", e))?;
+            .map_err(|e| format!("Notification helper failed: {e}"))?;
+        std::thread::spawn(move || {
+            let _ = child.wait();
+        });
         Ok(())
     }
 }

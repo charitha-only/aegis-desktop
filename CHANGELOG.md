@@ -6,7 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [Unreleased]
+## [v0.24.0] - 2026-10-26
+
+- Separate notification text from OS scripts/arguments on all three platforms, bound notification text and reject unimplemented icons. Notification submission means helper startup, not confirmed user-visible delivery.
 
 - Add a portable app-data location API for Windows, Linux and macOS, with deterministic public-interface tests for platform locations, unsafe app IDs and relative roots. Use it during packaged startup while preserving the existing Windows location.
 - Validate local window URL authority/port and reject unsupported modal/kiosk/always-on-top/transparent requests before launching the external-browser backend.
