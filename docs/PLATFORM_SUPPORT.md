@@ -8,6 +8,7 @@ The product targets Windows, Linux and macOS. This table describes implementatio
 | TypeScript/UI build | Native CI | Native CI added | Native CI added |
 | Packaged app-data directory resolution | `LOCALAPPDATA/AegisDesktop/<app-id>` | `XDG_DATA_HOME/AegisDesktop/<app-id>`; fallback `~/.local/share` | `~/Library/Application Support/AegisDesktop/<app-id>` |
 | Optional embedded application webview | Wry/WebView2 preview; hosted fixture passed | GTK4/WebKit6 preview; virtual-display fixture passed | Wry/WKWebView preview; hosted fixture passed |
+| Opt-in text clipboard writes | Native provider preview | X11 provider preview; native Wayland not enabled | Native provider preview |
 | Retained-session OS lock monitoring | WTS/power adapter; hosted lock test | Not implemented | Not implemented |
 | Installer acceptance | Disposable hosted runner tests | Not implemented | Not implemented |
 | Native portable directory | Supported | Implementation added; native CI acceptance required | Implementation added; native CI acceptance required |
@@ -21,6 +22,8 @@ App-data resolution is independent of the working directory and rejects unsafe a
 Window requests are validated before invoking a browser: only local HTTP URLs with a valid port are accepted, and unsupported modal/kiosk/always-on-top/transparent requests return errors. The default backend launches an external browser. Builds with `native-desktop` can select `--native-window`; v0.25.3 passed disposable hosted fixture creation, document readiness, exit and cleanup on all three runner platforms (native workflow 40242908973). This does not establish physical-device, accessibility, multi-display or full interactive acceptance. See [native desktop setup](NATIVE_DESKTOP.md).
 
 Retained vault sessions outside Windows are unavailable until real OS lifecycle monitors exist; fresh-passphrase encrypted-file operations remain available. Platform adapters, supported OS versions, architecture coverage and acceptance criteria must be established before advertising production support.
+
+Clipboard writes require their own default-denied capability and bounded text input. There is no clipboard-read API or guarantee of secret expiry/history removal. See [the clipboard contract and test scope](CLIPBOARD.md).
 
 See [the roadmap](ROADMAP.md) for planned milestones. Existing Windows release checks remain separate so portable checks cannot silently replace installer/signature/lifecycle coverage.
 
