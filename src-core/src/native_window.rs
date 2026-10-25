@@ -174,14 +174,38 @@ pub fn run(
         if smoke {
             let app = app.downgrade();
             let ready = loaded.clone();
-            view.connect_load_changed(move |view, event| {
-                if event == webkit6::LoadEvent::Finished
+            let finished = std::rc::Rc::new(std::cell::Cell::new(false));
+            let title_finished = finished.clone();
+            let title_app = app.clone();
+            let title_ready = ready.clone();
+            view.connect_title_notify(move |view| {
+                if title_finished.get()
                     && view.title().as_deref() == Some("Aegis Native Smoke Fixture")
                 {
-                    ready.set(true);
+                    title_ready.set(true);
                     println!("AEGIS_NATIVE_SMOKE_READY");
-                    if let Some(app) = app.upgrade() {
+                    if let Some(app) = title_app.upgrade() {
                         app.quit();
+                    }
+                }
+            });
+            view.connect_load_failed(|_, _, _, error| {
+                eprintln!("NATIVE_SMOKE_LOAD_FAILED: {error}");
+                false
+            });
+            view.connect_web_process_terminated(|_, reason| {
+                eprintln!("NATIVE_SMOKE_WEB_PROCESS_TERMINATED: {reason:?}");
+            });
+            view.connect_load_changed(move |view, event| {
+                eprintln!("NATIVE_SMOKE_LOAD: {event:?}; title={:?}", view.title());
+                if event == webkit6::LoadEvent::Finished {
+                    finished.set(true);
+                    if view.title().as_deref() == Some("Aegis Native Smoke Fixture") {
+                        ready.set(true);
+                        println!("AEGIS_NATIVE_SMOKE_READY");
+                        if let Some(app) = app.upgrade() {
+                            app.quit();
+                        }
                     }
                 }
             });
