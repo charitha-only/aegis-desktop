@@ -4,8 +4,8 @@ Keep one evidence record per source commit, OS, architecture, package format and
 
 ## v0.26: native application behavior
 
-- Resolve the native Linux dependency risk documented in NATIVE_BACKEND_DECISION.md; audit the dependency graph actually selected for every supported platform.
-- Build and launch embedded windows on Windows, Linux and macOS. Record the installed webview/runtime versions and tested Linux display sessions.
+- Preserve the clean native dependency graph documented in NATIVE_BACKEND_DECISION.md; keep auditing the dependencies selected for supported platforms. The initial Linux dependency blocker is resolved.
+- Extend the passing hosted embedded-window fixtures on Windows, Linux and macOS to physical-device acceptance. Record installed webview/runtime versions and tested Linux display sessions; the Linux hosted fixture uses a virtual display.
 - Implement typed, permission-controlled window, dialog, file-selection, clipboard, notification and lifecycle interfaces. Return errors for unavailable behavior.
 - Verify navigation/popups/downloads, clipboard data handling, keyboard-only use, screen readers, scaling, Unicode and multiple displays.
 - Revoke retained sessions on real lock/suspend/resume; show fail-closed behavior if monitoring fails.
