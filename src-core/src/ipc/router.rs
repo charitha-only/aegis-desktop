@@ -1,8 +1,10 @@
 use super::protocol::{IpcRequest, IpcResponse};
 use crate::plugin::PluginRegistry;
-use crate::security::{HandshakeSession, PrivacyShield, SecurityEngine, VaultEngine};
+use crate::profile::ProfileManager;
+use crate::security::{HandshakeSession, HardwareKeyEngine, PrivacyShield, SecurityEngine, VaultEngine};
 use crate::tray::{NotificationConfig, NotificationEngine, TrayDaemon};
 use crate::updater::{AutoUpdater, UpdateManifest};
+use crate::wasm::WasmSandbox;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -13,6 +15,9 @@ pub struct IpcRouter {
     session: Arc<HandshakeSession>,
     plugins: Arc<PluginRegistry>,
     updater: Arc<AutoUpdater>,
+    hardware_keys: Arc<HardwareKeyEngine>,
+    profile_manager: Arc<ProfileManager>,
+    wasm_sandbox: Arc<WasmSandbox>,
 }
 
 impl IpcRouter {
@@ -21,8 +26,19 @@ impl IpcRouter {
         session: Arc<HandshakeSession>,
         plugins: Arc<PluginRegistry>,
         updater: Arc<AutoUpdater>,
+        hardware_keys: Arc<HardwareKeyEngine>,
+        profile_manager: Arc<ProfileManager>,
+        wasm_sandbox: Arc<WasmSandbox>,
     ) -> Self {
-        Self { security, session, plugins, updater }
+        Self {
+            security,
+            session,
+            plugins,
+            updater,
+            hardware_keys,
+            profile_manager,
+            wasm_sandbox,
+        }
     }
 
     pub fn handle_request(&self, req: IpcRequest) -> IpcResponse {
@@ -35,7 +51,7 @@ impl IpcRouter {
         match req.command.as_str() {
             "get_security_status" => {
                 let status = json!({
-                    "engine": "Aegis Core v0.13 (Rust)",
+                    "engine": "Aegis Core v0.14 (Rust)",
                     "nonceVerified": true,
                     "sandboxEnforced": true,
                     "privacyVaultActive": true,
@@ -46,6 +62,9 @@ impl IpcRouter {
                     "pluginEngineActive": true,
                     "notificationEngineActive": true,
                     "autoUpdaterActive": true,
+                    "hardwareKeyActive": true,
+                    "multiProfileActive": true,
+                    "wasmSandboxActive": true,
                     "activeCapabilities": {
                         "fsRead": true,
                         "fsWrite": true,
@@ -57,7 +76,10 @@ impl IpcRouter {
                         "multiWindow": true,
                         "plugins": true,
                         "notifications": true,
-                        "autoUpdater": true
+                        "autoUpdater": true,
+                        "hardwareKey": true,
+                        "multiProfile": true,
+                        "wasmSandbox": true
                     }
                 });
                 IpcResponse::ok(&req.id, status)
@@ -435,13 +457,13 @@ impl IpcRouter {
                 }
             }
 
-            // ─── PERMISSION MANAGER IPC (v0.13) ────────────────────────────
+            // ─── PERMISSION MANAGER IPC (v0.13 / v0.14) ────────────────────
 
             "permissions_status" => {
                 IpcResponse::ok(&req.id, json!({
-                    "permissionManagerVersion": "v0.13.0",
+                    "permissionManagerVersion": "v0.14.0",
                     "activeCapabilities": {
-                        "fs": { "read": true, "write": true, "paths": ["./sandbox/**"] },
+                        "fs": { "read": true, "write": true, "paths": ["./sandbox/**", "./sandbox_*/**"] },
                         "shell": { "allowed": false, "policy": "PERMANENTLY_REVOKED" },
                         "systemInfo": { "allowed": true },
                         "crypto": { "allowed": true },
@@ -450,12 +472,105 @@ impl IpcRouter {
                         "multiWindow": { "allowed": true },
                         "plugins": { "allowed": true },
                         "notifications": { "allowed": true },
-                        "autoUpdater": { "allowed": true, "autoApply": false }
+                        "autoUpdater": { "allowed": true, "autoApply": false },
+                        "hardwareKey": { "allowed": true, "standard": "FIDO2 / WebAuthn L3" },
+                        "multiProfile": { "allowed": true, "isolation": "STRICT_DIRECTORY" },
+                        "wasmSandbox": { "allowed": true, "memoryLimitMb": 16 }
                     },
                     "policySource": "aegis.config.json",
-                    "runtimeOverridesEnabled": false,
-                    "note": "Runtime permission overrides planned for v0.14+"
+                    "runtimeOverridesEnabled": true,
+                    "note": "Runtime profile isolation active in v0.14.0"
                 }))
+            }
+
+            // ─── HARDWARE SECURITY KEY / FIDO2 IPC (v0.14) ─────────────────
+
+            "hardware_key_list" => {
+                IpcResponse::ok(&req.id, json!({
+                    "keys": self.hardware_keys.list_keys(),
+                    "fido2Active": true,
+                    "subsystem": "FIDO2 / WebAuthn / CTAP2.1"
+                }))
+            }
+
+            "hardware_key_challenge" => {
+                let rp = req.payload.get("relyingParty").and_then(|r| r.as_str()).unwrap_or("aegis.desktop.local");
+                let chal = self.hardware_keys.generate_challenge(rp);
+                IpcResponse::ok(&req.id, json!(chal))
+            }
+
+            "hardware_key_verify" => {
+                let chal_id = match req.payload.get("challengeId").and_then(|c| c.as_str()) {
+                    Some(c) => c,
+                    None => return IpcResponse::err(&req.id, "Missing 'challengeId' parameter"),
+                };
+                let pin = req.payload.get("pin").and_then(|p| p.as_str()).unwrap_or("");
+                match self.hardware_keys.verify_signature(chal_id, pin) {
+                    Ok(resp) => IpcResponse::ok(&req.id, json!(resp)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ─── MULTI-PROFILE ISOLATION IPC (v0.14) ───────────────────────
+
+            "profile_list" => {
+                IpcResponse::ok(&req.id, json!({
+                    "profiles": self.profile_manager.list_profiles(),
+                    "activeProfile": self.profile_manager.get_active_profile()
+                }))
+            }
+
+            "profile_switch" => {
+                let id = match req.payload.get("profileId").and_then(|i| i.as_str()) {
+                    Some(i) => i,
+                    None => return IpcResponse::err(&req.id, "Missing 'profileId' parameter"),
+                };
+                match self.profile_manager.switch_profile(id) {
+                    Ok(profile) => IpcResponse::ok(&req.id, json!({
+                        "switched": true,
+                        "activeProfile": profile
+                    })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "profile_create" => {
+                let id = match req.payload.get("profileId").and_then(|i| i.as_str()) {
+                    Some(i) => i,
+                    None => return IpcResponse::err(&req.id, "Missing 'profileId' parameter"),
+                };
+                let name = req.payload.get("name").and_then(|n| n.as_str()).unwrap_or(id);
+                let desc = req.payload.get("description").and_then(|d| d.as_str()).unwrap_or("Custom isolated profile");
+                match self.profile_manager.create_profile(id, name, desc) {
+                    Ok(profile) => IpcResponse::ok(&req.id, json!({
+                        "created": true,
+                        "profile": profile
+                    })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ─── WASM PLUGIN SANDBOX IPC (v0.14) ───────────────────────────
+
+            "wasm_list" => {
+                IpcResponse::ok(&req.id, json!({
+                    "modules": self.wasm_sandbox.list_modules(),
+                    "vmStatus": "OPERATIONAL",
+                    "gasMeterEnabled": true
+                }))
+            }
+
+            "wasm_execute" => {
+                let module_id = match req.payload.get("moduleId").and_then(|m| m.as_str()) {
+                    Some(m) => m,
+                    None => return IpcResponse::err(&req.id, "Missing 'moduleId' parameter"),
+                };
+                let default_input = json!({});
+                let input_payload = req.payload.get("input").unwrap_or(&default_input);
+                match self.wasm_sandbox.execute_module(module_id, input_payload) {
+                    Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
             }
 
             "execute_shell" => {

@@ -25,6 +25,8 @@ import {
   Bell,
   Settings,
   ArrowUpCircle,
+  Fingerprint,
+  Layers,
 } from 'lucide-react';
 import {
   aegis,
@@ -44,7 +46,7 @@ interface AuditLog {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'diagnostics' | 'logs'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs'>('security');
   const [connected, setConnected] = useState(false);
   const [nonce, setNonce] = useState<string | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
@@ -80,6 +82,27 @@ export default function App() {
   // Auto-Updater State (v0.13)
   const [updaterStatus, setUpdaterStatus] = useState<any>(null);
   const [updaterLoading, setUpdaterLoading] = useState(false);
+
+  // Hardware Security Key / FIDO2 State (v0.14)
+  const [hwKeys, setHwKeys] = useState<any[]>([]);
+  const [fidoChallenge, setFidoChallenge] = useState<any>(null);
+  const [fidoPin, setFidoPin] = useState('123456');
+  const [fidoVerificationResult, setFidoVerificationResult] = useState<any>(null);
+  const [hwKeyLoading, setHwKeyLoading] = useState(false);
+
+  // Multi-Profile Isolation State (v0.14)
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [activeProfile, setActiveProfile] = useState<any>(null);
+  const [newProfileId, setNewProfileId] = useState('work_vault');
+  const [newProfileName, setNewProfileName] = useState('Work Confidential Sandbox');
+  const [newProfileDesc, setNewProfileDesc] = useState('Isolated workspace for enterprise documents and secrets');
+
+  // Wasm Plugin VM Sandbox State (v0.14)
+  const [wasmModules, setWasmModules] = useState<any[]>([]);
+  const [selectedWasmModule, setSelectedWasmModule] = useState('wasm-crypto-accelerator');
+  const [wasmInputPayload, setWasmInputPayload] = useState('{"algorithm": "sha256-vector", "data": "Aegis Zero Trust 2026"}');
+  const [wasmExecResult, setWasmExecResult] = useState<any>(null);
+  const [wasmLoading, setWasmLoading] = useState(false);
 
   // Vault State (v0.11 Zero-Knowledge Encryption)
   const [vaultFileName, setVaultFileName] = useState('confidential_notes.vault');
@@ -195,6 +218,92 @@ export default function App() {
       addLog('INFO', 'updater_status', `Auto-Updater ${res.data.autoUpdaterVersion} queried`);
     }
     setUpdaterLoading(false);
+  };
+
+  // v0.14 Handlers
+  const refreshHardwareKeys = async () => {
+    setHwKeyLoading(true);
+    const res = await aegis.hardwareKeyList();
+    if (res.success && res.data) {
+      setHwKeys(res.data.keys || []);
+      addLog('INFO', 'hardware_key_list', `${res.data.keys?.length || 0} hardware token(s) detected via CTAP2.1`);
+    }
+    setHwKeyLoading(false);
+  };
+
+  const handleGenerateFidoChallenge = async () => {
+    setHwKeyLoading(true);
+    const res = await aegis.hardwareKeyChallenge('aegis.desktop.local');
+    if (res.success && res.data) {
+      setFidoChallenge(res.data);
+      setFidoVerificationResult(null);
+      addLog('SUCCESS', 'hardware_key_challenge', `FIDO2 assertion challenge issued: ${res.data.challenge_id}`);
+    }
+    setHwKeyLoading(false);
+  };
+
+  const handleVerifyFidoKey = async () => {
+    if (!fidoChallenge?.challenge_id) return;
+    setHwKeyLoading(true);
+    const res = await aegis.hardwareKeyVerify(fidoChallenge.challenge_id, fidoPin);
+    if (res.success && res.data) {
+      setFidoVerificationResult(res.data);
+      addLog('SUCCESS', 'hardware_key_verify', `FIDO2 touch & PIN assertion verified: sig=${res.data.signature_hex?.substring(0, 16)}...`);
+    } else {
+      addLog('BLOCKED', 'hardware_key_verify', res.error || 'FIDO2 verification failed');
+    }
+    setHwKeyLoading(false);
+  };
+
+  const refreshProfiles = async () => {
+    const res = await aegis.profileList();
+    if (res.success && res.data) {
+      setProfiles(res.data.profiles || []);
+      setActiveProfile(res.data.activeProfile);
+      addLog('INFO', 'profile_list', `Active profile: ${res.data.activeProfile?.name}`);
+    }
+  };
+
+  const handleSwitchProfile = async (profileId: string) => {
+    const res = await aegis.profileSwitch(profileId);
+    if (res.success && res.data) {
+      setActiveProfile(res.data.activeProfile);
+      addLog('SUCCESS', 'profile_switch', `Switched to profile: ${res.data.activeProfile?.name}`);
+      refreshProfiles();
+    }
+  };
+
+  const handleCreateProfile = async () => {
+    if (!newProfileId.trim()) return;
+    const res = await aegis.profileCreate(newProfileId, newProfileName, newProfileDesc);
+    if (res.success && res.data) {
+      addLog('SUCCESS', 'profile_create', `Created isolated profile: ${res.data.profile?.name}`);
+      refreshProfiles();
+    }
+  };
+
+  const refreshWasmModules = async () => {
+    setWasmLoading(true);
+    const res = await aegis.wasmList();
+    if (res.success && res.data) {
+      setWasmModules(res.data.modules || []);
+      addLog('INFO', 'wasm_list', `${res.data.modules?.length || 0} Wasm modules loaded in VM sandbox`);
+    }
+    setWasmLoading(false);
+  };
+
+  const handleExecuteWasm = async () => {
+    let payload = {};
+    try { payload = JSON.parse(wasmInputPayload); } catch { payload = {}; }
+    setWasmLoading(true);
+    const res = await aegis.wasmExecute(selectedWasmModule, payload);
+    if (res.success && res.data) {
+      setWasmExecResult(res.data);
+      addLog('SUCCESS', 'wasm_execute', `Executed module '${selectedWasmModule}': ${res.data.gas_consumed} gas used`);
+    } else {
+      addLog('BLOCKED', 'wasm_execute', res.error || 'Wasm execution failed');
+    }
+    setWasmLoading(false);
   };
 
   useEffect(() => {
@@ -574,17 +683,61 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => { setActiveTab('updater' as any); refreshUpdaterStatus(); }}
+            onClick={() => { setActiveTab('updater'); refreshUpdaterStatus(); }}
             style={{
               display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
               borderRadius: '8px', border: 'none',
-              background: (activeTab as string) === 'updater' ? 'linear-gradient(90deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.05))' : 'transparent',
-              color: (activeTab as string) === 'updater' ? '#7dd3fc' : '#94a3b8',
+              background: activeTab === 'updater' ? 'linear-gradient(90deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.05))' : 'transparent',
+              color: activeTab === 'updater' ? '#7dd3fc' : '#94a3b8',
               cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
             }}
           >
             <ArrowUpCircle style={{ width: '18px', height: '18px', color: '#38bdf8' }} />
             Auto-Updater
+          </button>
+
+          <div style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '1px', padding: '8px 12px 4px' }}>v0.14 New</div>
+
+          <button
+            onClick={() => { setActiveTab('hardwareKey'); refreshHardwareKeys(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'hardwareKey' ? 'linear-gradient(90deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.05))' : 'transparent',
+              color: activeTab === 'hardwareKey' ? '#c084fc' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Fingerprint style={{ width: '18px', height: '18px', color: '#c084fc' }} />
+            Hardware Key (FIDO2)
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('profiles'); refreshProfiles(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'profiles' ? 'linear-gradient(90deg, rgba(236, 72, 153, 0.2), rgba(236, 72, 153, 0.05))' : 'transparent',
+              color: activeTab === 'profiles' ? '#f472b6' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Layers style={{ width: '18px', height: '18px', color: '#f472b6' }} />
+            Profile Isolation
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('wasm'); refreshWasmModules(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'wasm' ? 'linear-gradient(90deg, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05))' : 'transparent',
+              color: activeTab === 'wasm' ? '#2dd4bf' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <Cpu style={{ width: '18px', height: '18px', color: '#2dd4bf' }} />
+            Wasm VM Sandbox
           </button>
 
           <div style={{ marginTop: 'auto', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
@@ -1503,6 +1656,316 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4g: HARDWARE SECURITY KEY / FIDO2 (NEW IN v0.14) */}
+          {activeTab === 'hardwareKey' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  Hardware Security Key & FIDO2 / WebAuthn Integration
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Cryptographic challenge-response verification powered by hardware security modules (HSM, YubiKey, Titan Key) via WebAuthn Level 3 standards.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Enrolled Keys */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Fingerprint style={{ width: '16px', height: '16px', color: '#c084fc' }} />
+                      Enrolled Security Tokens ({hwKeys.length})
+                    </h3>
+                    <button
+                      onClick={refreshHardwareKeys}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                    >
+                      <RefreshCw style={{ width: '14px', height: '14px' }} />
+                    </button>
+                  </div>
+
+                  {hwKeyLoading && hwKeys.length === 0 ? (
+                    <div style={{ color: '#64748b', fontSize: '13px' }}>Querying CTAP2.1 bus...</div>
+                  ) : hwKeys.length === 0 ? (
+                    <div style={{ color: '#64748b', fontSize: '13px' }}>No physical security keys detected. Click refresh to query Rust Core.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {hwKeys.map((k) => (
+                        <div key={k.key_id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(192,132,252,0.2)', borderRadius: '8px', padding: '14px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#e9d5ff' }}>{k.model}</span>
+                            <span style={{ fontSize: '10px', background: 'rgba(192,132,252,0.15)', color: '#c084fc', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>HSM ENROLLED</span>
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>Vendor: {k.manufacturer}</div>
+                          <div style={{ fontSize: '11px', color: '#a855f7' }}>Protocol: {k.protocol}</div>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                            <span style={{ fontSize: '10px', background: 'rgba(52,211,153,0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px' }}>✓ User Touch Required</span>
+                            <span style={{ fontSize: '10px', background: 'rgba(56,189,248,0.15)', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px' }}>✓ PIN Protection</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Challenge & Assertion Tester */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Shield style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                    WebAuthn Challenge / Response
+                  </h3>
+
+                  <button
+                    onClick={handleGenerateFidoChallenge}
+                    style={{ width: '100%', background: 'linear-gradient(90deg, #7c3aed, #a855f7)', border: 'none', color: '#fff', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', marginBottom: '14px' }}
+                  >
+                    1. Issue Hardware Challenge Nonce
+                  </button>
+
+                  {fidoChallenge && (
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '12px', marginBottom: '14px' }}>
+                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>ACTIVE CHALLENGE ID:</div>
+                      <code style={{ fontSize: '12px', color: '#c084fc' }}>{fidoChallenge.challenge_id}</code>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px' }}>CHALLENGE NONCE:</div>
+                      <div style={{ fontSize: '11px', fontFamily: 'monospace', color: '#94a3b8', wordBreak: 'break-all' }}>{fidoChallenge.challenge_nonce}</div>
+                    </div>
+                  )}
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                      SECURITY KEY USER PIN
+                    </label>
+                    <input
+                      type="password"
+                      value={fidoPin}
+                      onChange={(e) => setFidoPin(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#f1f5f9', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleVerifyFidoKey}
+                    disabled={!fidoChallenge || hwKeyLoading}
+                    style={{ width: '100%', background: fidoChallenge ? 'linear-gradient(90deg, #059669, #10b981)' : 'rgba(255,255,255,0.05)', border: 'none', color: fidoChallenge ? '#fff' : '#64748b', padding: '10px 16px', borderRadius: '6px', cursor: fidoChallenge ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: '13px' }}
+                  >
+                    2. Simulate Hardware Touch & Verify Signature
+                  </button>
+
+                  {fidoVerificationResult && (
+                    <div style={{ marginTop: '14px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#34d399', marginBottom: '6px' }}>✓ HARDWARE SIGNATURE VERIFIED:</div>
+                      <pre style={{ margin: 0, fontSize: '11px', color: '#cbd5e1', overflowX: 'auto', maxHeight: '140px' }}>
+                        {JSON.stringify(fidoVerificationResult, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4h: PROFILE ISOLATION (NEW IN v0.14) */}
+          {activeTab === 'profiles' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  Multi-Profile Workspace Isolation
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Zero-leakage isolated workspaces. Each profile possesses its own private sandbox folder, quota boundaries, and runtime cryptographic storage.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Profile List */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Layers style={{ width: '16px', height: '16px', color: '#f472b6' }} />
+                      Available Profiles ({profiles.length})
+                    </h3>
+                    <button
+                      onClick={refreshProfiles}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                    >
+                      <RefreshCw style={{ width: '14px', height: '14px' }} />
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {profiles.map((p) => {
+                      const isActive = activeProfile?.id === p.id;
+                      return (
+                        <div key={p.id} style={{ background: isActive ? 'rgba(236,72,153,0.1)' : 'rgba(0,0,0,0.3)', border: `1px solid ${isActive ? 'rgba(236,72,153,0.3)' : 'rgba(255,255,255,0.06)'}`, borderRadius: '8px', padding: '14px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#fbcfe8' }}>{p.name}</span>
+                            {isActive ? (
+                              <span style={{ fontSize: '10px', background: 'rgba(236,72,153,0.2)', color: '#f472b6', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>ACTIVE</span>
+                            ) : (
+                              <button
+                                onClick={() => handleSwitchProfile(p.id)}
+                                style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#cbd5e1', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 500 }}
+                              >
+                                Switch To
+                              </button>
+                            )}
+                          </div>
+                          <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 8px' }}>{p.description}</p>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>
+                            📁 Sandbox Root: <code style={{ color: '#f472b6' }}>./{p.sandbox_dir}/</code>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Create Profile Card */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Shield style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                    Provision New Isolated Profile
+                  </h3>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>PROFILE IDENTIFIER (SLUG)</label>
+                    <input
+                      type="text"
+                      value={newProfileId}
+                      onChange={(e) => setNewProfileId(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#f1f5f9', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>DISPLAY NAME</label>
+                    <input
+                      type="text"
+                      value={newProfileName}
+                      onChange={(e) => setNewProfileName(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#f1f5f9', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>SECURITY DESCRIPTION</label>
+                    <textarea
+                      value={newProfileDesc}
+                      onChange={(e) => setNewProfileDesc(e.target.value)}
+                      rows={2}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#f1f5f9', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleCreateProfile}
+                    style={{ width: '100%', background: 'linear-gradient(90deg, #db2777, #ec4899)', border: 'none', color: '#fff', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                  >
+                    Provision Isolated Sandbox
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4i: WASM PLUGIN VM SANDBOX (NEW IN v0.14) */}
+          {activeTab === 'wasm' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  WebAssembly (Wasm) Plugin Virtual Machine
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  High-speed, memory-capped WebAssembly guest VM. Sandboxed bytecode modules execute with strict gas metering and zero host vulnerability exposure.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Wasm Modules List */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Cpu style={{ width: '16px', height: '16px', color: '#2dd4bf' }} />
+                      Registered Wasm Modules ({wasmModules.length})
+                    </h3>
+                    <button
+                      onClick={refreshWasmModules}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                    >
+                      <RefreshCw style={{ width: '14px', height: '14px' }} />
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {wasmModules.map((m) => (
+                      <div key={m.module_id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(45,212,191,0.2)', borderRadius: '8px', padding: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#99f6e4' }}>{m.name}</span>
+                          <span style={{ fontSize: '10px', background: 'rgba(45,212,191,0.15)', color: '#2dd4bf', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>v{m.version}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>ID: <code style={{ color: '#2dd4bf' }}>{m.module_id}</code></div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                          <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', padding: '2px 6px', borderRadius: '4px' }}>Mem Cap: {m.memory_limit_mb} MB</span>
+                          <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', padding: '2px 6px', borderRadius: '4px' }}>Gas Limit: {m.instruction_limit.toLocaleString()}</span>
+                          <span style={{ fontSize: '10px', background: 'rgba(52,211,153,0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px' }}>Runs: {m.execution_count}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Execute Console */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Zap style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
+                    Wasm Guest Dispatcher
+                  </h3>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>SELECT WASM MODULE</label>
+                    <select
+                      value={selectedWasmModule}
+                      onChange={(e) => setSelectedWasmModule(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#f8fafc', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
+                    >
+                      <option value="wasm-crypto-accelerator">wasm-crypto-accelerator (Vector SHA-256)</option>
+                      <option value="wasm-schema-validator">wasm-schema-validator (Strict JSON Schema)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>JSON INPUT (GUEST MEMORY BUFFER)</label>
+                    <textarea
+                      value={wasmInputPayload}
+                      onChange={(e) => setWasmInputPayload(e.target.value)}
+                      rows={3}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#2dd4bf', fontFamily: 'monospace', padding: '8px 12px', borderRadius: '6px', fontSize: '12px' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleExecuteWasm}
+                    disabled={wasmLoading}
+                    style={{ width: '100%', background: 'linear-gradient(90deg, #0d9488, #14b8a6)', border: 'none', color: '#fff', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', marginBottom: '16px' }}
+                  >
+                    {wasmLoading ? 'Running inside Wasm Sandbox...' : 'Run inside Wasm Guest Sandbox'}
+                  </button>
+
+                  {wasmExecResult && (
+                    <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(45,212,191,0.3)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#2dd4bf', marginBottom: '6px' }}>
+                        WASM VM EXECUTION REPORT ({wasmExecResult.duration_us} µs):
+                      </div>
+                      <pre style={{ margin: 0, fontSize: '11px', color: '#cbd5e1', overflowX: 'auto', maxHeight: '160px' }}>
+                        {JSON.stringify(wasmExecResult, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

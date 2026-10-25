@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.13-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.13-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.14-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.14-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -16,7 +16,7 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**  
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run-in-30-seconds) • [📜 What's New in v0.13 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
+[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run-in-30-seconds) • [📜 What's New in v0.14 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
 
 </div>
 
@@ -58,17 +58,18 @@ npm run dev
 
 ---
 
-## 📜 Version & Release Notes (`v0.13`)
+## 📜 Version & Release Notes (`v0.14`)
 
-The current active release is **`v0.13` (Alpha)**.
+The current active release is **`v0.14` (Alpha)**.
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.13`** | 🟢 **Current Release** | **Extensibility & Capabilities Release:** Custom Rust Plugin Engine with built-in telemetry & checksum tools, System Tray & OS Notifications via WinRT/PowerShell, Air-Gapped SHA-256 verified Auto-Updater, and runtime Capability Matrix. 👉 [**View Full v0.13 Changelog**](CHANGELOG.md#-v0130---2026-10-25) |
+| **`v0.14`** | 🟢 **Current Release** | **Hardware Keys & Virtual Machine Sandbox Release:** Physical Security Key (FIDO2 / WebAuthn Level 3) challenge-response authentication, Multi-Profile isolated workspaces with directory sandboxes, and WebAssembly (Wasm) guest VM with gas metering. 👉 [**View Full v0.14 Changelog**](CHANGELOG.md#-v0140---2026-10-25) |
+| **`v0.13`** | ⚪ *Previous Release* | Extensibility & Capabilities Release: Custom Rust Plugin Engine with built-in telemetry & checksum tools, System Tray & OS Notifications via WinRT/PowerShell, Air-Gapped SHA-256 verified Auto-Updater, and runtime Capability Matrix. 👉 [**View v0.13 Notes**](CHANGELOG.md#-v0130---2026-10-25) |
 | **`v0.12`** | ⚪ *Previous Release* | Standalone Bundler & Multi-Window Release: One-click native `.exe` bundler & InnoSetup packager, Multi-Window Manager with window registry, new `bundle_status` & `window_list` IPC commands. 👉 [**View v0.12 Notes**](CHANGELOG.md#-v0120---2026-10-25) |
 | **`v0.11`** | ⚪ *Previous Release* | Cryptographic Hardening: Zero-Knowledge Encrypted Vault (PBKDF2/HMAC), Anti-DoS Sliding Window Rate Limiter, Air-Gap privacy shield. 👉 [**View v0.11 Notes**](CHANGELOG.md#-v0110---2026-10-25) |
 | **`v0.10`** | ⚪ *Previous Release* | Initial open-source release with Rust core engine, sandbox filesystem, and React/Vite UI. 👉 [**View v0.10 Notes**](CHANGELOG.md#-v0100---2026-10-25) |
-| **`v0.20`** | 🟡 *Next Roadmap (Q1 2027)* | macOS WebKit, Hardware Keys, Wasm Sandbox, Multi-Profile Isolation. 👉 [**View Upcoming Roadmap**](CHANGELOG.md#-upcoming-roadmap---v0200) |
+| **`v0.20`** | 🟡 *Next Roadmap (Q1 2027)* | macOS WebKit, Biometric Enclave, Encrypted IPC, Automated Crash Reporter. 👉 [**View Upcoming Roadmap**](CHANGELOG.md#-upcoming-roadmap---v0200) |
 
 👉 **[Click here to view all Version Updates, Bug Fixes, and Roadmap in CHANGELOG.md](CHANGELOG.md)**
 

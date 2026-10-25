@@ -1,5 +1,5 @@
 /**
- * Aegis Desktop IPC Bridge Client v0.13
+ * Aegis Desktop IPC Bridge Client v0.14
  * Secure typed communication with Rust Backend Core
  */
 
@@ -223,6 +223,39 @@ class AegisBridge {
 
   public async permissionsStatus(): Promise<IpcResponse> {
     return this.invoke('permissions_status');
+  }
+
+  // --- v0.14 Extensions ---
+  public async hardwareKeyList(): Promise<IpcResponse> {
+    return this.invoke('hardware_key_list');
+  }
+
+  public async hardwareKeyChallenge(relyingParty: string = 'aegis.desktop.local'): Promise<IpcResponse> {
+    return this.invoke('hardware_key_challenge', { relyingParty });
+  }
+
+  public async hardwareKeyVerify(challengeId: string, pin: string): Promise<IpcResponse> {
+    return this.invoke('hardware_key_verify', { challengeId, pin });
+  }
+
+  public async profileList(): Promise<IpcResponse> {
+    return this.invoke('profile_list');
+  }
+
+  public async profileSwitch(profileId: string): Promise<IpcResponse> {
+    return this.invoke('profile_switch', { profileId });
+  }
+
+  public async profileCreate(profileId: string, name: string, description: string): Promise<IpcResponse> {
+    return this.invoke('profile_create', { profileId, name, description });
+  }
+
+  public async wasmList(): Promise<IpcResponse> {
+    return this.invoke('wasm_list');
+  }
+
+  public async wasmExecute(moduleId: string, input: Record<string, any> = {}): Promise<IpcResponse> {
+    return this.invoke('wasm_execute', { moduleId, input });
   }
 
   // Security Defense Simulators

@@ -1,25 +1,29 @@
 mod bundler;
 mod ipc;
 mod plugin;
+mod profile;
 mod security;
 mod server;
 mod tray;
 mod updater;
+mod wasm;
 mod window;
 
 use ipc::IpcRouter;
 use plugin::{PluginRegistry, register_builtin_plugins};
-use security::{CapabilityManifest, HandshakeSession, OriginValidator, SecurityEngine};
+use profile::ProfileManager;
+use security::{CapabilityManifest, HandshakeSession, HardwareKeyEngine, OriginValidator, SecurityEngine};
 use server::CoreServer;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use updater::AutoUpdater;
+use wasm::WasmSandbox;
 use window::{WindowConfig, WindowManager};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("     🛡️  AEGIS DESKTOP CORE v0.13.0 • HIGH-SECURITY RUNTIME  ");
+    println!("     🛡️  AEGIS DESKTOP CORE v0.14.0 • HIGH-SECURITY RUNTIME  ");
     println!("============================================================");
 
     // 1. Locate and parse aegis.config.json
@@ -71,13 +75,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     register_builtin_plugins(&plugin_registry);
 
     // 2c. Initialize Auto-Updater
-    let auto_updater = Arc::new(AutoUpdater::new("0.13.0", &base_dir));
+    let auto_updater = Arc::new(AutoUpdater::new("0.14.0", &base_dir));
+
+    // 2d. Initialize v0.14 Subsystems
+    let hardware_keys = Arc::new(HardwareKeyEngine::new());
+    let profile_manager = Arc::new(ProfileManager::new());
+    let wasm_sandbox = Arc::new(WasmSandbox::new());
 
     let router = Arc::new(IpcRouter::new(
         Arc::clone(&security_engine),
         Arc::clone(&handshake_session),
         plugin_registry,
         auto_updater,
+        hardware_keys,
+        profile_manager,
+        wasm_sandbox,
     ));
 
     // 2. Bind the Secure Loopback Bridge

@@ -11,9 +11,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### 🚀 Planned Features & Enhancements
 - [ ] **macOS & Linux Native WebKit:** Full native webview integration via `wry` and `tao` (replacing Edge App Mode fallback).
-- [ ] **Hardware Security Key Integration:** FIDO2 / WebAuthn and YubiKey challenge-response in VaultEngine.
-- [ ] **Wasm Plugin Sandbox:** Running dynamically compiled WebAssembly modules inside Rust Core with memory isolation.
-- [ ] **Multi-Profile Isolation:** Sandboxed runtime instances with separate keyrings and storage vaults.
+- [ ] **Biometric Enclave Integration:** Windows Hello & Apple TouchID native secure enclave key storage.
+- [ ] **Encrypted IPC Transport:** End-to-end ChaCha20-Poly1305 encrypted loopback socket channel.
+- [ ] **Automated Crash Reporter (Local-Only):** Zero-telemetry crash dump analyzer inside isolated sandbox.
+
+---
+
+## 🚀 [v0.14.0] - 2026-10-25
+> **The Hardware Security Keys (FIDO2), Profile Isolation & Wasm Virtual Machine Release**
+
+### ✨ Highlights & New Features
+- **Hardware Security Key & FIDO2 / WebAuthn Integration (`src-core/src/security/hardware_key.rs`):**
+  - Physical security key support compliant with CTAP2.1 & WebAuthn Level 3 specifications.
+  - Challenge nonce generation (`hardware_key_challenge`) with SHA-256 seed rotation.
+  - Cryptographic assertion signature verification (`hardware_key_verify`) requiring physical touch + PIN.
+  - Enrolled hardware token discovery (`hardware_key_list`).
+- **Multi-Profile Workspace Isolation (`src-core/src/profile.rs`):**
+  - Complete zero-leakage sandbox isolation across distinct user profiles (`Primary`, `High-Security Vault`, and custom profiles).
+  - Each profile enforces a dedicated directory boundary (`./sandbox_<id>/`) and quota caps.
+  - Dynamic profile switching and provisioning (`profile_list`, `profile_switch`, `profile_create`).
+- **WebAssembly (Wasm) Plugin Virtual Machine (`src-core/src/wasm.rs`):**
+  - High-speed, memory-capped (8–16MB) isolated guest execution sandbox.
+  - Strict instruction gas metering to prevent infinite loops and denial-of-service.
+  - Built-in guest modules: `wasm-crypto-accelerator` (vectorized hashing) and `wasm-schema-validator` (strict JSON validator).
+  - New IPC commands: `wasm_list` and `wasm_execute`.
+- **Frontend Dashboard Extensions (`src-ui/src/App.tsx` & `aegis-bridge.ts`):**
+  - 3 new interactive tabs: **Hardware Key (FIDO2)**, **Profile Isolation**, and **Wasm VM Sandbox**.
+  - TypeScript client helpers: `hardwareKeyList()`, `hardwareKeyChallenge()`, `hardwareKeyVerify()`, `profileList()`, `profileSwitch()`, `profileCreate()`, `wasmList()`, `wasmExecute()`.
+
+### 🛡️ Security Hardening
+- Hardware key authentication requires user presence touch acknowledgment and PIN verification.
+- Wasm VM enforces strict guest memory caps and import whitelisting, preventing guest breakouts.
+- Isolated profiles strictly forbid directory climbing into peer profile storage.
 
 ---
 
@@ -164,11 +193,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 | Version | Release Date | Key Changes | Stability |
 | :---: | :---: | :--- | :---: |
+| **[v0.14.0](#-v0140---2026-10-25)** | **2026-10-25** | Hardware Security Keys (FIDO2/WebAuthn), Multi-Profile Isolation, Wasm Plugin VM Sandbox | **Alpha** |
 | **[v0.13.0](#-v0130---2026-10-25)** | **2026-10-25** | Rust Plugin Engine, System Tray & OS Notifications, SHA-256 Air-Gapped Updater, Capability Matrix | **Alpha** |
 | **[v0.12.0](#-v0120---2026-10-25)** | **2026-10-25** | One-Click Native Bundler & .exe Installer, Multi-Window Manager, `bundle_status` & `window_list` IPC | **Alpha** |
 | **[v0.11.0](#-v0110---2026-10-25)** | **2026-10-25** | Zero-Knowledge Encrypted Vault, Anti-DoS Rate Limiter, Air-Gap Privacy Shield | **Alpha** |
 | **[v0.10.0](#-v0100---2026-10-25)** | **2026-10-25** | Initial Open-Source Release: Rust core, React UI, Sandbox, Attack Simulator | **Alpha** |
-| *v0.20.0* | *Upcoming (Q1 2027)* | macOS WebKit, Hardware Keys, Wasm Sandbox, Multi-Profile Isolation | *Planned* |
+| *v0.20.0* | *Upcoming (Q1 2027)* | macOS WebKit, Biometric Enclave, Encrypted IPC, Automated Crash Reporter | *Planned* |
 
 ---
 
