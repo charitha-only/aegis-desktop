@@ -13,7 +13,7 @@
 [![Security](https://img.shields.io/badge/Security-Zero--Trust-success)](#-zero-trust-capability-security-model)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**  
+**A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
 [What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run-in-30-seconds) • [📜 What's New in v0.19 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
@@ -204,9 +204,9 @@ export function SecureNotes() {
   return (
     <div className="p-6 bg-slate-900 text-white rounded-xl">
       <p className="text-sm text-emerald-400">{status}</p>
-      <textarea 
-        value={content} 
-        onChange={(e) => setContent(e.target.value)} 
+      <textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
         placeholder="Type private notes..."
         className="w-full p-3 rounded bg-slate-800 border border-slate-700"
       />
