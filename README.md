@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.22-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.22-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.23-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.23-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.89%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -16,11 +16,11 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run-in-30-seconds) • [📜 What's New in v0.22 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
+[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run-in-30-seconds) • [📜 What's New in v0.23 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
 
 </div>
 
-> **v0.22.0 status:** This README preserves the original project presentation. Current functionality and limitations are documented in [Security fixes and verification](SECURITY_FIXES.md) and the [v0.22 changelog](CHANGELOG.md). Hardware authentication, HSM/PKCS#11, TPM, biometrics, GPU, P2P, encrypted IPC and auto-updates are unavailable; native macOS/Linux webviews and packages remain unimplemented. Earlier descriptions and performance figures below describe prototype goals and are not verified production guarantees. Windows uses an external browser backend. Vault encryption now uses Argon2id + XChaCha20-Poly1305; legacy V1 migration needs the original version.
+> **v0.23.0 status:** This README preserves the original project presentation. Current functionality and limitations are documented in [Security fixes and verification](SECURITY_FIXES.md) and the [v0.23 changelog](CHANGELOG.md). Hardware authentication, HSM/PKCS#11, TPM, biometrics, GPU, P2P, encrypted IPC and auto-updates are unavailable; native macOS/Linux webviews and packages remain unimplemented. Earlier descriptions and performance figures below describe prototype goals and are not verified production guarantees. Windows uses an external browser backend. Vault encryption now uses Argon2id + XChaCha20-Poly1305; legacy V1 migration needs the original version.
 
 
 ---
@@ -61,13 +61,14 @@ npm run dev
 
 ---
 
-## 📜 Version & Release Notes (`v0.22`)
+## 📜 Version & Release Notes (`v0.23`)
 
-The current version is **`v0.22.0` (Experimental)**.
+The current version is **`v0.23.0` (Experimental)**.
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.22`** | 🟢 **Current Version** | Windows lifecycle session revocation, fail-closed monitor checks, publisher-signing setup and disposable-runner installer checks. External audit and signed release remain gated. No application or hardware provider is added. See [security review gates](SECURITY_REVIEW.md). |
+| **`v0.23`** | 🟢 **Current Version** | Previous-version upgrade and reinstall recovery checks, real Windows lock testing in a disposable hosted runner, and exact-commit validation evidence. External audit, signing credentials and physical-device suspend/resume remain gated. No application or hardware provider is added. See [security review gates](SECURITY_REVIEW.md). |
+| **`v0.22`** | ⚪ **Previous Version** | Native Windows lifecycle revocation, signing setup and disposable installer checks. |
 | **`v0.21`** | ⚪ **Previous Version** | Authenticated vault sessions, idle/absolute expiry, credential cleanup and profile-change revocation. |
 | **`v0.20`** | ⚪ **Previous Version** | Authenticated atomic vault updates, encrypted backup restore, password rotation, secret-buffer cleanup and restricted packaged IPC. |
 | **`v0.19`** | ⚪ **Previous Version** | Security and correctness fixes: bounded wasmi runtime, authenticated V2 vaults, Ed25519 manifest verification, hardened IPC/filesystem access, persistent profiles and repaired Windows portable packaging. Unimplemented integrations fail closed. See [verification and limitations](SECURITY_FIXES.md). |
@@ -80,7 +81,7 @@ The current version is **`v0.22.0` (Experimental)**.
 | **`v0.12`** | ⚪ *Previous Release* | Standalone Bundler & Multi-Window Release: One-click native `.exe` bundler & InnoSetup packager, Multi-Window Manager with window registry, new `bundle_status` & `window_list` IPC commands. 👉 [**View v0.12 Notes**](CHANGELOG.md#-v0120---2026-10-25) |
 | **`v0.11`** | ⚪ *Previous Release* | Cryptographic Hardening: Zero-Knowledge Encrypted Vault (PBKDF2/HMAC), Anti-DoS Sliding Window Rate Limiter, Air-Gap privacy shield. 👉 [**View v0.11 Notes**](CHANGELOG.md#-v0110---2026-10-25) |
 | **`v0.10`** | ⚪ *Previous Release* | Initial open-source release with Rust core engine, sandbox filesystem, and React/Vite UI. 👉 [**View v0.10 Notes**](CHANGELOG.md#-v0100---2026-10-25) |
-| **`v0.23`** | 🟡 *Next Roadmap (Q1 2027)* | Decentralized Zero-Knowledge Identity (DID/VC), Post-Quantum Lattice Cryptography (ML-KEM / ML-DSA), Ephemeral Memory Sanitization. 👉 [**View Upcoming Roadmap**](CHANGELOG.md) |
+| **`v0.24`** | 🟡 *Next Roadmap (Q1 2027)* | Decentralized Zero-Knowledge Identity (DID/VC), Post-Quantum Lattice Cryptography (ML-KEM / ML-DSA), Ephemeral Memory Sanitization. 👉 [**View Upcoming Roadmap**](CHANGELOG.md) |
 
 👉 **[Click here to view all Version Updates, Bug Fixes, and Roadmap in CHANGELOG.md](CHANGELOG.md)**
 

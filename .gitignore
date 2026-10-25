@@ -46,3 +46,7 @@ desktop.ini
 
 # Internal OS writer lock files
 .aegis-write.lock
+
+# Publisher private certificate containers must never enter source control.
+*.pfx
+*.p12

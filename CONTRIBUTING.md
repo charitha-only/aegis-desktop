@@ -8,8 +8,8 @@ Thank you for your interest in contributing to **Aegis Desktop**! We welcome bug
 
 ### Prerequisites
 Make sure you have the following installed on your machine:
-- **Rust & Cargo** (v1.75+ recommended): [Install Rust](https://www.rust-lang.org/tools/install)
-- **Node.js** (v18.0+ recommended) & **npm**
+- **Rust & Cargo** (v1.89+ required): [Install Rust](https://www.rust-lang.org/tools/install)
+- **Node.js** (v22 LTS used by CI) & **npm**
 
 ### Fork & Clone
 1. Fork the repository to your own GitHub account.
@@ -41,8 +41,11 @@ Make sure you have the following installed on your machine:
    * Starts the Vite frontend on `http://localhost:5173`
 
 3. **Verify Security Tests:**
-   Before submitting code, ensure that all capability and penetration tests pass:
+   Before submitting code, run the Rust tests and production UI build. Run live security smoke tests only against fresh isolated runtimes, never real user vault data:
    ```bash
+   cargo test --locked --manifest-path src-core/Cargo.toml
+   npm --prefix src-ui run build
+   # Against a fresh isolated runtime:
    npm run test:security
    ```
 
@@ -57,3 +60,10 @@ Make sure you have the following installed on your machine:
   3. `aegis.config.json` (capability permissions)
 - Ensure no security capabilities are loosened or weakened without explicit documentation.
 - Provide a clear, descriptive title and summary in your Pull Request.
+
+
+## Windows release validation
+
+See WINDOWS_RELEASE.md and SECURITY_REVIEW.md for current guarantees and release gates. CI builds the real previous version for upgrade tests and exercises installer/reinstall data preservation. Real workstation locking is restricted to an explicitly enabled disposable GitHub-hosted runner; do not run that test on a developer machine. Physical-device suspend/resume, publisher certificate provisioning and an independent reviewer remain external acceptance work.
+
+Keep production signing keys/passwords out of source control. A passing unsigned installer test does not constitute a signed release or an independent audit. Preserve the README presentation when updating version/status text.

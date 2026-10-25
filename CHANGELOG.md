@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.23.0] - 2026-10-26
+
+- Build the actual pinned v0.22 source/runtime/installer for upgrade tests; verify encrypted vault and backup bytes survive upgrade, uninstall and reinstall, then authenticate and restore their contents.
+- Add a real Windows workstation-lock acceptance test restricted to explicitly enabled disposable GitHub-hosted runners. Verify OS lock state, denied retained/fresh session access, and ephemeral-secret cleanup. The developer PC is never locked or suspended by this test.
+- Expose current Windows session availability in security status and publish sanitized exact-commit installer/lock evidence as CI artifacts.
+- Preserve publisher-signing setup and external audit handoff. No certificate, independent human audit, pristine-device acceptance or real suspend/resume result is fabricated.
+
 ## [v0.22.0] - 2026-10-26
 
 - Register native Windows WTS/power notifications and revoke vault sessions on lifecycle transitions. Check current WTS lock/connect state before and after session operations; monitor registration failure/shutdown denies access.
@@ -63,7 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## 🔮 [Upcoming Roadmap] - v0.23.0
+## 🔮 [Upcoming Roadmap] - v0.24.0
 > **Target Release:** Q1 2027
 
 ### 🚀 Planned Features & Enhancements

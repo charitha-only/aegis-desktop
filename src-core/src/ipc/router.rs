@@ -200,6 +200,7 @@ impl IpcRouter {
                     "engine": concat!("Aegis Core ",env!("CARGO_PKG_VERSION")," (Rust)"),
                     "nonceVerified": true,
                     "windowsLifecycleMonitorActive": self.vault_sessions.platform_monitor_active(),
+                    "windowsSessionAvailable": crate::security::windows_lifecycle::desktop_available(),
                     "sandboxEnforced": true,
                     "privacyVaultActive": true,
                     "antiDosRateLimiterActive": true,

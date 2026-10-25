@@ -6,9 +6,11 @@ jobs:
   verify:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: stable
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - run: cargo test --locked --manifest-path src-core/Cargo.toml
@@ -53,9 +55,39 @@ jobs:
       - name: Compile test installer
         shell: pwsh
         run: ./scripts/build-installer.ps1 -AllowUnsignedForTesting
-      - name: Install, exercise and uninstall in isolated directories
+      - name: Check out actual v0.22 baseline for upgrade testing
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: 49b332c3f8c286f4cfef50e2d383aa568c734985
+          path: baseline-v022
+          persist-credentials: false
+      - name: Build the actual previous runtime and installer
+        working-directory: baseline-v022
+        shell: pwsh
+        run: |
+          npm ci --prefix src-ui
+          if ($LASTEXITCODE -ne 0) { throw 'Baseline dependency installation failed' }
+          npm run bundle
+          if ($LASTEXITCODE -ne 0) { throw 'Baseline build failed' }
+          ./scripts/build-installer.ps1 -AllowUnsignedForTesting
+      - name: Install, upgrade, reinstall and preserve encrypted data
         shell: pwsh
         run: |
           $installer = Get-ChildItem './dist-bundle/installers/*-Setup-*.exe' | Select-Object -First 1
-          if (-not $installer) { throw 'Compiled installer missing' }
-          ./scripts/test-installer.ps1 -Installer $installer.FullName
+          $previous = Get-ChildItem './baseline-v022/dist-bundle/installers/*-Setup-*.exe' | Select-Object -First 1
+          if (-not $installer -or -not $previous) { throw 'Compiled current/baseline installer missing' }
+          ./scripts/test-installer.ps1 -Installer $installer.FullName -PreviousInstaller $previous.FullName
+      - name: Real Windows lock on disposable hosted runner only
+        shell: pwsh
+        env:
+          AEGIS_ALLOW_DISPOSABLE_LOCK_TEST: 'true'
+        run: ./scripts/test-windows-lock-ci.ps1 -Binary ./dist-bundle/AegisDesktopApplication/aegis-core.exe
+      - name: Save exact-commit validation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-validation-evidence
+          path: |
+            ${{ runner.temp }}/aegis-install-*/installer-evidence.json
+            ${{ runner.temp }}/aegis-real-lock-*/windows-lock-evidence.json
+          if-no-files-found: warn

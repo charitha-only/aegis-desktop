@@ -23,3 +23,12 @@ This provides disposable-runner install/uninstall coverage, not a pristine Windo
 Primary references: [WTS session notifications](https://learn.microsoft.com/en-us/windows/win32/termserv/wm-wtssession-change), [power broadcast events](https://learn.microsoft.com/en-us/windows/win32/power/wm-powerbroadcast-messages), [SignTool](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/signtool).
 
 CI obtains Inno Setup 6.7.3 from the immutable official `jrsoftware/issrc` release asset, verifies its pinned SHA-256 digest and publisher Authenticode signature, and installs the compiler only in the disposable runner. Compiler setup is refused outside that environment.
+
+
+## v0.23 additional acceptance coverage
+
+CI builds the actual v0.22 baseline at commit `49b332c3f8c286f4cfef50e2d383aa568c734985`, installs it, creates authenticated encrypted current/backup generations, upgrades to the current build, and checks byte preservation before authenticating the migrated vault and restoring its backup. It also verifies uninstall/reinstall preservation and reads the retained data after reinstall. Every installer check runs only in a disposable GitHub-hosted runner with unique directories.
+
+A final explicitly enabled CI step calls real Windows `LockWorkStation` in that disposable runner only. It verifies current WTS lock state, rejects retained-token reads and fresh session unlock while locked, and checks ephemeral secret cleanup. It is refused on the developer PC and on self-hosted runners. The runner can remain locked until disposal; no unlock credentials are needed or stored. This is real workstation-lock coverage, not a hardware sleep/resume/hibernate test.
+
+Sanitized installer and lock evidence JSON files are uploaded as `windows-validation-evidence`, recording the exact Git commit and distinguishing tests actually run from pending external audit, publisher signing and real suspend/resume. They contain no passwords, tokens or vault plaintext. Evidence is not a certificate of security. Signed builds are restricted to main, run Rust tests before certificate import, and use actions pinned to exact commits. Protect the release environment as described above; pinning does not replace its access controls.

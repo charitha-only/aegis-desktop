@@ -46,3 +46,8 @@ Added authenticated vault-scoped unlock/read/lock interfaces, random tokens, idl
 ## v0.22.0 Windows lifecycle and release tooling
 
 Native Windows session/power events revoke vault sessions; current WTS state and monitor availability gate scoped unlock/read operations. Synthetic native event tests cover revocation and monitor death. Installer generation fixes, disposable-runner installer tests, publisher-signing helpers and external audit handoff are included. Certificate-based release signing and an independent human audit have not been completed. See WINDOWS_RELEASE.md and SECURITY_AUDIT_HANDOFF.md.
+
+
+## v0.23.0 release acceptance coverage
+
+Actual previous-version upgrade, uninstall/reinstall data preservation and authenticated migrated-backup recovery are checked through installed runtimes. A real workstation-lock test is restricted to explicitly enabled disposable hosted CI runners, with exact-commit evidence artifacts. Workflow actions are pinned and private certificate containers are ignored. Publisher credentials, a separate human security audit and physical-device suspend/resume acceptance remain external requirements.

@@ -19,3 +19,10 @@ Review SECURITY_REVIEW.md, SECURITY_FIXES.md and WINDOWS_RELEASE.md. Test actual
 ## Required external report
 
 Record reviewer identity/independence, reviewed commit hash, OS/build/device details, threat model, methods/tools, severity-ranked findings with reproductions, remediation commits and retest results. Record unresolved limitations and excluded scope. Distribution of real credentials remains gated on this review and real-device acceptance; a passing project test suite does not close that gate.
+
+
+## Additional v0.23 evidence for reviewers
+
+Download the exact run's `windows-validation-evidence` artifact and compare its `commit` with the source under review. Installer evidence includes actual v0.22 upgrade, uninstall/reinstall ciphertext preservation and authenticated backup restoration. Lock evidence comes from a real `LockWorkStation` call in the disposable hosted runner, not from injected messages. It explicitly records real suspend/resume as not run and independent audit as pending. Review the guarded test scripts before reproducing them; do not enable a workstation lock test on a developer or production machine.
+
+Publisher-signature verification was checked against the immutable, digest-pinned, upstream-signed Inno Setup compiler installer as a positive fixture, plus unsigned/mismatched identity rejection. Aegis signing still needs its own publisher certificate; no synthetic identity was substituted. Actions are pinned, but reviewers should still examine dependency and signing-environment provenance.

@@ -1,4 +1,4 @@
-# Sensitive-data framework review gates (v0.22.0)
+# Sensitive-data framework review gates (v0.23.0)
 
 This version hardens the framework. It does not create a password manager, banking application, hardware provider or a security certification. The original README presentation is retained.
 
@@ -82,3 +82,12 @@ Windows production routers require an active native WTS/power monitor for unlock
 Native tests register the real window and inject lock/power messages into that test process only. They do not actually suspend/lock the machine. Native integration is implemented, but supported-device Win+L, sleep/hibernate/Modern Standby and remote-session acceptance remain release gates. Legacy password-per-operation interfaces remain fresh-authentication paths and are not a global OS-user authorization system. Data already returned to the UI cannot be recalled.
 
 Normal CI now compiles an explicitly unsigned test installer, installs it into a fresh temporary directory in a disposable GitHub-hosted Windows runner, exercises the installed runtime and lifecycle registration, uninstalls and checks that encrypted vault files are preserved. A hosted runner is not a pristine Windows installation. See WINDOWS_RELEASE.md for scope and publisher signing setup. No publisher certificate exists in this environment; the signed workflow refuses to upload without valid publisher signatures/timestamps. No external independent audit was performed; SECURITY_AUDIT_HANDOFF.md defines the required reviewer scope/evidence.
+
+
+## v0.23 upgrade/reinstall and real Windows lock acceptance
+
+The hosted Windows CI workflow now builds the actual pinned v0.22 source for upgrade testing. Vault and backup ciphertext hashes are compared before/after upgrade and uninstall/reinstall; separate IPC checks authenticate the retained vault contents and restore the prior encrypted generation after migration/reinstall. These are synthetic test vaults only.
+
+The final explicitly enabled CI step locks the disposable hosted Windows workstation through the real OS API and checks the resulting WTS state, denied scoped session reads/unlocks, and ephemeral-secret cleanup. This script rejects local/self-hosted invocation. It never locks the developer PC. Earlier synthetic window-message tests remain useful handler coverage; real sleep/resume, hibernation, Modern Standby and supported physical-device acceptance remain unperformed.
+
+CI uploads exact-commit, sanitized installer/lock evidence, with external audit and publisher signing clearly pending. The actual upstream-signed Inno Setup fixture was accepted by the publisher-signature verification helper; unsigned/wrong-publisher executables are rejected. This validates signature checking but does not create an Aegis publisher identity. Private certificate containers are ignored by Git. No independent human audit or signed Aegis release was completed.

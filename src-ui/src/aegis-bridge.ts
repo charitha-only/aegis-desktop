@@ -17,6 +17,8 @@ export interface IpcResponse<T = any> {
 
 export interface SecurityStatus {
   engine: string;
+  windowsLifecycleMonitorActive?: boolean;
+  windowsSessionAvailable?: boolean;
   nonceVerified: boolean;
   sandboxEnforced: boolean;
   privacyVaultActive?: boolean;

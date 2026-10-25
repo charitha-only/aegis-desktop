@@ -1,19 +1,49 @@
-# 📖 Aegis Desktop Domain Glossary
+# Aegis Desktop
 
-Ubiquitous vocabulary and architectural definitions shared between Rust systems core and UI frontends.
+Shared language for Aegis's local framework, encrypted storage and application profiles.
 
----
+## Language
 
-### Core Domain Concepts
+**Capability**:
+An explicit runtime permission granted to an application for a class of local operations.
+_Avoid_: Implicit privilege, unrestricted access
 
-| Term | Domain Definition | Code Anchor |
-| :--- | :--- | :--- |
-| **Capability** | Explicit, immutable privilege granted to the application runtime via `aegis.config.json`. Untrusted scripts cannot elevate privileges dynamically. | [`src-core/src/security/capabilities.rs`](file:///c:/Users/user/.gemini/antigravity-ide/scratch/aegis-desktop/src-core/src/security/capabilities.rs) |
-| **Session Nonce** | 256-bit cryptographic one-time token negotiated during startup handshake; required on all IPC invocations to prevent CSRF and replay attacks. | [`src-core/src/security/handshake.rs`](file:///c:/Users/user/.gemini/antigravity-ide/scratch/aegis-desktop/src-core/src/security/handshake.rs) |
-| **Encrypted Vault** | Zero-knowledge encrypted-at-rest container using 10,000 PBKDF2/SHA-256 rounds with HMAC-SHA256 authentication tags. | [`src-core/src/security/vault.rs`](file:///c:/Users/user/.gemini/antigravity-ide/scratch/aegis-desktop/src-core/src/security/vault.rs) |
-| **Hardware Key (FIDO2)** | Physical security authenticator adhering to WebAuthn / CTAP2.1 challenge-response semantics requiring physical touch and PIN. | [`src-core/src/security/hardware_key.rs`](file:///c:/Users/user/.gemini/antigravity-ide/scratch/aegis-desktop/src-core/src/security/hardware_key.rs) |
-| **Profile Isolation** | Strictly quarantined sandbox filesystem boundaries per user or workspace (`./sandbox_<id>/`) preventing cross-profile leakage. | [`src-core/src/profile.rs`](file:///c:/Users/user/.gemini/antigravity-ide/scratch/aegis-desktop/src-core/src/profile.rs) |
-| **Wasm VM Sandbox** | Memory-capped (8–16MB), gas-metered guest virtual machine executing untrusted bytecode with strictly isolated host imports. | [`src-core/src/wasm.rs`](file:///c:/Users/user/.gemini/antigravity-ide/scratch/aegis-desktop/src-core/src/wasm.rs) |
-| **Biometric Enclave** | Native OS hardware security module (Windows Hello TPM / Apple Secure Enclave) managing cryptographic keypairs without software exposure. | [`src-core/src/security/enclave.rs`](file:///c:/Users/user/.gemini/antigravity-ide/scratch/aegis-desktop/src-core/src/security/enclave.rs) |
-| **Encrypted IPC Stream** | Authenticated symmetric cipher channel (ChaCha20-Poly1305 / HMAC) wrapping loopback communication against host process sniffing. | [`src-core/src/ipc/encrypted_stream.rs`](file:///c:/Users/user/.gemini/antigravity-ide/scratch/aegis-desktop/src-core/src/ipc/encrypted_stream.rs) |
-| **Local Crash Reporter** | Air-gapped, zero-telemetry panic and assertion recorder storing encrypted crash telemetry strictly in the isolated sandbox. | [`src-core/src/telemetry/crash_report.rs`](file:///c:/Users/user/.gemini/antigravity-ide/scratch/aegis-desktop/src-core/src/telemetry/crash_report.rs) |
+**Process Handshake Token**:
+A runtime-wide bearer credential for local IPC, distinct from authentication to an encrypted vault. It is reusable and does not by itself identify a user or prevent replay.
+_Avoid_: One-time nonce, user login, unlocked vault credential
+
+**Encrypted Vault**:
+A persistent container whose contents require its passphrase or an authorized unlocked vault session to read.
+_Avoid_: Recoverable master password, hardware-backed vault
+
+**Vault Session**:
+Temporary authorization to read one authenticated vault in one profile, revoked by lock, expiry or relevant lifecycle changes.
+_Avoid_: Process handshake token, operating-system login
+
+**Vault Lock**:
+Revocation of retained vault-session access and removal of its retained credentials. It does not retract plaintext already returned to an application or prevent fresh passphrase authentication.
+_Avoid_: Password deletion, universal user logout
+
+**Vault Backup Generation**:
+The prior encrypted vault generation retained for authenticated recovery; it can retain an earlier password and contents.
+_Avoid_: Offline disaster backup, password recovery service
+
+**Profile Isolation**:
+Separation of application storage across local workspaces, distinct from separation between operating-system accounts.
+_Avoid_: OS account isolation, protection from same-account malware
+
+**Wasm Sandbox**:
+The restricted execution context for guest WebAssembly modules in Aegis.
+_Avoid_: GPU execution, unrestricted host execution
+
+**Windows Lifecycle Monitor**:
+The local Windows session and power observer whose availability is required for retained vault-session access.
+_Avoid_: Automatic vault unlock, browser-memory erasure
+
+**Publisher-Signed Installer**:
+A distribution executable authenticated under the publisher's trusted signing identity, distinct from an unsigned test installer or a signature on a dependency.
+_Avoid_: Security certification, signed loose application assets
+
+**Independent Security Audit**:
+An assessment of a specified source revision by a separate reviewer with documented methods, findings and retest evidence.
+_Avoid_: Passing project tests, project-authored handoff, automated certification
