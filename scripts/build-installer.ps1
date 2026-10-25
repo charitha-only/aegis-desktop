@@ -12,7 +12,7 @@ if (-not $AllowUnsignedForTesting) {
  & "$PSScriptRoot/sign-windows.ps1" -Path $binary -Thumbprint $ExpectedThumbprint -VerifyOnly
 }
 $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-$compilerPath = if ($compiler) { $compiler.Source } else { 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' }
+$compilerPath = if ($env:AEGIS_ISCC_PATH) { $env:AEGIS_ISCC_PATH } elseif ($compiler) { $compiler.Source } else { 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' }
 if (-not (Test-Path -LiteralPath $compilerPath)) { throw 'Install Inno Setup 6 to compile the installer' }
 & $compilerPath (Join-Path $root "dist-bundle/$BundleName-installer.iss")
 if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }

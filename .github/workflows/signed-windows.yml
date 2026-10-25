@@ -35,7 +35,8 @@ jobs:
       - name: Sign and verify core
         shell: pwsh
         run: ./scripts/sign-windows.ps1 -Path ./dist-bundle/AegisDesktopApplication/aegis-core.exe -Thumbprint '${{ steps.certificate.outputs.thumbprint }}'
-      - run: choco install innosetup --version=6.7.3 --yes --no-progress --allow-downgrade
+      - shell: pwsh
+        run: ./scripts/setup-inno-ci.ps1
       - name: Compile installer from verified signed core
         shell: pwsh
         run: ./scripts/build-installer.ps1 -ExpectedThumbprint '${{ steps.certificate.outputs.thumbprint }}'

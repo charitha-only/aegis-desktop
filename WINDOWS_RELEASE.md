@@ -21,3 +21,5 @@ Normal CI explicitly compiles an unsigned TEST installer on a disposable GitHub-
 This provides disposable-runner install/uninstall coverage, not a pristine Windows image or every supported hardware/power configuration. Before distribution, test signed installation, upgrade, uninstall/reinstall, real Win+L, sleep/resume/hibernate and remote disconnect on supported Windows devices. Confirm the application clears its own UI/plaintext and clipboard; core revocation cannot recall data already sent to a browser.
 
 Primary references: [WTS session notifications](https://learn.microsoft.com/en-us/windows/win32/termserv/wm-wtssession-change), [power broadcast events](https://learn.microsoft.com/en-us/windows/win32/power/wm-powerbroadcast-messages), [SignTool](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/signtool).
+
+CI obtains Inno Setup 6.7.3 from the immutable official `jrsoftware/issrc` release asset, verifies its pinned SHA-256 digest and publisher Authenticode signature, and installs the compiler only in the disposable runner. Compiler setup is refused outside that environment.

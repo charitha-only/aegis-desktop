@@ -48,7 +48,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Session smoke checks failed' }
           } finally { Stop-Process -Id $process.Id -ErrorAction SilentlyContinue }
       - name: Install Inno Setup in the disposable runner
-        run: choco install innosetup --version=6.7.3 --yes --no-progress --allow-downgrade
+        shell: pwsh
+        run: ./scripts/setup-inno-ci.ps1
       - name: Compile test installer
         shell: pwsh
         run: ./scripts/build-installer.ps1 -AllowUnsignedForTesting
