@@ -43,6 +43,7 @@ desktop.ini
 /profiles.json*
 /trusted-signers.json
 /.aegis_updates/
+/WebViewCache/
 
 # Internal OS writer lock files
 .aegis-write.lock

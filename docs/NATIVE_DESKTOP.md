@@ -13,3 +13,8 @@ Linux requires GTK 4.10 or newer and WebKitGTK 6 development/runtime libraries. 
 The optional-native workflow compiles/links/tests the feature on all three operating systems, then runs a disposable fixture-window test that checks the expected document title and process exit. Linux uses a virtual display. The fixture refuses to run on this developer PC. Check the exact-commit CI result before claiming that GUI check passed. This is not visual rendering, accessibility, keyboard navigation, display/DPI or physical-device lifecycle acceptance.
 
 Upstream references: [Wry feature definitions](https://github.com/tauri-apps/wry/blob/dev/Cargo.toml), [Winit](https://docs.rs/winit/latest/winit/), [WebKit6](https://docs.rs/webkit6/latest/webkit6/).
+
+
+Hosted Linux smoke setup includes a temporary AppArmor profile granting user-namespace creation only to `/tmp/aegis-native-*/NativeFixture/aegis-core`. Ubuntu's global namespace restriction is not disabled, and WebKit's sandbox is not disabled. This is a disposable CI prerequisite, not a production confinement profile. The profile is removed in cleanup. Production Linux distribution needs an appropriate supported namespace/sandbox policy; see [Ubuntu's namespace documentation](https://documentation.ubuntu.com/security/security-features/privilege-restriction/apparmor/).
+
+Windows WebView2's cache is directed to the application's data root. The native host releases its webview before its parent window; the smoke harness retries owned fixture cleanup briefly while asynchronous browser processes release handles. This is not a guarantee of complete browser-memory erasure. No user browser processes are killed by the harness.
