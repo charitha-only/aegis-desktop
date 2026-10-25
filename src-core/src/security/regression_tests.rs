@@ -606,3 +606,67 @@ fn ipc_profiles_reject_shared_storage_identities() {
         "Profile identities must remain distinct on case-insensitive filesystems"
     );
 }
+
+#[test]
+fn ipc_restart_ignores_colliding_saved_profiles() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let saved = serde_json::json!([
+        {"id":"vault","name":"Legacy collision","description":"","sandbox_dir":"sandbox_vault","created_at":0,"strict_isolation":true,"max_storage_bytes":1000},
+        {"id":"Work","name":"Work","description":"","sandbox_dir":"sandbox_Work","created_at":0,"strict_isolation":true,"max_storage_bytes":1000},
+        {"id":"work","name":"Alias","description":"","sandbox_dir":"sandbox_work","created_at":0,"strict_isolation":true,"max_storage_bytes":1000}
+    ]);
+    std::fs::write(
+        d.path().join("profiles.json"),
+        serde_json::to_vec(&saved).unwrap(),
+    )
+    .unwrap();
+    let security = Arc::new(SecurityEngine::new(CapabilityManifest::default(), d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload: serde_json::Value| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "session-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    let listed = call("profile_list", serde_json::json!({}));
+    assert!(listed.success);
+    let profiles = listed.data.as_ref().unwrap()["profiles"]
+        .as_array()
+        .unwrap();
+    assert_eq!(
+        profiles.len(),
+        3,
+        "Two built-in profiles and one distinct custom profile must survive"
+    );
+    assert!(!call("profile_switch", serde_json::json!({"profileId":"vault"})).success);
+    assert!(
+        call(
+            "profile_switch",
+            serde_json::json!({"profileId":"private_vault"})
+        )
+        .success
+    );
+    assert!(call("profile_switch", serde_json::json!({"profileId":"Work"})).success);
+}
