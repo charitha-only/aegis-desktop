@@ -101,8 +101,8 @@ impl IpcRouter {
         }
         match req.command.as_str() {
             "get_security_status" => {
-                let status = json!({
-                    "engine": "Aegis Core v0.17 (Rust)",
+                let mut status = json!({
+                    "engine": concat!("Aegis Core ",env!("CARGO_PKG_VERSION")," (Rust)"),
                     "nonceVerified": true,
                     "sandboxEnforced": true,
                     "privacyVaultActive": true,
@@ -149,6 +149,14 @@ impl IpcRouter {
                         "hsmPkcs11": false
                     }
                 });
+                if let (Some(actual), Some(reported)) = (
+                    self.security.actual_capabilities().as_object(),
+                    status["activeCapabilities"].as_object_mut(),
+                ) {
+                    for (k, v) in actual {
+                        reported.insert(k.clone(), v.clone());
+                    }
+                }
                 IpcResponse::ok(&req.id, status)
             }
 

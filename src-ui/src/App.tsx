@@ -3186,7 +3186,8 @@ export default function App() {
           {/* ═════════════════════════════════════════════════════════════════ */}
           {/* NETWORK FIREWALL TAB (v0.16)                                     */}
           {/* ═════════════════════════════════════════════════════════════════ */}
-          {activeTab === 'network' && (
+          {activeTab === 'network' && <p role="note" style={{color:'#fbbf24'}}>Advisory policy evaluation only. This screen does not enforce an operating-system firewall.</p>}
+{activeTab === 'network' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>

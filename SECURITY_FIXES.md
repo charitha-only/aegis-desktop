@@ -20,3 +20,13 @@ Run cargo test --manifest-path src-core/Cargo.toml and npm --prefix src-ui run b
 ## Remaining integration work
 
 Real WebAuthn registration/assertion verification, vendor PKCS#11 providers, platform TPM/biometric APIs, native macOS/Linux webviews and packages, GPU computation, P2P transport and publisher provisioning require separate implementations. They are disabled, not claimed complete. Encrypted transport and updater are unavailable. A clean-machine installer test and real-device tests remain required before production release. This change is not an independent security audit or certification.
+
+## v0.19.0 validation record
+
+- 16 Rust regression tests passed locally.
+- Production UI and optimized core builds passed.
+- Nine live API security smoke checks passed against a packaged binary.
+- Packaged HTML and JavaScript assets served without Node/Vite; unauthorized-origin preflight rejected.
+- File and custom profile persisted after process restart; cross-profile file read rejected.
+- npm audit reported zero known vulnerabilities after the Vite/React-plugin upgrade.
+- Generated Inno Setup script was not compiled or tested on a clean Windows installation. Hardware and non-Windows providers remain unavailable.

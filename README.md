@@ -1,4 +1,4 @@
-# Aegis Desktop
+# Aegis Desktop v0.19.0
 
 Experimental Rust + React desktop application foundation. The supported window backend is an external browser (Edge app mode on Windows), not an embedded Wry/Tao webview. No security certification or performance multiplier is claimed.
 
@@ -17,7 +17,7 @@ WebAuthn/FIDO2, native biometrics, HSM/PKCS#11, TPM attestation, GPU execution, 
 
 ## Development
 
-Install a current stable Rust toolchain and Node.js 22 or newer. Run:
+Install a current stable Rust toolchain and Node.js 22.12 or newer. Run:
 
 ~~~sh
 npm run setup

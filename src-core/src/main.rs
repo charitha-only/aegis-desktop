@@ -38,10 +38,18 @@ use window::{WindowConfig, WindowManager};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("     🛡️  AEGIS DESKTOP CORE v0.18.0 • HIGH-SECURITY RUNTIME  ");
+    println!(
+        "     AEGIS DESKTOP CORE v{} - EXPERIMENTAL RUNTIME",
+        env!("CARGO_PKG_VERSION")
+    );
     println!("============================================================");
 
     let args: Vec<String> = std::env::args().collect();
+    let port: u16 = args
+        .iter()
+        .find_map(|a| a.strip_prefix("--port="))
+        .unwrap_or("48291")
+        .parse()?;
     let executable = std::env::current_exe()?;
     let app_dir = executable.parent().ok_or("Missing executable directory")?;
     let packaged = app_dir.join("ui/index.html").is_file();
@@ -125,7 +133,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let security_engine = Arc::new(SecurityEngine::new(manifest, &base_dir));
     let handshake_session = Arc::new(HandshakeSession::new());
-    allowed_origins.push("http://127.0.0.1:48291".into());
+    allowed_origins.push(format!("http://127.0.0.1:{port}"));
     let origin_validator = Arc::new(OriginValidator::new(allowed_origins));
 
     // 2b. Initialize Plugin Registry
@@ -177,9 +185,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     // 2. Bind the Secure Loopback Bridge
-    let bridge_addr = "127.0.0.1:48291";
+    let bridge_addr = format!("127.0.0.1:{port}");
     let server = CoreServer::bind(
-        bridge_addr,
+        &bridge_addr,
         router,
         handshake_session,
         origin_validator,
@@ -202,14 +210,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             kiosk: false,
             ..Default::default()
         };
-        let _ = WindowManager::spawn_window(
-            if packaged {
-                "http://127.0.0.1:48291"
-            } else {
-                "http://localhost:5173"
-            },
-            &win_cfg,
-        );
+        let ui_url = if packaged {
+            format!("http://127.0.0.1:{port}")
+        } else {
+            "http://localhost:5173".into()
+        };
+        let _ = WindowManager::spawn_window(&ui_url, &win_cfg);
     }
 
     // 4. Run Loopback IPC Server

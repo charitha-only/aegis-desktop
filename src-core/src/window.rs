@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::process::Command;
-use std::sync::{Arc, Mutex};
 
 // ─── Window Configuration ──────────────────────────────────────────────────
 

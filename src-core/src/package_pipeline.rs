@@ -5,7 +5,6 @@
 /// - macOS: .app bundle structure, Info.plist generation, and .dmg staging script
 /// - Linux: AppImage AppDir structure, AppRun entrypoint, desktop file, and Debian control structure
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

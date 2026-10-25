@@ -44,6 +44,21 @@ impl SignatureVerifier {
         signature: &str,
     ) -> SignatureVerificationResult {
         let digest = hex::encode(Sha256::digest(manifest.as_bytes()));
+        if id.is_empty()
+            || id.len() > 128
+            || !id
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+        {
+            return SignatureVerificationResult {
+                plugin_id: id.into(),
+                valid: false,
+                trusted_vendor: false,
+                signer_vendor: None,
+                computed_digest: digest,
+                message: "Invalid plugin identity".into(),
+            };
+        }
         let signers = self.trusted_signers.lock().unwrap();
         let verified = signature.split_once(':').and_then(|(key_id, sig)| {
             let signer = signers.iter().find(|s| s.key_id == key_id && s.trusted)?;

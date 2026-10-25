@@ -107,7 +107,7 @@ export interface AttestationVerification {
 }
 
 class AegisBridge {
-  private bridgeUrl = window.location.port === '48291' ? window.location.origin : 'http://127.0.0.1:48291';
+  private bridgeUrl = import.meta.env.PROD ? window.location.origin : 'http://127.0.0.1:48291';
   private sessionNonce: string | null = null;
   private isInitialized = false;
 

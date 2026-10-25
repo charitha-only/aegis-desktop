@@ -130,3 +130,17 @@ fn secrets_authenticate_password_and_have_no_defaults() {
     assert_eq!(s.retrieve_secret("k", "passphrase123").unwrap(), "value");
     assert!(s.retrieve_secret("k", "wrong").is_err());
 }
+
+#[test]
+fn configured_read_scope_is_enforced() {
+    let d = tempfile::tempdir().unwrap();
+    let mut manifest = CapabilityManifest::default();
+    manifest.fs.allow_read = vec!["./sandbox/permitted/**".into()];
+    let s = SecurityEngine::new(manifest, d.path());
+    let a = s.check_fs_write("permitted/a.txt").unwrap();
+    std::fs::write(a, "a").unwrap();
+    let b = s.check_fs_write("other.txt").unwrap();
+    std::fs::write(b, "b").unwrap();
+    assert!(s.check_fs_read("permitted/a.txt").is_ok());
+    assert!(s.check_fs_read("other.txt").is_err());
+}

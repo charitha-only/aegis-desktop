@@ -83,15 +83,23 @@ impl SecurityEngine {
         self.sandbox_root.read().unwrap().clone()
     }
 
+    pub fn actual_capabilities(&self) -> serde_json::Value {
+        serde_json::json!({"fsRead":!self.manifest.fs.allow_read.is_empty(),"fsWrite":!self.manifest.fs.allow_write.is_empty(),"systemInfo":self.manifest.system.allow_system_info,"crypto":self.manifest.crypto.allow_hashing,"shellExecution":false})
+    }
+
     pub fn check_fs_read(&self, requested_path: &str) -> Result<PathBuf, String> {
-        if self.manifest.fs.allow_read.is_empty() {
+        if !path_allowed(requested_path, &self.manifest.fs.allow_read)
+            || path_allowed(requested_path, &self.manifest.fs.deny_paths)
+        {
             return Err("Filesystem read capability is disabled".into());
         }
         self.resolve_and_validate_path(requested_path, false)
     }
 
     pub fn check_fs_write(&self, requested_path: &str) -> Result<PathBuf, String> {
-        if self.manifest.fs.allow_write.is_empty() {
+        if !path_allowed(requested_path, &self.manifest.fs.allow_write)
+            || path_allowed(requested_path, &self.manifest.fs.deny_paths)
+        {
             return Err("Filesystem write capability is disabled".into());
         }
         self.resolve_and_validate_path(requested_path, true)
@@ -211,4 +219,23 @@ impl SecurityEngine {
         }
         Ok(target)
     }
+}
+
+fn path_allowed(requested: &str, patterns: &[String]) -> bool {
+    let clean = requested.strip_prefix("./").unwrap_or(requested);
+    let clean = clean.strip_prefix("sandbox/").unwrap_or(clean);
+    patterns.iter().any(|rule| {
+        let r = rule.strip_prefix("./").unwrap_or(rule);
+        if r == "sandbox" || r == "sandbox/**" {
+            return true;
+        }
+        let Some(r) = r.strip_prefix("sandbox/") else {
+            return false;
+        };
+        if let Some(prefix) = r.strip_suffix("/**") {
+            clean == prefix || clean.starts_with(&format!("{prefix}/"))
+        } else {
+            r == clean
+        }
+    })
 }
