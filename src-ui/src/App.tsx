@@ -1990,16 +1990,25 @@ export default function App() {
                   </div>
 
                   {hwKeyLoading && hwKeys.length === 0 ? (
-                    <div style={{ color: '#64748b', fontSize: '13px' }}>Querying CTAP2.1 bus...</div>
+                    <div style={{ color: '#64748b', fontSize: '13px' }}>Scanning USB / HID CTAP2.1 bus for physical security tokens...</div>
                   ) : hwKeys.length === 0 ? (
-                    <div style={{ color: '#64748b', fontSize: '13px' }}>No physical security keys detected. Click refresh to query Rust Core.</div>
+                    <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '8px', padding: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        <AlertTriangle style={{ width: '16px', height: '16px', color: '#f87171' }} />
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#f87171' }}>No Physical FIDO2/WebAuthn Key Connected</span>
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+                        The system scans Windows PNP USB/HID controllers for genuine hardware tokens (YubiKey, Feitian, Nitrokey, SoloKeys). 
+                        Authentication challenges are locked until a physical hardware security key is plugged in and enrolled.
+                      </p>
+                    </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {hwKeys.map((k) => (
                         <div key={k.key_id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(192,132,252,0.2)', borderRadius: '8px', padding: '14px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                             <span style={{ fontSize: '14px', fontWeight: 600, color: '#e9d5ff' }}>{k.model}</span>
-                            <span style={{ fontSize: '10px', background: 'rgba(192,132,252,0.15)', color: '#c084fc', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>HSM ENROLLED</span>
+                            <span style={{ fontSize: '10px', background: 'rgba(52,211,153,0.15)', color: '#34d399', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>PHYSICAL TOKEN CONNECTED</span>
                           </div>
                           <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>Vendor: {k.manufacturer}</div>
                           <div style={{ fontSize: '11px', color: '#a855f7' }}>Protocol: {k.protocol}</div>

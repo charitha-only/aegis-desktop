@@ -241,6 +241,10 @@ class AegisBridge {
     return this.invoke('hardware_key_challenge', { relyingParty });
   }
 
+  public async hardwareKeyEnroll(keyId: string, model: string, pin: string): Promise<IpcResponse> {
+    return this.invoke('hardware_key_enroll', { keyId, model, pin });
+  }
+
   public async hardwareKeyVerify(challengeId: string, pin: string): Promise<IpcResponse> {
     return this.invoke('hardware_key_verify', { challengeId, pin });
   }

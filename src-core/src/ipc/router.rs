@@ -514,11 +514,38 @@ impl IpcRouter {
             // ─── HARDWARE SECURITY KEY / FIDO2 IPC (v0.14) ─────────────────
 
             "hardware_key_list" => {
+                let detected = self.hardware_keys.scan_and_detect_keys();
                 IpcResponse::ok(&req.id, json!({
-                    "keys": self.hardware_keys.list_keys(),
+                    "keys": detected,
                     "fido2Active": true,
+                    "deviceCount": detected.len(),
                     "subsystem": "FIDO2 / WebAuthn / CTAP2.1"
                 }))
+            }
+
+            "hardware_key_enroll" => {
+                let key_id = match req.payload.get("keyId").and_then(|k| k.as_str()) {
+                    Some(k) => k,
+                    None => return IpcResponse::err(&req.id, "Missing 'keyId' parameter"),
+                };
+                let model = req.payload.get("model").and_then(|m| m.as_str()).unwrap_or("Custom Hardware Token");
+                let pin = match req.payload.get("pin").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'pin' parameter"),
+                };
+                let key_info = crate::security::hardware_key::HardwareKeyInfo {
+                    key_id: key_id.to_string(),
+                    manufacturer: "Hardware Security Token".to_string(),
+                    model: model.to_string(),
+                    protocol: "FIDO2 / CTAP2.1 & WebAuthn Level 3".to_string(),
+                    enrolled_at: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs(),
+                    touch_required: true,
+                    pin_verified: false,
+                };
+                match self.hardware_keys.enroll_key(key_info, pin) {
+                    Ok(_) => IpcResponse::ok(&req.id, json!({ "enrolled": true, "keyId": key_id })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
             }
 
             "hardware_key_challenge" => {
