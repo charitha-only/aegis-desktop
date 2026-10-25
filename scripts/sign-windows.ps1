@@ -10,7 +10,7 @@ if ([IO.Path]::GetExtension($target) -ne '.exe') { throw 'Signing accepts an exp
 if (-not $VerifyOnly) {
  $certificate = Get-Item -LiteralPath ('Cert:/CurrentUser/My/' + $Thumbprint)
  if (-not $certificate.HasPrivateKey -or $certificate.NotAfter -le (Get-Date)) { throw 'A valid publisher code-signing certificate with a private key is required' }
- if (-not ($certificate.EnhancedKeyUsageList.ObjectId.Value -contains '1.3.6.1.5.5.7.3.3')) { throw 'Certificate must permit code signing' }
+ if (-not ($certificate.EnhancedKeyUsageList.ObjectId -contains '1.3.6.1.5.5.7.3.3')) { throw 'Certificate must permit code signing' }
  $tool = Get-Command signtool.exe -ErrorAction SilentlyContinue
  if (-not $tool) {
   $toolPath = Get-ChildItem 'C:/Program Files (x86)/Windows Kits/10/bin/*/x64/signtool.exe' -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
