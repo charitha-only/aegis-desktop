@@ -82,7 +82,7 @@ impl SecretManager {
         )
     }
     pub fn clear(&self) {
-        self.secrets.lock().unwrap().clear();
+        self.secrets.lock().unwrap_or_else(|e| e.into_inner()).clear();
     }
     pub fn list_secrets(&self) -> Vec<SecretMetadata> {
         self.secrets

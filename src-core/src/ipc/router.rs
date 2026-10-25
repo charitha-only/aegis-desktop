@@ -38,7 +38,7 @@ pub struct IpcRouter {
     p2p_market: Arc<P2PPluginMarketplace>,
     hsm_engine: Arc<HsmPkcs11Engine>,
     sensitive_limiter: crate::security::RateLimiter,
-    vault_sessions: crate::security::vault_session::VaultSessions,
+    vault_sessions: Arc<crate::security::vault_session::VaultSessions>,
     dispatch: std::sync::Mutex<()>,
 }
 
@@ -61,8 +61,11 @@ impl IpcRouter {
         p2p_market: Arc<P2PPluginMarketplace>,
         hsm_engine: Arc<HsmPkcs11Engine>,
     ) -> Self {
-        let vault_sessions =
-            crate::security::vault_session::VaultSessions::new(secret_manager.clone());
+        let vault_sessions = Arc::new(crate::security::vault_session::VaultSessions::new(
+            secret_manager.clone(),
+        ));
+        #[cfg(all(windows, not(test)))]
+        crate::security::windows_lifecycle::start(Arc::downgrade(&vault_sessions));
         Self {
             vault_sessions,
             dispatch: std::sync::Mutex::new(()),
@@ -196,6 +199,7 @@ impl IpcRouter {
                 let mut status = json!({
                     "engine": concat!("Aegis Core ",env!("CARGO_PKG_VERSION")," (Rust)"),
                     "nonceVerified": true,
+                    "windowsLifecycleMonitorActive": self.vault_sessions.platform_monitor_active(),
                     "sandboxEnforced": true,
                     "privacyVaultActive": true,
                     "antiDosRateLimiterActive": true,

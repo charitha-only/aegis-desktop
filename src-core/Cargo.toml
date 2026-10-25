@@ -1,6 +1,6 @@
 [package]
 name = "aegis-core"
-version = "0.21.0"
+version = "0.22.0"
 edition = "2021"
 rust-version = "1.89"
 
@@ -19,3 +19,6 @@ zeroize = { version = "1.9", features = ["derive"] }
 
 [dev-dependencies]
 wat = "1"
+
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_RemoteDesktop", "Win32_System_LibraryLoader", "Win32_System_Threading", "Win32_Graphics_Gdi"] }

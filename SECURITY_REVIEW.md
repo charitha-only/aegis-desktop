@@ -1,4 +1,4 @@
-# Sensitive-data framework review gates (v0.21.0)
+# Sensitive-data framework review gates (v0.22.0)
 
 This version hardens the framework. It does not create a password manager, banking application, hardware provider or a security certification. The original README presentation is retained.
 
@@ -57,7 +57,7 @@ Automated storage tests also exercise a backup target that cannot be replaced, a
 
 ### Outstanding release evidence
 
-Application-wide user authorization and native OS lock/key lifecycle integration remain application work. The scoped session support below supplies vault-specific authorization only. Signing requires a publisher-controlled certificate or signing service; do not commit private signing keys. Installer verification needs a clean Windows environment. An independent audit requires a separate reviewer and cannot be replaced by this project's own test suite. None of these gates is marked complete by the added recovery tests.
+Application-wide user authorization and application UI lock/key lifecycle integration remain application work. The scoped session support below supplies vault-specific authorization only. Signing requires a publisher-controlled certificate or signing service; do not commit private signing keys. Installer verification needs a clean Windows environment. An independent audit requires a separate reviewer and cannot be replaced by this project's own test suite. None of these gates is marked complete by the added recovery tests.
 
 
 ## v0.21 vault-scoped unlocked sessions
@@ -68,8 +68,17 @@ One unlocked vault is permitted per runtime, scoped to its resolved profile path
 
 The retained password, session token, discarded unlock plaintext and session plaintext intermediates use zeroizing owned buffers. Lock, expiry, replacement and manager destruction drop retained credentials. This reduces retention and is not a guarantee against process-memory access or every allocator/OS/browser copy. The TypeScript bridge leaves token ownership with the caller: keep it in memory, never persist it, and clear application plaintext on lock. The demo layout is preserved and has not been converted into a session-based password-manager interface.
 
-Existing password-per-operation vault and secret interfaces are retained. They still require the relevant passphrase; presenting a valid master password is fresh authentication even after lock. A lock revokes retained session access, not knowledge of the password. Initial vault creation is not enrollment of an OS user. Invalid session tokens never unlock a vault. Shared loopback handshake tokens are still transport credentials, distinct from vault-session tokens. Native Windows lock/suspend integration, clipboard handling and application-wide idle policy remain required before release.
+Existing password-per-operation vault and secret interfaces are retained. They still require the relevant passphrase; presenting a valid master password is fresh authentication even after lock. A lock revokes retained session access, not knowledge of the password. Initial vault creation is not enrollment of an OS user. Invalid session tokens never unlock a vault. Shared loopback handshake tokens are still transport credentials, distinct from vault-session tokens. Native Windows lock/suspend acceptance on supported devices, clipboard handling and application-wide idle policy remain required before release.
 
 Verification includes authenticated unlock, forged/cross-vault token rejection, explicit lock, re-unlock revocation, idle/absolute expiry, cleanup without another IPC request, profile-change revocation and lock during rate limiting. Real power loss, disk exhaustion, signed installers and independent audit remain unverified.
 
 Local v0.21 validation: 31 Rust tests, production UI build, release core build and both isolated portable smoke suites passed. This evidence does not complete the external release gates above.
+
+
+## v0.22 Windows lifecycle and release evidence
+
+Windows production routers require an active native WTS/power monitor for unlocked vault-session operations. It uses a hidden top-level window, registers only the current Windows session and revokes on every WTS transition and suspend/resume broadcasts. It also queries current WTS lock/connect flags before and after unlocking/reading; unknown/disconnected/locked state denies access. Registration failure, window destruction or message-loop exit leaves session access disabled. An atomic revocation generation is checked against retained credentials and after decryption to reject in-flight results when an OS event arrives. All retained sessions require fresh vault authentication after an event; Windows unlock does not unlock a vault.
+
+Native tests register the real window and inject lock/power messages into that test process only. They do not actually suspend/lock the machine. Native integration is implemented, but supported-device Win+L, sleep/hibernate/Modern Standby and remote-session acceptance remain release gates. Legacy password-per-operation interfaces remain fresh-authentication paths and are not a global OS-user authorization system. Data already returned to the UI cannot be recalled.
+
+Normal CI now compiles an explicitly unsigned test installer, installs it into a fresh temporary directory in a disposable GitHub-hosted Windows runner, exercises the installed runtime and lifecycle registration, uninstalls and checks that encrypted vault files are preserved. A hosted runner is not a pristine Windows installation. See WINDOWS_RELEASE.md for scope and publisher signing setup. No publisher certificate exists in this environment; the signed workflow refuses to upload without valid publisher signatures/timestamps. No external independent audit was performed; SECURITY_AUDIT_HANDOFF.md defines the required reviewer scope/evidence.

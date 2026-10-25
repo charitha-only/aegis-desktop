@@ -525,3 +525,25 @@ fn expired_session_background_cleanup_clears_ephemeral_secrets() {
         "Cleanup must run without a new IPC request"
     );
 }
+
+#[test]
+fn system_lock_revokes_session_and_requires_fresh_authentication() {
+    use std::sync::Arc;
+    let sessions =
+        super::vault_session::VaultSessions::new(Arc::new(crate::secrets::SecretManager::new()));
+    let envelope = VaultEngine::encrypt("PRIVATE", "platform-test-password").unwrap();
+    let token = sessions
+        .unlock("one.vault", &envelope, "platform-test-password")
+        .unwrap();
+    sessions.system_lock();
+    assert!(sessions.read(&token, "one.vault", &envelope).is_err());
+    let fresh = sessions
+        .unlock("one.vault", &envelope, "platform-test-password")
+        .unwrap();
+    assert!(sessions.read(&fresh, "one.vault", &envelope).is_ok());
+    sessions.require_platform_monitor();
+    assert!(sessions.read(&fresh, "one.vault", &envelope).is_err());
+    assert!(sessions
+        .unlock("one.vault", &envelope, "platform-test-password")
+        .is_err());
+}

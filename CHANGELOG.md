@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.22.0] - 2026-10-26
+
+- Register native Windows WTS/power notifications and revoke vault sessions on lifecycle transitions. Check current WTS lock/connect state before and after session operations; monitor registration failure/shutdown denies access.
+- Track revocation generations so an in-flight decrypt cannot silently refresh a revoked session. Add real-window synthetic event tests without locking or suspending the developer PC.
+- Repair installer shortcuts and output location; add disposable Windows install/runtime/uninstall/data-preservation CI coverage.
+- Add fail-closed Authenticode signing helpers and a manual protected-environment signing workflow. No publisher certificate is currently configured and no signed release is claimed.
+- Add Windows release instructions and an external security audit handoff. Real-device lock/sleep acceptance, pristine-machine testing and an independent human audit remain external gates.
+
 ## [v0.21.0] - 2026-10-26
 
 - Add vault-scoped `vault_session_unlock`, `vault_session_read`, and `vault_session_lock` interfaces, with typed bridge methods.
@@ -55,7 +63,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## 🔮 [Upcoming Roadmap] - v0.22.0
+## 🔮 [Upcoming Roadmap] - v0.23.0
 > **Target Release:** Q1 2027
 
 ### 🚀 Planned Features & Enhancements

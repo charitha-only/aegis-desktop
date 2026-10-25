@@ -1,0 +1,53 @@
+name: Signed Windows installer (publisher certificate required)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-installer:
+    runs-on: windows-latest
+    environment: windows-release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix src-ui
+      - run: npm run bundle
+      - name: Import publisher certificate into ephemeral runner
+        id: certificate
+        shell: pwsh
+        env:
+          SIGNING_PFX: ${{ secrets.AEGIS_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.AEGIS_SIGNING_PFX_PASSWORD }}
+        run: |
+          if (-not $env:SIGNING_PFX -or -not $env:SIGNING_PASSWORD) { throw 'Publisher certificate secrets are required; no unsigned release will be uploaded' }
+          $pfx = Join-Path $env:RUNNER_TEMP 'publisher-signing.pfx'
+          try {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_PFX))
+            $password = ConvertTo-SecureString $env:SIGNING_PASSWORD -AsPlainText -Force
+            $certificates = @(Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:/CurrentUser/My -Password $password | Where-Object HasPrivateKey)
+            if ($certificates.Count -ne 1) { throw 'Expected exactly one publisher private key' }
+            $certificate = $certificates[0]
+            "thumbprint=$($certificate.Thumbprint)" >> $env:GITHUB_OUTPUT
+          } finally { if (Test-Path -LiteralPath $pfx) { Remove-Item -LiteralPath $pfx -Force } }
+      - name: Sign and verify core
+        shell: pwsh
+        run: ./scripts/sign-windows.ps1 -Path ./dist-bundle/AegisDesktopApplication/aegis-core.exe -Thumbprint '${{ steps.certificate.outputs.thumbprint }}'
+      - run: choco install innosetup --version=6.7.3 --yes --no-progress --allow-downgrade
+      - name: Compile installer from verified signed core
+        shell: pwsh
+        run: ./scripts/build-installer.ps1 -ExpectedThumbprint '${{ steps.certificate.outputs.thumbprint }}'
+      - name: Sign, verify and exercise installer
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem './dist-bundle/installers/*-Setup-*.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Compiled installer missing' }
+          ./scripts/sign-windows.ps1 -Path $installer.FullName -Thumbprint '${{ steps.certificate.outputs.thumbprint }}'
+          ./scripts/test-installer.ps1 -Installer $installer.FullName
+      - uses: actions/upload-artifact@v4
+        with:
+          name: publisher-signed-windows-installer
+          path: dist-bundle/installers/*-Setup-*.exe
+          if-no-files-found: error

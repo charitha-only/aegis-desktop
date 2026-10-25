@@ -47,3 +47,14 @@ jobs:
             npm run test:sessions
             if ($LASTEXITCODE -ne 0) { throw 'Session smoke checks failed' }
           } finally { Stop-Process -Id $process.Id -ErrorAction SilentlyContinue }
+      - name: Install Inno Setup in the disposable runner
+        run: choco install innosetup --version=6.7.3 --yes --no-progress --allow-downgrade
+      - name: Compile test installer
+        shell: pwsh
+        run: ./scripts/build-installer.ps1 -AllowUnsignedForTesting
+      - name: Install, exercise and uninstall in isolated directories
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem './dist-bundle/installers/*-Setup-*.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Compiled installer missing' }
+          ./scripts/test-installer.ps1 -Installer $installer.FullName

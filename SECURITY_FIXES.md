@@ -41,3 +41,8 @@ Local v0.20 validation: 24 Rust regression tests passed; optimized core and prod
 ## v0.21.0 scoped session lifecycle
 
 Added authenticated vault-scoped unlock/read/lock interfaces, random tokens, idle/absolute expiry, background credential cleanup and revocation on vault mutations/profile switches. Core dispatch is serialized against lock/profile changes. Password-per-operation interfaces remain fresh-authentication paths. This provides a framework building block, not native OS login or a completed password manager. See SECURITY_REVIEW.md for limits and release gates.
+
+
+## v0.22.0 Windows lifecycle and release tooling
+
+Native Windows session/power events revoke vault sessions; current WTS state and monitor availability gate scoped unlock/read operations. Synthetic native event tests cover revocation and monitor death. Installer generation fixes, disposable-runner installer tests, publisher-signing helpers and external audit handoff are included. Certificate-based release signing and an independent human audit have not been completed. See WINDOWS_RELEASE.md and SECURITY_AUDIT_HANDOFF.md.

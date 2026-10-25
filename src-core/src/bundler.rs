@@ -249,13 +249,14 @@ impl BundleEngine {
 ; Compile this with Inno Setup Compiler (https://jrsoftware.org/isinfo.php)
 
 [Setup]
+AppId=Aegis.{name}
 AppName={name}
 AppVersion={version}
 AppPublisher={author}
 AppComments={description}
 DefaultDirName={{localappdata}}\Programs\{name}
 DefaultGroupName={name}
-OutputDir=dist-bundle\installers
+OutputDir={{#SourcePath}}installers
 OutputBaseFilename={name}-Setup-v{version}
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -273,8 +274,8 @@ Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "A
 Source: "{bundle_dir}\*"; DestDir: "{{app}}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{{group}}\{name}"; Filename: "{{app}}\aegis-core.exe"
-Name: "{{commondesktop}}\{name}"; Filename: "{{app}}\aegis-core.exe"; Tasks: desktopicon
+Name: "{{group}}\{name}"; Filename: "{{app}}\aegis-core.exe"; Parameters: "--spawn-window"
+Name: "{{userdesktop}}\{name}"; Filename: "{{app}}\aegis-core.exe"; Parameters: "--spawn-window"; Tasks: desktopicon
 
 [Run]
 Filename: "{{app}}\aegis-core.exe"; Parameters: "--spawn-window"; Description: "Launch {name}"; Flags: nowait postinstall skipifsilent shellexec
