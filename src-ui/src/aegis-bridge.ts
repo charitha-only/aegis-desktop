@@ -1,5 +1,5 @@
 /**
- * Aegis Desktop IPC Bridge Client
+ * Aegis Desktop IPC Bridge Client v0.11
  * Secure typed communication with Rust Backend Core
  */
 
@@ -14,13 +14,28 @@ export interface SecurityStatus {
   engine: string;
   nonceVerified: boolean;
   sandboxEnforced: boolean;
+  privacyVaultActive?: boolean;
+  antiDosRateLimiterActive?: boolean;
+  airGapPolicyActive?: boolean;
   activeCapabilities: {
     fsRead: boolean;
     fsWrite: boolean;
     shellExecution: boolean;
     systemInfo: boolean;
     crypto: boolean;
+    encryptedVault?: boolean;
   };
+}
+
+export interface PrivacyAudit {
+  privacyStandard: string;
+  telemetryEnabled: boolean;
+  outboundNetworkAccess: boolean;
+  networkBinding: string;
+  externalPingbacks: string;
+  localStorageMode: string;
+  dataHarvestingRisk: string;
+  compliance: string[];
 }
 
 export interface SystemInfo {
@@ -97,6 +112,15 @@ class AegisBridge {
         body: JSON.stringify(body),
       });
 
+      if (res.status === 429) {
+        const errData = await res.json().catch(() => ({}));
+        return {
+          id: reqId,
+          success: false,
+          error: errData.error || 'HTTP 429: Too Many Requests - Blocked by Aegis Anti-DoS Rate Limiter!',
+        };
+      }
+
       const json: IpcResponse<T> = await res.json();
       return json;
     } catch (err: any) {
@@ -111,6 +135,10 @@ class AegisBridge {
   // High-Level Helper APIs
   public async getSecurityStatus(): Promise<IpcResponse<SecurityStatus>> {
     return this.invoke<SecurityStatus>('get_security_status');
+  }
+
+  public async getPrivacyStatus(): Promise<IpcResponse<PrivacyAudit>> {
+    return this.invoke<PrivacyAudit>('privacy_status');
   }
 
   public async getSysInfo(): Promise<IpcResponse<SystemInfo>> {
@@ -129,11 +157,20 @@ class AegisBridge {
     return this.invoke<{ path: string; bytesWritten: number }>('fs_write_file', { path, content });
   }
 
+  // Zero-Knowledge Encrypted Vault APIs
+  public async vaultEncryptStore(filename: string, content: string, passphrase: string): Promise<IpcResponse<{ filename: string; status: string; envelopeLength: number }>> {
+    return this.invoke('vault_encrypt_store', { filename, content, passphrase });
+  }
+
+  public async vaultDecryptRetrieve(filename: string, passphrase: string): Promise<IpcResponse<{ filename: string; decryptedContent: string; integrityVerified: boolean }>> {
+    return this.invoke('vault_decrypt_retrieve', { filename, passphrase });
+  }
+
   public async hashInput(input: string): Promise<IpcResponse<{ algorithm: string; hash: string }>> {
     return this.invoke<{ algorithm: string; hash: string }>('crypto_hash', { input });
   }
 
-  // Security Defense Simulators (Demonstrates blocking unauthorized actions)
+  // Security Defense Simulators
   public async simulatePathTraversalAttack(): Promise<IpcResponse> {
     return this.invoke('fs_read_file', { path: '../../../../Windows/win.ini' });
   }
@@ -144,6 +181,21 @@ class AegisBridge {
 
   public async simulateSpoofedNonceAttack(): Promise<IpcResponse> {
     return this.invoke('sys_info', {}, 'FORGED_INVALID_TOKEN_99999');
+  }
+
+  // Anti-DoS Rate Limiter Simulator
+  public async simulateRateLimitAttack(): Promise<IpcResponse> {
+    // Fire 35 concurrent requests in burst to exceed the 30 req/s threshold
+    const promises: Promise<IpcResponse>[] = [];
+    for (let i = 0; i < 35; i++) {
+      promises.push(this.invoke('crypto_hash', { input: `fuzz_${i}` }));
+    }
+    const results = await Promise.all(promises);
+    const blocked = results.find((r) => !r.success && r.error?.includes('Rate limit exceeded'));
+    if (blocked) {
+      return blocked;
+    }
+    return results[results.length - 1];
   }
 }
 

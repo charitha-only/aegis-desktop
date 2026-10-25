@@ -1,5 +1,5 @@
 use crate::ipc::{IpcRequest, IpcRouter};
-use crate::security::{HandshakeSession, OriginValidator};
+use crate::security::{HandshakeSession, OriginValidator, RateLimiter};
 use serde_json::json;
 use std::sync::Arc;
 use tiny_http::{Header, Method, Response, Server, StatusCode};
@@ -9,6 +9,7 @@ pub struct CoreServer {
     router: Arc<IpcRouter>,
     session: Arc<HandshakeSession>,
     validator: Arc<OriginValidator>,
+    rate_limiter: Arc<RateLimiter>,
     csp: String,
 }
 
@@ -21,17 +22,22 @@ impl CoreServer {
         csp: String,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let server = Server::http(addr).map_err(|e| format!("HTTP Server Bind Error: {}", e))?;
+        // 30 requests per 1-second sliding window, 10s lockout after 5 consecutive failed nonces
+        let rate_limiter = Arc::new(RateLimiter::new(30, 1, 10));
+
         Ok(Self {
             server,
             router,
             session,
             validator,
+            rate_limiter,
             csp,
         })
     }
 
     pub fn run(&self) {
         println!("[Aegis Core] IPC Bridge Server actively listening on http://{}", self.server.server_addr());
+        println!("[Aegis Security] Anti-DoS Rate Limiter active: Max 30 req/s, brute-force lockout active.");
 
         for mut request in self.server.incoming_requests() {
             let origin_header = request
@@ -42,7 +48,7 @@ impl CoreServer {
 
             let is_allowed_origin = match &origin_header {
                 Some(orig) => self.validator.is_allowed(Some(orig)),
-                None => true, // direct non-browser native bridge or local tool
+                None => true, // direct non-browser native bridge or local test
             };
 
             let cors_origin = origin_header.clone().unwrap_or_else(|| "*".to_string());
@@ -57,13 +63,41 @@ impl CoreServer {
                 continue;
             }
 
-            // Origin security enforcement
+            // 1. Origin security enforcement
             if !is_allowed_origin {
                 eprintln!("[Aegis Security] Blocked unauthorized origin: {:?}", origin_header);
                 let err_json = json!({ "error": "Blocked by Aegis Origin Policy" }).to_string();
                 let resp = Response::from_string(err_json)
                     .with_status_code(StatusCode(403))
                     .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                let _ = request.respond(resp);
+                continue;
+            }
+
+            // 2. Sliding Window Anti-DoS & Brute Force Rate Limiting
+            let origin_key = origin_header.as_deref().unwrap_or("local_loopback");
+            if self.rate_limiter.is_locked_out(origin_key) {
+                let err_json = json!({
+                    "success": false,
+                    "error": "Access Locked Out: Too many consecutive invalid nonces. Backoff penalty active!"
+                }).to_string();
+                let resp = Response::from_string(err_json)
+                    .with_status_code(StatusCode(429))
+                    .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap())
+                    .with_header(Header::from_bytes(&b"Access-Control-Allow-Origin"[..], cors_origin.as_bytes()).unwrap());
+                let _ = request.respond(resp);
+                continue;
+            }
+
+            if let Err(rate_err) = self.rate_limiter.check_request() {
+                let err_json = json!({
+                    "success": false,
+                    "error": rate_err
+                }).to_string();
+                let resp = Response::from_string(err_json)
+                    .with_status_code(StatusCode(429))
+                    .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap())
+                    .with_header(Header::from_bytes(&b"Access-Control-Allow-Origin"[..], cors_origin.as_bytes()).unwrap());
                 let _ = request.respond(resp);
                 continue;
             }
@@ -75,7 +109,8 @@ impl CoreServer {
                         "handshake": "successful",
                         "token": token,
                         "csp": self.csp,
-                        "server": "Aegis Core 1.0 (Rust)",
+                        "server": "Aegis Core v0.11 (Rust)",
+                        "rateLimiter": "Active (30 req/s window)",
                         "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
                     })
                     .to_string();
@@ -90,7 +125,12 @@ impl CoreServer {
                     let mut body = String::new();
                     if request.as_reader().read_to_string(&mut body).is_ok() {
                         let ipc_res = match serde_json::from_str::<IpcRequest>(&body) {
-                            Ok(req) => self.router.handle_request(req),
+                            Ok(req) => {
+                                if !self.session.validate_nonce(&req.nonce) {
+                                    self.rate_limiter.record_nonce_failure(origin_key);
+                                }
+                                self.router.handle_request(req)
+                            }
                             Err(e) => crate::ipc::IpcResponse::err("0", &format!("Malformed IPC JSON: {}", e)),
                         };
 

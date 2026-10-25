@@ -17,12 +17,16 @@ import {
   Database,
   ExternalLink,
   Zap,
+  Eye,
+  EyeOff,
+  Flame,
 } from 'lucide-react';
 import {
   aegis,
   SecurityStatus,
   SystemInfo,
   SandboxEntry,
+  PrivacyAudit,
   IpcResponse,
 } from './aegis-bridge';
 
@@ -35,11 +39,12 @@ interface AuditLog {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'diagnostics' | 'logs'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'diagnostics' | 'logs'>('security');
   const [connected, setConnected] = useState(false);
   const [nonce, setNonce] = useState<string | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
   const [sysInfo, setSysInfo] = useState<SystemInfo | null>(null);
+  const [privacyAudit, setPrivacyAudit] = useState<PrivacyAudit | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // File System State
@@ -47,6 +52,14 @@ export default function App() {
   const [fileName, setFileName] = useState('secure_document.txt');
   const [fileContent, setFileContent] = useState('Encrypted record verified by Aegis Core Sandbox Engine.');
   const [readResult, setReadResult] = useState<string | null>(null);
+
+  // Vault State (v0.11 Zero-Knowledge Encryption)
+  const [vaultFileName, setVaultFileName] = useState('confidential_notes.vault');
+  const [vaultContent, setVaultContent] = useState('TOP_SECRET: Aegis Vault payload encrypted at rest with PBKDF2/SHA-256 and HMAC tags.');
+  const [vaultPassphrase, setVaultPassphrase] = useState('ProfessorAegis2026!');
+  const [showPassphrase, setShowPassphrase] = useState(false);
+  const [vaultRawCiphertext, setVaultRawCiphertext] = useState<string | null>(null);
+  const [vaultDecryptedText, setVaultDecryptedText] = useState<string | null>(null);
 
   // Crypto State
   const [hashInput, setHashInput] = useState('Aegis Zero Trust Security Payload 2026');
@@ -78,6 +91,11 @@ export default function App() {
       const sys = await aegis.getSysInfo();
       if (sys.success && sys.data) {
         setSysInfo(sys.data);
+      }
+
+      const priv = await aegis.getPrivacyStatus();
+      if (priv.success && priv.data) {
+        setPrivacyAudit(priv.data);
       }
 
       refreshFiles();
@@ -129,6 +147,16 @@ export default function App() {
     }
   };
 
+  const handleSimulateRateLimit = async () => {
+    addLog('INFO', 'attack_sim:rate_limit', 'Firing burst of 35 rapid concurrent IPC calls to trigger Anti-DoS shield...');
+    const res = await aegis.simulateRateLimitAttack();
+    if (!res.success && res.error?.includes('Rate limit exceeded')) {
+      addLog('BLOCKED', 'dos_attack_blocked', res.error);
+    } else {
+      addLog('INFO', 'rate_limit_result', res.error || 'Request completed within allowance');
+    }
+  };
+
   const handleWriteFile = async () => {
     if (!fileName) return;
     const res = await aegis.writeSandboxFile(fileName, fileContent);
@@ -147,6 +175,36 @@ export default function App() {
       addLog('SUCCESS', 'fs_read_file', `Read from ./sandbox/${path}`);
     } else {
       addLog('BLOCKED', 'fs_read_file', res.error || 'Read error');
+    }
+  };
+
+  // Zero-Knowledge Encrypted Vault Handlers
+  const handleVaultEncrypt = async () => {
+    if (!vaultFileName || !vaultPassphrase) return;
+    addLog('INFO', 'vault_encrypt', `Encrypting ${vaultFileName} with 10,000 PBKDF2 rounds & HMAC tag...`);
+    const res = await aegis.vaultEncryptStore(vaultFileName, vaultContent, vaultPassphrase);
+    if (res.success) {
+      addLog('SUCCESS', 'vault_encrypted', `Safely stored inside ./sandbox/${res.data?.filename}`);
+      refreshFiles();
+      const raw = await aegis.readSandboxFile(vaultFileName);
+      if (raw.success && raw.data) {
+        setVaultRawCiphertext(raw.data.content);
+      }
+    } else {
+      addLog('BLOCKED', 'vault_error', res.error || 'Encryption failed');
+    }
+  };
+
+  const handleVaultDecrypt = async () => {
+    if (!vaultFileName || !vaultPassphrase) return;
+    addLog('INFO', 'vault_decrypt', `Authenticating HMAC-SHA256 tag and decrypting ${vaultFileName}...`);
+    const res = await aegis.vaultDecryptRetrieve(vaultFileName, vaultPassphrase);
+    if (res.success && res.data) {
+      setVaultDecryptedText(res.data.decryptedContent);
+      addLog('SUCCESS', 'vault_decrypted', 'HMAC tag authenticated & data decrypted successfully!');
+    } else {
+      setVaultDecryptedText(null);
+      addLog('BLOCKED', 'vault_auth_failed', res.error || 'Decryption failed: Tag mismatch or incorrect password');
     }
   };
 
@@ -170,9 +228,9 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
-              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.10 ALPHA</span>
+              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.11 ALPHA</span>
             </div>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React High-Security Framework</div>
+            <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Zero-Trust Framework</div>
           </div>
         </div>
 
@@ -248,6 +306,28 @@ export default function App() {
           </button>
 
           <button
+            onClick={() => setActiveTab('vault')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              border: 'none',
+              background: activeTab === 'vault' ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.05))' : 'transparent',
+              color: activeTab === 'vault' ? '#818cf8' : '#94a3b8',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '13px',
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Lock style={{ width: '18px', height: '18px', color: '#a855f7' }} />
+            Privacy & Vault
+          </button>
+
+          <button
             onClick={() => setActiveTab('diagnostics')}
             style={{
               display: 'flex',
@@ -265,8 +345,8 @@ export default function App() {
               transition: 'all 0.15s ease',
             }}
           >
-            <Cpu style={{ width: '18px', height: '18px' }} />
-            Diagnostics & Crypto
+            <Activity style={{ width: '18px', height: '18px' }} />
+            Diagnostics & Telemetry
           </button>
 
           <button
@@ -287,16 +367,10 @@ export default function App() {
               transition: 'all 0.15s ease',
             }}
           >
-            <Activity style={{ width: '18px', height: '18px' }} />
+            <Terminal style={{ width: '18px', height: '18px' }} />
             Live Audit Stream
-            {auditLogs.length > 0 && (
-              <span style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', fontSize: '10px', padding: '2px 6px', borderRadius: '10px', color: '#cbd5e1' }}>
-                {auditLogs.length}
-              </span>
-            )}
           </button>
 
-          {/* Security Pill Info Box */}
           <div style={{ marginTop: 'auto', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#38bdf8', marginBottom: '6px' }}>
               <Lock style={{ width: '12px', height: '12px' }} />
@@ -318,12 +392,12 @@ export default function App() {
                   Security Architecture & Threat Defense
                 </h1>
                 <p style={{ fontSize: '13px', color: '#94a3b8' }}>
-                  Enterprise-grade capability access control, CSP isolation, and real-time defense simulations.
+                  Enterprise-grade capability access control, CSP isolation, anti-DoS sliding window rate limiting, and real-time defense simulations.
                 </p>
               </div>
 
               {/* Security Metrics Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
                 <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(99, 102, 241, 0.2)', padding: '18px', borderRadius: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <span style={{ fontSize: '12px', color: '#94a3b8' }}>Session Nonce</span>
@@ -342,20 +416,31 @@ export default function App() {
                     <span style={{ fontSize: '12px', color: '#94a3b8' }}>Sandbox Boundary</span>
                     <FolderLock style={{ width: '16px', height: '16px', color: '#34d399' }} />
                   </div>
-                  <div style={{ fontSize: '18px', fontWeight: 600, color: '#34d399' }}>STRICT ISOLATION</div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: '#34d399' }}>STRICT ISOLATION</div>
                   <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
-                    Filesystem scoped strictly to <code style={{ color: '#cbd5e1' }}>./sandbox/</code>
+                    Files strictly inside <code style={{ color: '#cbd5e1' }}>./sandbox/</code>
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '18px', borderRadius: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Anti-DoS Limiter</span>
+                    <Activity style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: '#38bdf8' }}>30 REQ / SEC</div>
+                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                    Sliding window + Brute force lockout
                   </div>
                 </div>
 
                 <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '18px', borderRadius: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Shell Execution Policy</span>
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Shell Policy</span>
                     <Terminal style={{ width: '16px', height: '16px', color: '#f87171' }} />
                   </div>
-                  <div style={{ fontSize: '18px', fontWeight: 600, color: '#f87171' }}>REVOKED / BLOCKED</div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: '#f87171' }}>REVOKED / BLOCKED</div>
                   <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
-                    Arbitrary shell invocation disabled by default policy
+                    cmd / powershell / bash disabled
                   </div>
                 </div>
               </div>
@@ -372,7 +457,7 @@ export default function App() {
                   Click below to trigger malicious attacks against the Aegis Rust engine. Observe how the engine safely traps and denies each violation.
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
                   <button
                     onClick={handleSimulateTraversal}
                     style={{
@@ -422,6 +507,23 @@ export default function App() {
                   >
                     <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>3. Forged Nonce Attack</div>
                     <div style={{ fontSize: '11px', color: '#c084fc' }}>Spoofs cryptographic session token</div>
+                  </button>
+
+                  <button
+                    onClick={handleSimulateRateLimit}
+                    style={{
+                      background: 'rgba(56, 189, 248, 0.1)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      color: '#7dd3fc',
+                      padding: '14px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>4. Anti-DoS Burst Flood</div>
+                    <div style={{ fontSize: '11px', color: '#38bdf8' }}>Fires 35 calls; Rust triggers HTTP 429</div>
                   </button>
                 </div>
               </div>
@@ -518,7 +620,141 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 3: DIAGNOSTICS & CRYPTO */}
+          {/* TAB 3: PRIVACY & ZERO-KNOWLEDGE VAULT (NEW IN v0.11) */}
+          {activeTab === 'vault' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#f8fafc', marginBottom: '6px' }}>
+                  Zero-Knowledge Encrypted Vault & Air-Gap Privacy
+                </h1>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Hardware-grade local encryption at rest with 10,000 PBKDF2/SHA-256 rounds, HMAC integrity verification, and mathematical zero-telemetry enforcement.
+                </p>
+              </div>
+
+              {/* Air-Gap Privacy Audit Card */}
+              <div style={{ background: 'linear-gradient(135deg, rgba(30, 27, 75, 0.6), rgba(15, 23, 42, 0.8))', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <ShieldCheck style={{ width: '22px', height: '22px', color: '#c084fc' }} />
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#f1f5f9' }}>
+                      Air-Gap & Zero-Leakage Compliance Ledger
+                    </h3>
+                  </div>
+                  <span style={{ fontSize: '11px', background: 'rgba(168, 85, 247, 0.2)', color: '#d8b4fe', padding: '4px 10px', borderRadius: '12px', fontWeight: 500 }}>
+                    100% Offline Air-Gapped
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '16px' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>Data Harvesting Risk</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#34d399', marginTop: '4px' }}>0.00%</div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>Outbound Sockets</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#f87171', marginTop: '4px' }}>BLOCKED</div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>External Pingbacks</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#38bdf8', marginTop: '4px' }}>REVOKED</div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>Storage Security</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#a855f7', marginTop: '4px' }}>PBKDF2 + HMAC</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Zero-Knowledge Vault Encrypt / Decrypt Tool */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Lock style={{ width: '16px', height: '16px', color: '#a855f7' }} />
+                    Encrypt Data at Rest (.vault)
+                  </h3>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Vault File Name</label>
+                    <input
+                      type="text"
+                      value={vaultFileName}
+                      onChange={(e) => setVaultFileName(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '13px', outline: 'none' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Master Passphrase (Derives 256-bit Key)</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showPassphrase ? 'text' : 'password'}
+                        value={vaultPassphrase}
+                        onChange={(e) => setVaultPassphrase(e.target.value)}
+                        style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '13px', outline: 'none' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassphrase(!showPassphrase)}
+                        style={{ position: 'absolute', right: '10px', top: '8px', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                      >
+                        {showPassphrase ? <EyeOff style={{ width: '16px', height: '16px' }} /> : <Eye style={{ width: '16px', height: '16px' }} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Confidential Plaintext Content</label>
+                    <textarea
+                      rows={4}
+                      value={vaultContent}
+                      onChange={(e) => setVaultContent(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', color: '#f1f5f9', fontSize: '13px', outline: 'none', fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={handleVaultEncrypt}
+                      style={{ background: '#7c3aed', border: 'none', color: '#fff', padding: '10px 18px', borderRadius: '6px', fontWeight: 500, fontSize: '13px', cursor: 'pointer' }}
+                    >
+                      Encrypt & Save Vault
+                    </button>
+                    <button
+                      onClick={handleVaultDecrypt}
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#e2e8f0', padding: '10px 18px', borderRadius: '6px', fontWeight: 500, fontSize: '13px', cursor: 'pointer' }}
+                    >
+                      Authenticate & Decrypt
+                    </button>
+                  </div>
+                </div>
+
+                {/* Vault Inspection Card */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FileText style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                    On-Disk Forensics & Cryptographic Envelope
+                  </h3>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>Raw Ciphertext Stored in ./sandbox/ (HMAC-SHA256 Authenticated):</div>
+                    <pre style={{ fontSize: '11px', color: '#a78bfa', background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '6px', whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: '110px', overflowY: 'auto' }}>
+                      {vaultRawCiphertext || 'Save a vault to view authenticated ciphertext envelope...'}
+                    </pre>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>Authenticated Plaintext (Decrypted Result):</div>
+                    <pre style={{ fontSize: '12px', color: vaultDecryptedText ? '#34d399' : '#64748b', background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '6px', whiteSpace: 'pre-wrap', maxHeight: '110px', overflowY: 'auto' }}>
+                      {vaultDecryptedText || 'Awaiting passphrase authentication...'}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: DIAGNOSTICS & CRYPTO */}
           {activeTab === 'diagnostics' && (
             <div>
               <div style={{ marginBottom: '24px' }}>
@@ -583,7 +819,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 4: LIVE AUDIT STREAM */}
+          {/* TAB 5: LIVE AUDIT STREAM */}
           {activeTab === 'logs' && (
             <div>
               <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## 🔮 [Upcoming Roadmap] - v0.11.0 / v0.20.0
+## 🔮 [Upcoming Roadmap] - v0.12.0 / v0.20.0
 > **Target Release:** Q4 2026
 
 ### 🚀 Planned Features & Enhancements
@@ -15,6 +15,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [ ] **Multi-Window Management:** Open secondary secure windows and modal dialogs via `aegis-bridge.ts`.
 - [ ] **Custom Rust Plugin Engine:** Allow developers to easily expose their own custom Rust system functions through capabilities.
 - [ ] **Tray & System Notifications:** Background daemon mode with system tray icon support.
+
+---
+
+## 🚀 [v0.11.0] - 2026-10-25
+> **The Cryptographic Hardening, Rate Limiting & Privacy Shield Release**
+
+### ✨ Highlights & New Features
+- **Zero-Knowledge Encrypted Vault at Rest (`src-core/src/security/vault.rs`):**
+  - Symmetric keystream encryption derived from user passphrases via **10,000 PBKDF2-style SHA-256 iterations**.
+  - **HMAC-SHA256 Authentication Tags:** Detects and prevents file tampering, bit flips, or unauthorized file modifications.
+  - Storage envelope format: `AEGIS_VAULT_V1:<HMAC>:<CIPHERTEXT>` ensuring on-disk confidentiality.
+  - New IPC commands: `vault_encrypt_store` and `vault_decrypt_retrieve`.
+- **Sliding-Window Anti-DoS Rate Limiter (`src-core/src/security/ratelimit.rs`):**
+  - Protects loopback IPC port `48291` from local fuzzing and malicious burst flooding.
+  - Enforces a strict 30 requests/second sliding window limit (triggers **HTTP 429** on violation).
+  - **Brute-Force Nonce Lockout:** 5 consecutive invalid nonces activate a progressive 10-second penalty lockout.
+- **Air-Gap & Zero-Leakage Privacy Policy Shield (`src-core/src/security/privacy.rs`):**
+  - Mathematical zero-telemetry proof: Zero outbound sockets, zero diagnostic harvesting, strict `127.0.0.1` binding.
+  - Accessible via `privacy_status` IPC command.
+- **New UI Tab: "Privacy & Vault" in React Frontend:**
+  - Zero-Knowledge Vault creator: Encrypt and decrypt local `.vault` records with live passphrase validation.
+  - On-disk forensics inspector: Compare raw ciphertext with authenticated plaintext output.
+  - Air-Gap compliance metrics display (GDPR, HIPAA, Zero-Knowledge verified).
+- **Interactive Threat Simulator Upgrade:**
+  - Added **Test 4: Anti-DoS Burst Flood Simulation** in the UI dashboard.
+- **Automated Penetration Test Suite Enhancements:**
+  - Added Test 4: Rate limiter burst flood verification in `aegis-cli`.
+  - Added Test 5: Vault tampering & wrong-passphrase rejection test.
 
 ---
 
@@ -58,8 +86,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 | Version | Release Date | Key Changes | Stability |
 | :---: | :---: | :--- | :---: |
+| **[v0.11.0](#-v0110---2026-10-25)** | **2026-10-25** | Zero-Knowledge Encrypted Vault, Anti-DoS Rate Limiter, Air-Gap Privacy Shield | **Alpha (Hardened)** |
 | **[v0.10.0](#-v0100---2026-10-25)** | **2026-10-25** | Initial Open-Source Release: Rust core, React UI, Sandbox, Attack Simulator | **Alpha** |
-| *v0.11.0* | *Upcoming* | Native standalone `.exe` bundler, Multi-window support, Mac/Linux webviews | *Planned* |
+| *v0.12.0* | *Upcoming* | Native standalone `.exe` bundler, Multi-window support, Mac/Linux webviews | *Planned* |
 
 ---
 

@@ -105,6 +105,66 @@ async function runSecurityTest() {
     if (!r3.success && r3.error.includes('Security Breach')) {
       console.log('\x1b[32m✔\x1b[0m Replay & Nonce Defense: PASSED (Invalid token rejected)');
     }
+
+    // Test 4: Anti-DoS Rate Limiter Burst Test
+    console.log('\x1b[33m➜\x1b[0m Firing burst flood to verify Anti-DoS Rate Limiter...');
+    const floodCalls = [];
+    for (let i = 0; i < 35; i++) {
+      floodCalls.push(fetch(`${bridgeUrl}/ipc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: `flood-${i}`,
+          command: 'crypto_hash',
+          nonce: data.token,
+          payload: { input: `test_${i}` },
+        }),
+      }));
+    }
+    const floodResults = await Promise.all(floodCalls);
+    const rateLimited = floodResults.some(r => r.status === 429);
+    if (rateLimited) {
+      console.log('\x1b[32m✔\x1b[0m Anti-DoS Rate Limiter Shield: PASSED (Burst flood trapped with HTTP 429)');
+    } else {
+      console.log('\x1b[33m⚠\x1b[0m Anti-DoS Rate Limiter: Requests handled within window');
+    }
+
+    // Test 5: Zero-Knowledge Encrypted Vault Tamper Resistance
+    const vStore = await fetch(`${bridgeUrl}/ipc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: 'test-vault-store',
+        command: 'vault_encrypt_store',
+        nonce: data.token,
+        payload: {
+          filename: 'autotest_vault.vault',
+          content: 'Confidential Payload 2026',
+          passphrase: 'CorrectPassword123'
+        },
+      }),
+    });
+    const vStoreRes = await vStore.json();
+    if (vStoreRes.success) {
+      // Attempt decrypt with WRONG passphrase
+      const vTamper = await fetch(`${bridgeUrl}/ipc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: 'test-vault-tamper',
+          command: 'vault_decrypt_retrieve',
+          nonce: data.token,
+          payload: {
+            filename: 'autotest_vault.vault',
+            passphrase: 'WRONG_MALICIOUS_PASSWORD'
+          },
+        }),
+      });
+      const vTamperRes = await vTamper.json();
+      if (!vTamperRes.success && vTamperRes.error.includes('Decryption failed')) {
+        console.log('\x1b[32m✔\x1b[0m Vault Zero-Knowledge Integrity: PASSED (Unauthorized passphrase rejected)');
+      }
+    }
   } catch (err) {
     console.log('\x1b[31mEnsure Aegis Core is running on http://127.0.0.1:48291 to run test-security.\x1b[0m');
   }

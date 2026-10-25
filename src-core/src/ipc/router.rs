@@ -1,5 +1,5 @@
 use super::protocol::{IpcRequest, IpcResponse};
-use crate::security::{HandshakeSession, SecurityEngine};
+use crate::security::{HandshakeSession, PrivacyShield, SecurityEngine, VaultEngine};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -25,18 +25,117 @@ impl IpcRouter {
         match req.command.as_str() {
             "get_security_status" => {
                 let status = json!({
-                    "engine": "Aegis Core 1.0 (Rust)",
+                    "engine": "Aegis Core v0.11 (Rust)",
                     "nonceVerified": true,
                     "sandboxEnforced": true,
+                    "privacyVaultActive": true,
+                    "antiDosRateLimiterActive": true,
+                    "airGapPolicyActive": true,
                     "activeCapabilities": {
                         "fsRead": true,
                         "fsWrite": true,
                         "shellExecution": false,
                         "systemInfo": true,
-                        "crypto": true
+                        "crypto": true,
+                        "encryptedVault": true
                     }
                 });
                 IpcResponse::ok(&req.id, status)
+            }
+
+            "privacy_status" => {
+                IpcResponse::ok(&req.id, PrivacyShield::get_telemetry_audit())
+            }
+
+            "vault_encrypt_store" => {
+                match self.security.check_crypto() {
+                    Ok(_) => {
+                        let filename = match req.payload.get("filename").and_then(|f| f.as_str()) {
+                            Some(f) => f,
+                            None => return IpcResponse::err(&req.id, "Missing 'filename' parameter"),
+                        };
+                        let content = match req.payload.get("content").and_then(|c| c.as_str()) {
+                            Some(c) => c,
+                            None => return IpcResponse::err(&req.id, "Missing 'content' parameter"),
+                        };
+                        let passphrase = match req.payload.get("passphrase").and_then(|p| p.as_str()) {
+                            Some(p) => p,
+                            None => return IpcResponse::err(&req.id, "Missing 'passphrase' parameter"),
+                        };
+
+                        if passphrase.len() < 4 {
+                            return IpcResponse::err(&req.id, "Passphrase must be at least 4 characters long");
+                        }
+
+                        // Encrypt data with PBKDF2/SHA-256 stream cipher + HMAC-SHA256
+                        let encrypted_envelope = VaultEngine::encrypt(content, passphrase);
+
+                        // Ensure filename ends with .vault
+                        let safe_filename = if filename.ends_with(".vault") {
+                            filename.to_string()
+                        } else {
+                            format!("{}.vault", filename)
+                        };
+
+                        // Store safely inside isolated sandbox
+                        match self.security.check_fs_write(&safe_filename) {
+                            Ok(safe_path) => match fs::write(&safe_path, &encrypted_envelope) {
+                                Ok(_) => IpcResponse::ok(
+                                    &req.id,
+                                    json!({
+                                        "filename": safe_filename,
+                                        "status": "Encrypted & Stored Successfully",
+                                        "envelopeLength": encrypted_envelope.len()
+                                    }),
+                                ),
+                                Err(err) => IpcResponse::err(&req.id, &format!("Failed to write encrypted vault: {}", err)),
+                            },
+                            Err(err) => IpcResponse::err(&req.id, &err),
+                        }
+                    }
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "vault_decrypt_retrieve" => {
+                match self.security.check_crypto() {
+                    Ok(_) => {
+                        let filename = match req.payload.get("filename").and_then(|f| f.as_str()) {
+                            Some(f) => f,
+                            None => return IpcResponse::err(&req.id, "Missing 'filename' parameter"),
+                        };
+                        let passphrase = match req.payload.get("passphrase").and_then(|p| p.as_str()) {
+                            Some(p) => p,
+                            None => return IpcResponse::err(&req.id, "Missing 'passphrase' parameter"),
+                        };
+
+                        let safe_filename = if filename.ends_with(".vault") {
+                            filename.to_string()
+                        } else {
+                            format!("{}.vault", filename)
+                        };
+
+                        // Read safely from sandbox
+                        match self.security.check_fs_read(&safe_filename) {
+                            Ok(safe_path) => match fs::read_to_string(&safe_path) {
+                                Ok(envelope) => match VaultEngine::decrypt(&envelope, passphrase) {
+                                    Ok(plaintext) => IpcResponse::ok(
+                                        &req.id,
+                                        json!({
+                                            "filename": safe_filename,
+                                            "decryptedContent": plaintext,
+                                            "integrityVerified": true
+                                        }),
+                                    ),
+                                    Err(err) => IpcResponse::err(&req.id, &err),
+                                },
+                                Err(err) => IpcResponse::err(&req.id, &format!("Failed to read vault file: {}", err)),
+                            },
+                            Err(err) => IpcResponse::err(&req.id, &err),
+                        }
+                    }
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
             }
 
             "sys_info" => {
