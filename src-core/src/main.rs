@@ -206,7 +206,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[cfg(feature = "native-desktop")]
             {
                 std::thread::spawn(move || server.run());
-                return native_window::run(&ui_url, &win_cfg);
+                return native_window::run(&ui_url, &win_cfg, &base_dir);
             }
             #[cfg(not(feature = "native-desktop"))]
             return Err("Rebuild with --features native-desktop to use --native-window".into());

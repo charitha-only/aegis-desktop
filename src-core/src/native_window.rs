@@ -7,7 +7,11 @@ fn smoke_enabled() -> bool {
 }
 
 #[cfg(any(target_os = "windows", target_os = "macos"))]
-pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(
+    url: &str,
+    config: &WindowConfig,
+    data_root: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     use winit::{
         application::ApplicationHandler,
         event::WindowEvent,
@@ -20,6 +24,7 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
         policy: NativeWindowPolicy,
         window: Option<Window>,
         webview: Option<wry::WebView>,
+        web_context: wry::WebContext,
         error: Option<String>,
         proxy: winit::event_loop::EventLoopProxy<bool>,
         smoke: bool,
@@ -39,7 +44,7 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
             if self.window.is_some() {
                 return;
             }
-            let build = || -> Result<(Window, wry::WebView), Box<dyn std::error::Error>> {
+            let mut build = || -> Result<(Window, wry::WebView), Box<dyn std::error::Error>> {
                 let window = event_loop.create_window(
                     Window::default_attributes()
                         .with_title(&self.config.title)
@@ -54,7 +59,7 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
                 let policy = self.policy.clone();
                 let proxy = self.proxy.clone();
                 let smoke = self.smoke;
-                let webview = wry::WebViewBuilder::new()
+                let webview = wry::WebViewBuilder::new_with_web_context(&mut self.web_context)
                     .with_url(&self.url)
                     .with_incognito(true)
                     .with_devtools(false)
@@ -102,6 +107,8 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
         }
     }
     let policy = NativeWindowPolicy::new(url, config)?;
+    let webview_data = data_root.join("WebViewCache");
+    std::fs::create_dir_all(&webview_data)?;
     let event_loop = EventLoop::<bool>::with_user_event().build()?;
     event_loop.set_control_flow(ControlFlow::Wait);
     let smoke = smoke_enabled();
@@ -118,12 +125,15 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
         policy,
         window: None,
         webview: None,
+        web_context: wry::WebContext::new(Some(webview_data)),
         error: None,
         proxy: event_loop.create_proxy(),
         smoke,
         ready: false,
     };
     event_loop.run_app(&mut app)?;
+    drop(app.webview.take());
+    drop(app.window.take());
     if let Some(error) = app.error {
         return Err(error.into());
     }
@@ -134,7 +144,11 @@ pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::E
 }
 
 #[cfg(target_os = "linux")]
-pub fn run(url: &str, config: &WindowConfig) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(
+    url: &str,
+    config: &WindowConfig,
+    _data_root: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     use gtk::prelude::*;
     use webkit6::{gtk, prelude::*};
     let policy = NativeWindowPolicy::new(url, config)?;

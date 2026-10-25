@@ -34,5 +34,5 @@ try {
   console.log('PASS: native window created, fixture document loaded and process exited');
 } finally {
   const relative = path.relative(tmpdir(), fixture);
-  if (!relative.startsWith('..') && !path.isAbsolute(relative)) await rm(fixture, {recursive: true, force: true});
+  if (!relative.startsWith('..') && !path.isAbsolute(relative)) await rm(fixture, {recursive: true, force: true, maxRetries: 10, retryDelay: 100});
 }
