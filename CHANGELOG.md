@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.19.0] - 2026-10-26
+
+### Security and correctness fixes
+- Replace the custom WebAssembly interpreter with wasmi validation, instruction fuel, memory limits and no host imports. Branch continuation, signed integers and traps follow WebAssembly semantics.
+- Replace deterministic vault XOR encryption with Argon2id + XChaCha20-Poly1305, random salts/nonces and authenticated V2 envelopes. Reject legacy V1 without modifying existing files; export with the original version before migration.
+- Require real Ed25519 verification for plugin manifests and administrator-provisioned public keys. Remove default trusted publishers and fabricated signature acceptance.
+- Generate session tokens with OS randomness; validate loopback Host/Origin, reject unauthorized preflights and limit IPC body size.
+- Harden sandbox paths and configured access scopes; check profile quotas before file/vault writes and persist validated profile definitions across restarts.
+- Remove seeded secrets and authenticate in-memory secret encryption with the vault format.
+
+### Honest capability reporting
+- Disable simulated WebAuthn, HSM/PKCS#11, TPM, biometrics, GPU, P2P distribution, encrypted IPC and auto-update operations. They return unavailable, not fabricated success. Real providers remain future integration work.
+- Replace misleading dashboard actions with unavailable pages. Report the external browser backend accurately; native Wry/Tao webviews are not implemented.
+- Label network rules as advisory evaluation rather than an OS firewall.
+
+### Windows packaging and verification
+- Update Vite and its React plugin; npm audit reports zero known vulnerabilities in the installed dependency tree.
+- Require built release/UI/config assets; include a production static UI server so the portable app runs without Node/Vite. Keep user data under LOCALAPPDATA, separate from installed files.
+- Reject incomplete bundles, unsafe metadata, stale output reuse and unsupported macOS/Linux package targets. Inno Setup compilation and clean-machine validation remain separate steps.
+- Add failure-propagating CLI build/bundle/security commands and Windows CI.
+- Verified locally: Rust regression tests, production UI/release builds, live security smoke checks, portable UI/assets, profile isolation and file/profile persistence after process restart. Real-device and non-Windows validation are not claimed.
+
+> Historical entries below describe earlier prototypes; their hardware, GPU, P2P and native-platform claims are superseded by the v0.19 availability restrictions above.
+
+---
+
 ## 🔮 [Upcoming Roadmap] - v0.20.0
 > **Target Release:** Q1 2027
 

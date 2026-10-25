@@ -2,7 +2,6 @@
 ///
 /// Provides sandboxed workspace isolation for multiple profiles (e.g., Default, Work, Private).
 /// Each profile maintains its own dedicated sandbox directory, config overrides, and privacy policies.
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -30,14 +29,18 @@ pub struct ProfileManager {
 impl ProfileManager {
     pub fn new(base_dir: &Path) -> Self {
         let mut profiles = HashMap::new();
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
 
         profiles.insert(
             "default".to_string(),
             ProfileConfig {
                 id: "default".to_string(),
                 name: "Primary Profile".to_string(),
-                description: "Standard isolated user sandbox with default security boundaries.".to_string(),
+                description: "Standard isolated user sandbox with default security boundaries."
+                    .to_string(),
                 sandbox_dir: "sandbox".to_string(),
                 created_at: now,
                 strict_isolation: true,
@@ -50,7 +53,8 @@ impl ProfileManager {
             ProfileConfig {
                 id: "private_vault".to_string(),
                 name: "High-Security Vault Profile".to_string(),
-                description: "Ephemeral, strict zero-leakage sandbox for sensitive credentials.".to_string(),
+                description: "Ephemeral, strict zero-leakage sandbox for sensitive credentials."
+                    .to_string(),
                 sandbox_dir: "sandbox_vault".to_string(),
                 created_at: now,
                 strict_isolation: true,
@@ -58,11 +62,26 @@ impl ProfileManager {
             },
         );
 
-        Self {
+        let manager = Self {
             base_dir: base_dir.to_path_buf(),
             profiles: Mutex::new(profiles),
             active_profile_id: Mutex::new("default".to_string()),
+        };
+        if let Ok(text) = fs::read_to_string(base_dir.join("profiles.json")) {
+            if let Ok(saved) = serde_json::from_str::<Vec<ProfileConfig>>(&text) {
+                let mut lock = manager.profiles.lock().unwrap();
+                for cfg in saved {
+                    if valid_id(&cfg.id)
+                        && cfg.id != "default"
+                        && cfg.id != "private_vault"
+                        && cfg.sandbox_dir == format!("sandbox_{}", cfg.id)
+                    {
+                        lock.insert(cfg.id.clone(), cfg);
+                    }
+                }
+            }
         }
+        manager
     }
 
     pub fn get_active_sandbox_path(&self) -> PathBuf {
@@ -80,9 +99,9 @@ impl ProfileManager {
     }
 
     pub fn get_active_profile(&self) -> ProfileConfig {
-        let active_id = self.active_profile_id.lock().unwrap();
+        let active_id = self.active_profile_id.lock().unwrap().clone();
         let p = self.profiles.lock().unwrap();
-        p.get(&*active_id).cloned().unwrap_or_else(|| ProfileConfig {
+        p.get(&active_id).cloned().unwrap_or_else(|| ProfileConfig {
             id: "default".to_string(),
             name: "Primary Profile".to_string(),
             description: "Default fallback".to_string(),
@@ -98,7 +117,7 @@ impl ProfileManager {
         if let Some(target) = p.get(id) {
             let mut active = self.active_profile_id.lock().unwrap();
             *active = id.to_string();
-            
+
             // Ensure profile sandbox directory exists
             let path = self.base_dir.join(&target.sandbox_dir);
             if !path.exists() {
@@ -111,13 +130,27 @@ impl ProfileManager {
         }
     }
 
-    pub fn create_profile(&self, id: &str, name: &str, description: &str) -> Result<ProfileConfig, String> {
+    pub fn create_profile(
+        &self,
+        id: &str,
+        name: &str,
+        description: &str,
+    ) -> Result<ProfileConfig, String> {
+        if !valid_id(id) {
+            return Err("Profile ID must be 1-48 ASCII letters, digits or underscores".into());
+        }
         let mut p = self.profiles.lock().unwrap();
+        if p.len() >= 32 {
+            return Err("Profile quota exceeded".into());
+        }
         if p.contains_key(id) {
             return Err(format!("Profile ID '{}' already exists", id));
         }
 
-        let sandbox_dir = format!("sandbox_{}", id.replace(|c: char| !c.is_alphanumeric(), "_"));
+        let sandbox_dir = format!(
+            "sandbox_{}",
+            id.replace(|c: char| !c.is_alphanumeric(), "_")
+        );
         let p_path = self.base_dir.join(&sandbox_dir);
         let _ = fs::create_dir_all(&p_path);
 
@@ -126,12 +159,25 @@ impl ProfileManager {
             name: name.to_string(),
             description: description.to_string(),
             sandbox_dir,
-            created_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
+            created_at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
             strict_isolation: true,
             max_storage_bytes: 25 * 1024 * 1024,
         };
 
+        let mut saved: Vec<_> = p.values().cloned().collect();
+        saved.push(cfg.clone());
+        let data = serde_json::to_vec_pretty(&saved).map_err(|e| e.to_string())?;
+        let temp = self.base_dir.join("profiles.json.tmp");
+        fs::write(&temp, data).map_err(|e| e.to_string())?;
+        fs::rename(&temp, self.base_dir.join("profiles.json")).map_err(|e| e.to_string())?;
         p.insert(id.to_string(), cfg.clone());
         Ok(cfg)
     }
+}
+
+fn valid_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 48 && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }

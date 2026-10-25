@@ -107,7 +107,7 @@ export interface AttestationVerification {
 }
 
 class AegisBridge {
-  private bridgeUrl = 'http://127.0.0.1:48291';
+  private bridgeUrl = import.meta.env.PROD ? window.location.origin : 'http://127.0.0.1:48291';
   private sessionNonce: string | null = null;
   private isInitialized = false;
 
@@ -290,8 +290,9 @@ class AegisBridge {
     return this.invoke('hardware_key_enroll', { keyId, pin });
   }
 
-  public async hardwareKeyVerify(challengeId: string, pin: string): Promise<IpcResponse> {
-    return this.invoke('hardware_key_verify', { challengeId, pin });
+  public async hardwareKeyVerify(challengeId: string, pin: string, assertion?: {clientDataJSON:string;authenticatorData:string;signature:string}): Promise<IpcResponse> {
+    if (!assertion) return {id:'hardware-unavailable',success:false,error:'UNAVAILABLE: No authenticator provider is configured. A PIN alone is not a WebAuthn assertion.'};
+    return this.invoke('hardware_key_verify', { challengeId, pin, ...assertion });
   }
 
   public async profileList(): Promise<IpcResponse> {

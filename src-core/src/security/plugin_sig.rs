@@ -20,77 +20,87 @@ pub struct SignatureVerificationResult {
     pub message: String,
 }
 
-/// Cryptographic manifest & code signature verifier for Aegis extensions and plugins
+/// Only administrator-provisioned Ed25519 public keys are trusted. No embedded test roots.
 pub struct SignatureVerifier {
     trusted_signers: Mutex<Vec<VerifiedSigner>>,
 }
-
 impl SignatureVerifier {
     pub fn new() -> Self {
-        let signers = vec![
-            VerifiedSigner {
-                key_id: "signer_aegis_official".to_string(),
-                vendor: "Aegis Core Security Team".to_string(),
-                public_fingerprint: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
-                trusted: true,
-            },
-            VerifiedSigner {
-                key_id: "signer_enterprise_partner".to_string(),
-                vendor: "Verified Enterprise Partner CA".to_string(),
-                public_fingerprint: "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb".to_string(),
-                trusted: true,
-            },
-        ];
-
+        let signers = std::fs::read_to_string("trusted-signers.json")
+            .ok()
+            .and_then(|s| serde_json::from_str::<Vec<VerifiedSigner>>(&s).ok())
+            .unwrap_or_default();
         Self {
             trusted_signers: Mutex::new(signers),
         }
     }
-
-    pub fn verify_plugin_manifest(&self, plugin_id: &str, manifest_raw: &str, signature_hex: &str) -> SignatureVerificationResult {
-        let digest = format!("{:x}", Sha256::digest(manifest_raw.as_bytes()));
-        
-        // In our deterministic ECDSA-digest verification model:
-        // A valid signature contains the signer id or matches expected digest
-        let signers = self.trusted_signers.lock().unwrap();
-
-        for signer in signers.iter() {
-            if signature_hex.starts_with(&signer.key_id) || signature_hex == signer.public_fingerprint {
-                return SignatureVerificationResult {
-                    plugin_id: plugin_id.to_string(),
-                    valid: true,
-                    trusted_vendor: signer.trusted,
-                    signer_vendor: Some(signer.vendor.clone()),
-                    computed_digest: digest,
-                    message: format!("Cryptographic signature verified against '{}'", signer.vendor),
-                };
-            }
-        }
-
-        // Check if signature contains untrusted/tampered payload
-        if signature_hex.contains("UNVERIFIED") || signature_hex.is_empty() {
+    pub fn list_trusted_signers(&self) -> Vec<VerifiedSigner> {
+        self.trusted_signers.lock().unwrap().clone()
+    }
+    pub fn verify_plugin_manifest(
+        &self,
+        id: &str,
+        manifest: &str,
+        signature: &str,
+    ) -> SignatureVerificationResult {
+        let digest = hex::encode(Sha256::digest(manifest.as_bytes()));
+        if id.is_empty()
+            || id.len() > 128
+            || !id
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+        {
             return SignatureVerificationResult {
-                plugin_id: plugin_id.to_string(),
+                plugin_id: id.into(),
                 valid: false,
                 trusted_vendor: false,
                 signer_vendor: None,
                 computed_digest: digest,
-                message: "Signature verification failed: Missing or tampered vendor signature".to_string(),
+                message: "Invalid plugin identity".into(),
             };
         }
-
-        // Fallback for valid signature structure signed by unknown key
-        SignatureVerificationResult {
-            plugin_id: plugin_id.to_string(),
-            valid: true,
-            trusted_vendor: false,
-            signer_vendor: Some("Unknown Third-Party Developer".to_string()),
-            computed_digest: digest,
-            message: "Signature structurally valid but signer is NOT in the enterprise trusted roots".to_string(),
-        }
+        let signers = self.trusted_signers.lock().unwrap();
+        let verified = signature.split_once(':').and_then(|(key_id, sig)| {
+            let signer = signers.iter().find(|s| s.key_id == key_id && s.trusted)?;
+            let public: [u8; 32] = hex::decode(&signer.public_fingerprint)
+                .ok()?
+                .try_into()
+                .ok()?;
+            let key = ed25519_dalek::VerifyingKey::from_bytes(&public).ok()?;
+            let sig = ed25519_dalek::Signature::from_slice(&hex::decode(sig).ok()?).ok()?;
+            let message = format!("AEGIS_PLUGIN_V1\0{}\0{}", id, manifest);
+            key.verify_strict(message.as_bytes(), &sig).ok()?;
+            Some(signer.vendor.clone())
+        });
+        SignatureVerificationResult{plugin_id:id.into(),valid:verified.is_some(),trusted_vendor:verified.is_some(),signer_vendor:verified,computed_digest:digest,message:"Ed25519 verification requires a provisioned trusted key and a signature over AEGIS_PLUGIN_V1\0<plugin_id>\0<manifest>".into()}
     }
-
-    pub fn list_trusted_signers(&self) -> Vec<VerifiedSigner> {
-        self.trusted_signers.lock().unwrap().clone()
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ed25519_dalek::Signer;
+    #[test]
+    fn real_signature_and_tamper() {
+        let key = ed25519_dalek::SigningKey::from_bytes(&[42; 32]);
+        let v = SignatureVerifier {
+            trusted_signers: Mutex::new(vec![VerifiedSigner {
+                key_id: "test".into(),
+                vendor: "test".into(),
+                public_fingerprint: hex::encode(key.verifying_key().as_bytes()),
+                trusted: true,
+            }]),
+        };
+        let message = "AEGIS_PLUGIN_V1\0plugin\0manifest";
+        let sig = format!(
+            "test:{}",
+            hex::encode(key.sign(message.as_bytes()).to_bytes())
+        );
+        assert!(v.verify_plugin_manifest("plugin", "manifest", &sig).valid);
+        assert!(!v.verify_plugin_manifest("plugin", "tampered", &sig).valid);
+        assert!(!v.verify_plugin_manifest("other", "manifest", &sig).valid);
+        assert!(
+            !v.verify_plugin_manifest("plugin", "manifest", "signer_aegis_official-anything")
+                .valid
+        );
     }
 }

@@ -1,179 +1,29 @@
 #!/usr/bin/env node
-
-import { spawn } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '../..');
-
-const command = process.argv[2] || 'dev';
-
-async function runDev() {
-  console.log('\x1b[36m%s\x1b[0m', '═══════════════════════════════════════════════════════════');
-  console.log('\x1b[35m%s\x1b[0m', '  🛡️  AEGIS DESKTOP FRAMEWORK • STARTING DEV ENVIRONMENT  ');
-  console.log('\x1b[36m%s\x1b[0m', '═══════════════════════════════════════════════════════════\n');
-
-  const cargoPath = path.join(process.env.USERPROFILE || '', '.cargo', 'bin', 'cargo.exe');
-  const cargoCmd = fs.existsSync(cargoPath) ? cargoPath : 'cargo';
-
-  // 1. Start Rust Core
-  console.log('\x1b[33m%s\x1b[0m', '➜ [Core] Launching Rust Aegis Security Engine...');
-  const coreProcess = spawn(cargoCmd, ['run', '--manifest-path', 'src-core/Cargo.toml', '--', '--spawn-window'], {
-    cwd: projectRoot,
-    stdio: 'inherit',
-    shell: true,
-  });
-
-  // 2. Start Vite Dev Server
-  console.log('\x1b[33m%s\x1b[0m', '➜ [Frontend] Launching Vite UI server on http://localhost:5173...');
-  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const uiProcess = spawn(npmCmd, ['run', 'dev'], {
-    cwd: path.join(projectRoot, 'src-ui'),
-    stdio: 'inherit',
-    shell: true,
-  });
-
-  const cleanup = () => {
-    console.log('\n\x1b[31m%s\x1b[0m', 'Stopping Aegis processes...');
-    try { coreProcess.kill(); } catch (e) {}
-    try { uiProcess.kill(); } catch (e) {}
-    process.exit(0);
-  };
-
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
+import {spawn,spawnSync} from 'node:child_process';
+import path from 'node:path';import fs from 'node:fs';import {fileURLToPath} from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
+const cargoPath=path.join(process.env.USERPROFILE||process.env.HOME||'','.cargo','bin',process.platform==='win32'?'cargo.exe':'cargo');
+const cargo=fs.existsSync(cargoPath)?cargoPath:'cargo';
+function start(cmd,args,cwd=root){return spawn(cmd,args,{cwd,stdio:'inherit',shell:process.platform==='win32'&&cmd==='npm.cmd'});}
+function run(cmd,args,cwd=root){return new Promise((resolve,reject)=>{const p=start(cmd,args,cwd);p.on('error',reject);p.on('exit',code=>code===0?resolve():reject(new Error(cmd+' failed with exit '+code)));});}
+const npm=process.platform==='win32'?'npm.cmd':'npm';
+async function build(){await run(cargo,['build','--release','--manifest-path','src-core/Cargo.toml']);await run(npm,['run','build'],path.join(root,'src-ui'));}
+async function securityTest(){const base=process.env.AEGIS_BRIDGE_URL||'http://127.0.0.1:48291';const handshake=await fetch(base+'/handshake');if(!handshake.ok)throw new Error('Handshake failed');const {token}=await handshake.json();let seq=0;
+ const call=async(command,payload={},nonce=token)=>{const r=await fetch(base+'/ipc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:String(++seq),command,payload,nonce})});return {status:r.status,...await r.json()};};
+ const assert=(ok,name)=>{if(!ok)throw new Error('FAIL: '+name);console.log('PASS: '+name);};
+ assert(!(await call('fs_read_file',{path:'../outside'})).success,'Traversal rejected');
+ assert(!(await call('execute_shell',{command:'whoami'})).success,'Shell rejected');
+ assert(!(await call('sys_info',{},'invalid')).success,'Invalid token rejected');
+ assert(!(await call('hardware_key_enroll',{keyId:'fake',pin:'anything'})).success,'Fake hardware rejected');
+ assert(!(await call('wasm_execute_gpu',{moduleId:'wasm-crypto-accelerator'})).success,'GPU unavailable');
+ const file='smoke-'+Date.now()+'.vault';assert((await call('vault_encrypt_store',{filename:file,content:'TEST_ONLY',passphrase:'smoke-password-123'})).success,'Vault encrypted');
+ const plain=await call('vault_decrypt_retrieve',{filename:file,passphrase:'smoke-password-123'});assert(plain.success&&plain.data.decryptedContent==='TEST_ONLY','Vault roundtrip');
+ assert(!(await call('vault_decrypt_retrieve',{filename:file,passphrase:'wrong'})).success,'Wrong password rejected');
+ const flood=await Promise.all(Array.from({length:35},()=>call('crypto_hash',{input:'test'})));assert(flood.some(r=>r.status===429),'Rate limiting');
 }
-
-async function runSecurityTest() {
-  console.log('\x1b[32m%s\x1b[0m', 'Running Aegis Automated Penetration & Security Tests...');
-  const bridgeUrl = 'http://127.0.0.1:48291';
-
-  try {
-    const handshakeRes = await fetch(`${bridgeUrl}/handshake`);
-    const data = await handshakeRes.json();
-    console.log('\x1b[32m✔\x1b[0m Cryptographic Nonce Handshake: PASSED (Token length: ' + data.token.length + ')');
-
-    // Test 1: Malicious Traversal
-    const t1 = await fetch(`${bridgeUrl}/ipc`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: 'test-1',
-        command: 'fs_read_file',
-        nonce: data.token,
-        payload: { path: '../../../../Windows/win.ini' },
-      }),
-    });
-    const r1 = await t1.json();
-    if (!r1.success && r1.error.includes('Security Violation')) {
-      console.log('\x1b[32m✔\x1b[0m Path Traversal Defense: PASSED (Attack correctly trapped and denied)');
-    } else {
-      console.log('\x1b[31m✘\x1b[0m Path Traversal Defense: FAILED');
-    }
-
-    // Test 2: Shell execution
-    const t2 = await fetch(`${bridgeUrl}/ipc`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: 'test-2',
-        command: 'execute_shell',
-        nonce: data.token,
-        payload: { command: 'whoami' },
-      }),
-    });
-    const r2 = await t2.json();
-    if (!r2.success) {
-      console.log('\x1b[32m✔\x1b[0m Shell Injection Defense: PASSED (Arbitrary execution strictly denied)');
-    }
-
-    // Test 3: Invalid Nonce
-    const t3 = await fetch(`${bridgeUrl}/ipc`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: 'test-3',
-        command: 'sys_info',
-        nonce: 'SPOOFED_NONCE',
-        payload: {},
-      }),
-    });
-    const r3 = await t3.json();
-    if (!r3.success && r3.error.includes('Security Breach')) {
-      console.log('\x1b[32m✔\x1b[0m Replay & Nonce Defense: PASSED (Invalid token rejected)');
-    }
-
-    // Test 4: Anti-DoS Rate Limiter Burst Test
-    console.log('\x1b[33m➜\x1b[0m Firing burst flood to verify Anti-DoS Rate Limiter...');
-    const floodCalls = [];
-    for (let i = 0; i < 35; i++) {
-      floodCalls.push(fetch(`${bridgeUrl}/ipc`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: `flood-${i}`,
-          command: 'crypto_hash',
-          nonce: data.token,
-          payload: { input: `test_${i}` },
-        }),
-      }));
-    }
-    const floodResults = await Promise.all(floodCalls);
-    const rateLimited = floodResults.some(r => r.status === 429);
-    if (rateLimited) {
-      console.log('\x1b[32m✔\x1b[0m Anti-DoS Rate Limiter Shield: PASSED (Burst flood trapped with HTTP 429)');
-    } else {
-      console.log('\x1b[33m⚠\x1b[0m Anti-DoS Rate Limiter: Requests handled within window');
-    }
-
-    // Test 5: Zero-Knowledge Encrypted Vault Tamper Resistance
-    const vStore = await fetch(`${bridgeUrl}/ipc`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: 'test-vault-store',
-        command: 'vault_encrypt_store',
-        nonce: data.token,
-        payload: {
-          filename: 'autotest_vault.vault',
-          content: 'Confidential Payload 2026',
-          passphrase: 'CorrectPassword123'
-        },
-      }),
-    });
-    const vStoreRes = await vStore.json();
-    if (vStoreRes.success) {
-      // Attempt decrypt with WRONG passphrase
-      const vTamper = await fetch(`${bridgeUrl}/ipc`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: 'test-vault-tamper',
-          command: 'vault_decrypt_retrieve',
-          nonce: data.token,
-          payload: {
-            filename: 'autotest_vault.vault',
-            passphrase: 'WRONG_MALICIOUS_PASSWORD'
-          },
-        }),
-      });
-      const vTamperRes = await vTamper.json();
-      if (!vTamperRes.success && vTamperRes.error.includes('Decryption failed')) {
-        console.log('\x1b[32m✔\x1b[0m Vault Zero-Knowledge Integrity: PASSED (Unauthorized passphrase rejected)');
-      }
-    }
-  } catch (err) {
-    console.log('\x1b[31mEnsure Aegis Core is running on http://127.0.0.1:48291 to run test-security.\x1b[0m');
-  }
-}
-
-if (command === 'dev') {
-  runDev();
-} else if (command === 'test-security') {
-  runSecurityTest();
-} else {
-  console.log(`Unknown command: ${command}`);
-}
+try{const command=process.argv[2]||'dev';
+ if(command==='dev'){const children=[start(cargo,['run','--manifest-path','src-core/Cargo.toml','--','--spawn-window']),start(npm,['run','dev'],path.join(root,'src-ui'))];const cleanup=()=>{for(const p of children){if(process.platform==='win32'&&p.pid)spawnSync('taskkill',['/pid',String(p.pid),'/t','/f'],{stdio:'ignore'});else p.kill();}process.exit();};process.on('SIGINT',cleanup);process.on('SIGTERM',cleanup);for(const p of children)p.on('error',e=>{console.error(e.message);cleanup();});}
+ else if(command==='build'||command==='build-release')await build();
+ else if(command==='bundle'){await build();await run(cargo,['run','--release','--manifest-path','src-core/Cargo.toml','--','--bundle']);}
+ else if(command==='test-security')await securityTest();else throw new Error('Unknown command: '+command);
+}catch(e){console.error(e.message);process.exitCode=1;}
