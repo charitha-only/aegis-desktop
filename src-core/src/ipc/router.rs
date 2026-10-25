@@ -550,7 +550,11 @@ impl IpcRouter {
                     None => return IpcResponse::err(&req.id, "Missing 'challengeId' parameter"),
                 };
                 let pin = req.payload.get("pin").and_then(|p| p.as_str()).unwrap_or("");
-                match self.hardware_keys.verify_signature(chal_id, pin) {
+                // WebAuthn assertion fields — must come from the physical authenticator device
+                let client_data_json = req.payload.get("clientDataJSON").and_then(|v| v.as_str()).unwrap_or("");
+                let authenticator_data = req.payload.get("authenticatorData").and_then(|v| v.as_str()).unwrap_or("");
+                let signature = req.payload.get("signature").and_then(|v| v.as_str()).unwrap_or("");
+                match self.hardware_keys.verify_signature(chal_id, pin, client_data_json, authenticator_data, signature) {
                     Ok(resp) => IpcResponse::ok(&req.id, json!(resp)),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }

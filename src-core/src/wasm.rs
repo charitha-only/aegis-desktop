@@ -218,11 +218,10 @@ impl WasmSandbox {
             pc = 3;
         }
 
-        // Control-flow label stack: each entry = (else_offset, end_offset)
-        // When we hit 'if': evaluate top-of-stack; if false, jump to else/end
-        // When we hit 'else': jump past end
-        // We implement a simpler inline approach: scan forward to find matching else/end
-        // to jump the program counter on branching.
+        // Control-flow block depth.
+        // 0 = function body level; incremented when we enter an if/else/block body.
+        // 0x0B (end) only terminates the function when block_depth == 0.
+        let mut block_depth: u32 = 0;
 
         while pc < code.len() {
             let opcode = code[pc];
@@ -324,57 +323,66 @@ impl WasmSandbox {
                 }
 
                 // ── Control flow opcodes ─────────────────────────────────────
+                0x00 => { // unreachable — always traps
+                    return Err("Wasm Trap: unreachable instruction executed (opcode 0x00)!".into());
+                }
                 0x04 => { // if <blocktype>
-                    // Consume blocktype byte (0x7F = i32 result, 0x40 = void)
+                    // Consume blocktype byte (0x7F = i32, 0x40 = void, etc.)
                     if pc < code.len() { pc += 1; } // skip blocktype
                     let cond = stack.pop().unwrap_or(0);
                     gas_consumed += 5;
                     if cond == 0 {
-                        // Condition is false: skip to matching 'else' (0x05) or 'end' (0x0B)
-                        // We scan forward counting nested if/end pairs
+                        // FALSE branch: scan forward to matching 'else' or 'end'.
+                        // If we land on 'else', we are now inside the else-body
+                        // → increment block_depth so the closing 0x0B won't break the function.
+                        // If we land on 'end' (no else), the 0x0B is consumed in the scan
+                        // → block_depth unchanged (block is fully done).
                         let mut depth: i32 = 1;
+                        let mut landed_on_else = false;
                         while pc < code.len() && depth > 0 {
                             let op = code[pc];
                             pc += 1;
                             match op {
                                 0x04 => {
-                                    // nested if — consume blocktype, increase depth
-                                    if pc < code.len() { pc += 1; }
+                                    if pc < code.len() { pc += 1; } // skip blocktype
                                     depth += 1;
                                 }
                                 0x05 if depth == 1 => {
-                                    // Our matching else — stop here to execute else branch
+                                    // Matching else — stop; PC is now at start of else-body
+                                    landed_on_else = true;
                                     depth = 0;
                                 }
-                                0x0B => {
-                                    depth -= 1;
-                                    if depth == 0 {
-                                        // Hit the matching end while no else: break out of interpreter
-                                        // The 0x0B above already decremented depth to 0,
-                                        // nothing left to push; leave stack as-is.
-                                    }
-                                }
+                                0x0B => { depth -= 1; } // matching end consumed
                                 0x41 => {
-                                    // i32.const: skip LEB128 bytes
+                                    // skip signed LEB128 immediate
                                     while pc < code.len() {
                                         let b = code[pc]; pc += 1;
                                         if b & 0x80 == 0 { break; }
                                     }
                                 }
                                 0x20 | 0x21 | 0x22 => {
-                                    // local.get/set/tee: skip 1 immediate
-                                    if pc < code.len() { pc += 1; }
+                                    if pc < code.len() { pc += 1; } // skip local index
                                 }
                                 _ => {}
                             }
                         }
+                        if landed_on_else {
+                            // We are now executing inside the else-body.
+                            // The block's closing 0x0B must NOT terminate the function.
+                            block_depth += 1;
+                        }
+                        // If landed on 0x0B (no else): the end was consumed above; block done.
+                    } else {
+                        // TRUE branch: execute if-body; depth goes up so the
+                        // if-block's closing 0x0B (or else) won't terminate the function.
+                        block_depth += 1;
                     }
-                    // If cond != 0: fall through — execute the if-body naturally
                 }
                 0x05 => { // else
-                    // We reach 'else' only when the if-body was executed (cond was true).
-                    // Now skip to the matching 'end'.
+                    // Reached during normal execution = we just finished the if-body (cond was true).
+                    // Now skip the else-body up to and including the matching 'end' (0x0B).
                     gas_consumed += 2;
+                    block_depth -= 1; // leaving the if-body level we incremented on entry
                     let mut depth: i32 = 1;
                     while pc < code.len() && depth > 0 {
                         let op = code[pc];
@@ -384,7 +392,7 @@ impl WasmSandbox {
                                 if pc < code.len() { pc += 1; } // blocktype
                                 depth += 1;
                             }
-                            0x0B => { depth -= 1; }
+                            0x0B => { depth -= 1; } // matching end consumed in scan
                             0x41 => {
                                 while pc < code.len() {
                                     let b = code[pc]; pc += 1;
@@ -397,10 +405,16 @@ impl WasmSandbox {
                             _ => {}
                         }
                     }
+                    // The matching 0x0B was consumed in the scan; block is fully exited.
                 }
                 0x0B => { // end (block/function)
-                    // If this is the function-level end, stop execution
-                    break;
+                    if block_depth > 0 {
+                        // End of an if/else/block construct, not the function.
+                        block_depth -= 1;
+                    } else {
+                        // Function-level end: stop execution.
+                        break;
+                    }
                 }
 
                 // ── Arithmetic opcodes ───────────────────────────────────────
@@ -479,5 +493,71 @@ impl WasmSandbox {
             output_payload: guest_output,
             duration_us,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wasm_validator_valid_and_invalid_payload() {
+        let sandbox = WasmSandbox::new();
+
+        // Valid non-empty object payload
+        let valid_payload = serde_json::json!({"action": "ping", "data": "123"});
+        let res_valid = sandbox.execute_module("wasm-schema-validator", &valid_payload).expect("should succeed");
+        assert_eq!(res_valid.output_payload["stackResult"], 0);
+
+        // Invalid empty payload
+        let invalid_payload = serde_json::json!({});
+        let res_invalid = sandbox.execute_module("wasm-schema-validator", &invalid_payload).expect("should succeed");
+        assert_eq!(res_invalid.output_payload["stackResult"], -1);
+    }
+
+    #[test]
+    fn test_wasm_post_else_execution_resumes_correctly() {
+        let sandbox = WasmSandbox::new();
+
+        // Bytecode that does:
+        // if (0) { 2 } else { 3 }
+        // 2 +
+        // (Expected result: 5)
+        let bytecode: Vec<u8> = vec![
+            0x00, 0x61, 0x73, 0x6D,
+            0x01, 0x00, 0x00, 0x00,
+            0x0A, 0x11, 0x01, 0x0F, 0x00,
+            0x41, 0x00, // i32.const 0 (condition = false)
+            0x04, 0x7F, // if i32
+            0x41, 0x02, // i32.const 2
+            0x05,       // else
+            0x41, 0x03, // i32.const 3
+            0x0B,       // end of if
+            0x41, 0x02, // i32.const 2
+            0x6A,       // i32.add (3 + 2 = 5)
+            0x0B,       // end of function
+        ];
+
+        sandbox.load_wasm_binary("test-post-else", "Post Else Test", bytecode).expect("load");
+        let res = sandbox.execute_module("test-post-else", &serde_json::json!({})).expect("execute");
+        assert_eq!(res.output_payload["stackResult"], 5);
+    }
+
+    #[test]
+    fn test_wasm_unreachable_instruction_traps() {
+        let sandbox = WasmSandbox::new();
+
+        let bytecode: Vec<u8> = vec![
+            0x00, 0x61, 0x73, 0x6D,
+            0x01, 0x00, 0x00, 0x00,
+            0x0A, 0x05, 0x01, 0x03, 0x00,
+            0x00, // unreachable (opcode 0x00)
+            0x0B, // end of function
+        ];
+
+        sandbox.load_wasm_binary("test-unreachable", "Unreachable Test", bytecode).expect("load");
+        let res = sandbox.execute_module("test-unreachable", &serde_json::json!({}));
+        assert!(res.is_err());
+        assert!(res.unwrap_err().contains("unreachable instruction executed"));
     }
 }
