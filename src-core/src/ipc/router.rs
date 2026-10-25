@@ -528,22 +528,12 @@ impl IpcRouter {
                     Some(k) => k,
                     None => return IpcResponse::err(&req.id, "Missing 'keyId' parameter"),
                 };
-                let model = req.payload.get("model").and_then(|m| m.as_str()).unwrap_or("Custom Hardware Token");
                 let pin = match req.payload.get("pin").and_then(|p| p.as_str()) {
                     Some(p) => p,
                     None => return IpcResponse::err(&req.id, "Missing 'pin' parameter"),
                 };
-                let key_info = crate::security::hardware_key::HardwareKeyInfo {
-                    key_id: key_id.to_string(),
-                    manufacturer: "Hardware Security Token".to_string(),
-                    model: model.to_string(),
-                    protocol: "FIDO2 / CTAP2.1 & WebAuthn Level 3".to_string(),
-                    enrolled_at: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs(),
-                    touch_required: true,
-                    pin_verified: false,
-                };
-                match self.hardware_keys.enroll_key(key_info, pin) {
-                    Ok(_) => IpcResponse::ok(&req.id, json!({ "enrolled": true, "keyId": key_id })),
+                match self.hardware_keys.enroll_key(key_id, pin) {
+                    Ok(key_info) => IpcResponse::ok(&req.id, json!({ "enrolled": true, "key": key_info })),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }

@@ -289,11 +289,14 @@ export default function App() {
   const handleVerifyFidoKey = async () => {
     if (!fidoChallenge?.challenge_id) return;
     setHwKeyLoading(true);
-    const res = await aegis.hardwareKeyVerify(fidoChallenge.challenge_id, fidoPin);
+    const chalId = fidoChallenge.challenge_id;
+    setFidoChallenge(null); // Consumed on client side
+    const res = await aegis.hardwareKeyVerify(chalId, fidoPin);
     if (res.success && res.data) {
       setFidoVerificationResult(res.data);
       addLog('SUCCESS', 'hardware_key_verify', `FIDO2 touch & PIN assertion verified: sig=${res.data.signature_hex?.substring(0, 16)}...`);
     } else {
+      setFidoVerificationResult(null);
       addLog('BLOCKED', 'hardware_key_verify', res.error || 'FIDO2 verification failed');
     }
     setHwKeyLoading(false);

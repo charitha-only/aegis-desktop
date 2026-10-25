@@ -93,8 +93,21 @@ impl HardwareKeyEngine {
         detected
     }
 
-    /// Enroll a physical security key with a user-configured master PIN
-    pub fn enroll_key(&self, key_info: HardwareKeyInfo, user_pin: &str) -> Result<(), String> {
+    /// Enroll a physical security key with a user-configured master PIN.
+    /// STRICT SECURITY: The key must exist in the real hardware bus scan; spoofed IDs are rejected!
+    pub fn enroll_key(&self, key_id: &str, user_pin: &str) -> Result<HardwareKeyInfo, String> {
+        let detected = self.scan_and_detect_keys();
+        let target_key = detected
+            .iter()
+            .find(|k| k.key_id == key_id)
+            .ok_or_else(|| {
+                format!(
+                    "CTAP2_ERR_DEVICE_NOT_FOUND: No physical security token with ID '{}' detected on the USB/HID bus. Spoofed hardware enrollment rejected!",
+                    key_id
+                )
+            })?
+            .clone();
+
         if user_pin.len() < 4 {
             return Err("Security Key PIN must be at least 4 digits".to_string());
         }
@@ -108,11 +121,10 @@ impl HardwareKeyEngine {
         *pin_lock = Some(pin_hash);
 
         let mut keys = self.enrolled_keys.lock().unwrap();
-        if !keys.iter().any(|k| k.key_id == key_info.key_id) {
-            keys.push(key_info);
-        }
+        keys.clear(); // Only genuine actively enrolled device
+        keys.push(target_key.clone());
         *self.failed_attempts.lock().unwrap() = 0;
-        Ok(())
+        Ok(target_key)
     }
 
     /// List all currently enrolled hardware tokens
@@ -216,9 +228,15 @@ impl HardwareKeyEngine {
         // Reset failed counter on successful PIN verification
         *attempts = 0;
 
-        let challenges = self.active_challenges.lock().unwrap();
-        let chal = challenges.iter().find(|c| c.challenge_id == challenge_id)
-            .ok_or_else(|| "Challenge expired or invalid".to_string())?;
+        // Single-Use Nonce Enforcment: Find and remove challenge to prevent replay attacks
+        let chal = {
+            let mut challenges = self.active_challenges.lock().unwrap();
+            let idx = challenges
+                .iter()
+                .position(|c| c.challenge_id == challenge_id)
+                .ok_or_else(|| "CTAP2_ERR_CHALLENGE_EXPIRED_OR_REPLAY: Challenge has expired or was already consumed! Replay attack blocked.".to_string())?;
+            challenges.remove(idx)
+        };
 
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
         if now > chal.expires_at {
