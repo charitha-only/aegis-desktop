@@ -11,6 +11,7 @@ The product targets Windows, Linux and macOS. This table describes implementatio
 | Opt-in text clipboard writes | Native provider preview | X11 provider preview; native Wayland not enabled | Native provider preview |
 | Optional single-file picker | Windows shell helper preview | XDG Portal helper preview | AppKit helper preview |
 | Optional native message dialogs | rfd native helper preview; interactive acceptance pending | zenity preview; hosted X11 OK/Escape fixture passed; requires installed provider | rfd AppKit helper preview; interactive acceptance pending |
+| Permission-controlled notification helpers | WinRT/PowerShell preview; visual acceptance pending | notify-send preview; private nonvisual D-Bus acceptance/rejection fixture passed | osascript preview; visual acceptance pending |
 | Retained-session OS lock monitoring | WTS/power adapter; hosted lock test | Not implemented | Not implemented |
 | Installer acceptance | Disposable hosted runner tests | Not implemented | Not implemented |
 | Native portable directory | Supported | Implementation added; native CI acceptance required | Implementation added; native CI acceptance required |
