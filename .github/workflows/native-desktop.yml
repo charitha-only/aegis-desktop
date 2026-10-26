@@ -26,10 +26,23 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
+      - name: Verify revoke-only logind observer on an owned private bus
+        if: runner.os == 'Linux'
+        timeout-minutes: 3
+        env:
+          AEGIS_PRIVATE_LOGIND_BUS: '1'
+        run: dbus-run-session -- cargo test --locked --manifest-path src-core/Cargo.toml --features linux-lifecycle -- --ignored --exact security::linux_lifecycle::tests::private_logind_signals_revoke_and_reject_wrong_authority
       - name: Install GTK4 and WebKit6 development libraries
         if: runner.os == 'Linux'
         timeout-minutes: 8
         run: |
+          # Keep Ubuntu's signed sources/keyrings; replace only the hosted mirror list.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+          if [ -f /etc/apt/apt-mirrors-security.txt ]; then
+            printf '%s\n' 'https://security.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors-security.txt >/dev/null
+          fi
           sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
           sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y libgtk-4-dev libwebkitgtk-6.0-dev xvfb dbus-x11 at-spi2-core apparmor zenity xdotool libnotify-bin python3-dbus python3-gi
       - name: Permit sandbox namespaces for the owned Linux fixture executable
@@ -39,12 +52,6 @@ jobs:
         run: cargo test --locked --manifest-path src-core/Cargo.toml --features native-desktop,file-dialog
       - name: Build native debug runtime for GUI fixture
         run: cargo build --locked --manifest-path src-core/Cargo.toml --features native-desktop,file-dialog
-      - name: Verify revoke-only logind observer on an owned private bus
-        if: runner.os == 'Linux'
-        timeout-minutes: 3
-        env:
-          AEGIS_PRIVATE_LOGIND_BUS: '1'
-        run: dbus-run-session -- cargo test --locked --manifest-path src-core/Cargo.toml --features linux-lifecycle -- --ignored --exact security::linux_lifecycle::tests::private_logind_signals_revoke_and_reject_wrong_authority
       - name: Verify real Linux notification transport against an owned nonvisual service
         if: runner.os == 'Linux'
         run: dbus-run-session -- /usr/bin/python3 scripts/notification-ci.py
