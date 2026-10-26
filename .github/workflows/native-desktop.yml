@@ -39,6 +39,12 @@ jobs:
         run: cargo test --locked --manifest-path src-core/Cargo.toml --features native-desktop,file-dialog
       - name: Build native debug runtime for GUI fixture
         run: cargo build --locked --manifest-path src-core/Cargo.toml --features native-desktop,file-dialog
+      - name: Verify revoke-only logind observer on an owned private bus
+        if: runner.os == 'Linux'
+        timeout-minutes: 3
+        env:
+          AEGIS_PRIVATE_LOGIND_BUS: '1'
+        run: dbus-run-session -- cargo test --locked --manifest-path src-core/Cargo.toml --features linux-lifecycle -- --ignored --exact security::linux_lifecycle::tests::private_logind_signals_revoke_and_reject_wrong_authority
       - name: Verify real Linux notification transport against an owned nonvisual service
         if: runner.os == 'Linux'
         run: dbus-run-session -- /usr/bin/python3 scripts/notification-ci.py

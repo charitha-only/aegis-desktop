@@ -73,6 +73,8 @@ impl IpcRouter {
         crate::security::windows_lifecycle::start(Arc::downgrade(&vault_sessions));
         #[cfg(all(not(windows), not(test)))]
         vault_sessions.require_platform_monitor();
+        #[cfg(all(target_os = "linux", feature = "linux-lifecycle", not(test)))]
+        crate::security::linux_lifecycle::start(Arc::downgrade(&vault_sessions));
         Self {
             notification_limiter: crate::security::RateLimiter::new(30, 60, 60),
             notifications: crate::tray::NotificationJobs::new(std::time::Duration::from_secs(30)),

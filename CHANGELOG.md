@@ -6,10 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## Unreleased
+## [v0.25.9] - 2026-10-26
 
 - Clear retained vault credentials and ephemeral encrypted secrets immediately when a pre-decryption OS-session check fails, including denied unlock attempts. Advance the session epoch without recursively acquiring its mutex. Regression coverage verifies cleanup through the session and secret-manager interfaces.
 - Linux/macOS retained sessions remain unavailable pending authenticated lifecycle adapters and desktop acceptance; this fix does not claim those integrations are complete.
+- Add an optional Linux revoke-only logind observer with a pinned root-owned system-bus service, bounded subscription, owner-continuity checks and fail-closed cleanup. Add private-bus protocol acceptance without locking or suspending a desktop. See docs/LINUX_LIFECYCLE.md for the precise preview scope.
 
 ## [v0.25.8] - 2026-10-26
 

@@ -605,6 +605,29 @@ fn unavailable_platform_read_clears_ephemeral_secrets() {
 }
 
 #[test]
+fn lifecycle_observer_revokes_access_without_granting_platform_authority() {
+    use super::lifecycle::LifecycleObserver;
+    use std::sync::Arc;
+    let secrets = Arc::new(crate::secrets::SecretManager::new());
+    let sessions = Arc::new(super::vault_session::VaultSessions::new(secrets.clone()));
+    let envelope = VaultEngine::encrypt("PRIVATE", "platform-test-password").unwrap();
+    let token = sessions
+        .unlock("one.vault", &envelope, "platform-test-password")
+        .unwrap();
+    let observer = LifecycleObserver::new(Arc::downgrade(&sessions));
+    secrets
+        .store_secret("temporary", "private", "platform-test-password")
+        .unwrap();
+    observer.revoke();
+    assert!(sessions.read(&token, "one.vault", &envelope).is_err());
+    assert!(secrets.list_secrets().is_empty());
+    assert!(
+        !sessions.platform_monitor_active(),
+        "A revoke-only observer must not authorize retained sessions"
+    );
+}
+
+#[test]
 fn ipc_profiles_reject_shared_storage_identities() {
     use std::sync::Arc;
     let d = tempfile::tempdir().unwrap();

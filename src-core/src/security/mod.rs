@@ -22,6 +22,9 @@ pub use ratelimit::RateLimiter;
 pub use validator::OriginValidator;
 pub use vault::VaultEngine;
 
+pub mod lifecycle;
+#[cfg(all(target_os = "linux", feature = "linux-lifecycle"))]
+pub mod linux_lifecycle;
 #[cfg(test)]
 mod regression_tests;
 pub mod vault_session;

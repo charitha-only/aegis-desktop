@@ -1,6 +1,6 @@
 [package]
 name = "aegis-core"
-version = "0.25.8"
+version = "0.25.9"
 edition = "2021"
 rust-version = "1.92"
 
@@ -8,6 +8,7 @@ rust-version = "1.92"
 default = []
 native-dialogs = ["dep:rfd"]
 file-dialog = ["native-dialogs"]
+linux-lifecycle = ["dep:zbus", "dep:futures-lite", "dep:async-io"]
 native-desktop = ["dep:wry", "dep:winit", "dep:webkit6", "dep:gtk4"]
 
 [dependencies]
@@ -36,5 +37,8 @@ wry = { version = "0.57.1", default-features = false, optional = true }
 winit = { version = "0.30", default-features = false, features = ["rwh_06"], optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "6.1", default-features = false, features = ["default-rt", "proxy"], optional = true }
+futures-lite = { version = "2.6", optional = true }
+async-io = { version = "2.6", optional = true }
 webkit6 = { version = "0.6.1", optional = true }
 gtk4 = { version = "0.11.5", features = ["v4_10"], optional = true }
