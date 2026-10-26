@@ -1163,3 +1163,143 @@ fn ipc_notification_submission_quota_is_runtime_wide() {
         .unwrap()
         .contains("Notification submission limit reached"));
 }
+
+#[test]
+fn ipc_plugin_dispatch_enforces_declared_capabilities() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let mut manifest = CapabilityManifest::default();
+    manifest.system.allow_system_info = false;
+    let security = Arc::new(SecurityEngine::new(manifest, d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    crate::plugin::register_builtin_plugins(&plugins);
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let response = router.handle_request(crate::ipc::protocol::IpcRequest {
+        id: "plugin-permission".into(),
+        command: "plugin_dispatch".into(),
+        nonce: handshake.get_token(),
+        payload: serde_json::json!({"plugin":"process_uptime","payload":{}}),
+    });
+    assert!(
+        !response.success,
+        "Plugin descriptors must enforce system_info permission before handler execution"
+    );
+}
+
+#[test]
+fn checksum_plugin_rejects_outside_files_and_uses_active_profile() {
+    let d = tempfile::tempdir().unwrap();
+    let security = SecurityEngine::new(CapabilityManifest::default(), d.path());
+    let registry = crate::plugin::PluginRegistry::new();
+    crate::plugin::register_builtin_plugins(&registry);
+    let outside = d.path().join("outside.txt");
+    std::fs::write(&outside, "private outside data").unwrap();
+    assert!(
+        registry
+            .dispatch(
+                "file_checksum",
+                &serde_json::json!({"filename":outside.to_str().unwrap()}),
+                &security
+            )
+            .is_err(),
+        "Checksum handler must not read an absolute file outside the active sandbox"
+    );
+    let profile = d.path().join("another-profile");
+    security.set_sandbox_root(profile.clone());
+    std::fs::write(profile.join("data.bin"), b"abc").unwrap();
+    let result = registry
+        .dispatch(
+            "file_checksum",
+            &serde_json::json!({"filename":"data.bin"}),
+            &security,
+        )
+        .unwrap();
+    assert_eq!(
+        result["checksum"],
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
+    assert_eq!(result["sizeBytes"], 3);
+    let large = std::fs::File::create(profile.join("oversized.bin")).unwrap();
+    large
+        .set_len(crate::storage::MAX_FILE_BYTES as u64 + 1)
+        .unwrap();
+    assert!(registry
+        .dispatch(
+            "file_checksum",
+            &serde_json::json!({"filename":"oversized.bin"}),
+            &security
+        )
+        .is_err());
+}
+
+#[test]
+fn plugins_do_not_report_fabricated_memory_statistics() {
+    let d = tempfile::tempdir().unwrap();
+    let security = SecurityEngine::new(CapabilityManifest::default(), d.path());
+    let registry = crate::plugin::PluginRegistry::new();
+    crate::plugin::register_builtin_plugins(&registry);
+    assert!(
+        registry
+            .dispatch("system_memory", &serde_json::json!({}), &security)
+            .is_err(),
+        "No provider must return unavailable rather than hard-coded memory figures"
+    );
+}
+
+#[test]
+fn checksum_plugin_requires_read_and_hashing_grants() {
+    let d = tempfile::tempdir().unwrap();
+    let registry = crate::plugin::PluginRegistry::new();
+    crate::plugin::register_builtin_plugins(&registry);
+    for deny_read in [true, false] {
+        let mut manifest = CapabilityManifest::default();
+        if deny_read {
+            manifest.fs.allow_read.clear();
+        } else {
+            manifest.crypto.allow_hashing = false;
+        }
+        let security = SecurityEngine::new(manifest, d.path());
+        std::fs::write(security.get_sandbox_root().join("data.bin"), b"abc").unwrap();
+        assert!(registry
+            .dispatch(
+                "file_checksum",
+                &serde_json::json!({"filename":"data.bin"}),
+                &security
+            )
+            .is_err());
+    }
+}
+
+#[test]
+fn uptime_plugin_reports_elapsed_time_instead_of_wall_clock() {
+    let d = tempfile::tempdir().unwrap();
+    let security = SecurityEngine::new(CapabilityManifest::default(), d.path());
+    let registry = crate::plugin::PluginRegistry::new();
+    crate::plugin::register_builtin_plugins(&registry);
+    let value = registry
+        .dispatch("process_uptime", &serde_json::json!({}), &security)
+        .unwrap();
+    let elapsed = value["uptimeSeconds"]
+        .as_f64()
+        .expect("Plugin must expose elapsed seconds");
+    assert!((0.0..60.0).contains(&elapsed));
+    assert_eq!(value["measurementScope"], "sinceBuiltinPluginRegistration");
+}

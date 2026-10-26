@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.11] - 2026-10-26
+
+- Enforce declared native-plugin capabilities before dispatch and pass the active security context to handlers. Fix the checksum plugin's filesystem/hash permission bypass, absolute/traversing path reads and incorrect profile selection.
+- Bound regular-file checksums to the shared storage limit using an 8 KiB zeroizing read buffer. Add public regression coverage for denied grants, outside paths, active profiles and oversized files.
+- Replace fabricated memory statistics with an unavailable error and report monotonic elapsed time with an explicit registration-time scope. Native Rust handlers remain trusted host code, not an untrusted plugin sandbox; see docs/PLUGIN_SECURITY.md for compatibility and limitations.
+
 ## [v0.25.10] - 2026-10-26
 
 - Add a stable packaged `appId` independent of display/package-folder names, with portable validation and fail-closed invalid configuration. Missing IDs retain legacy folder-based behavior; no automatic data migration or merge occurs.

@@ -2096,9 +2096,9 @@ export default function App() {
                       onChange={(e) => setPluginDispatchName(e.target.value)}
                       style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#f8fafc', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
                     >
-                      <option value="system_memory">system_memory (RAM & paging telemetry)</option>
+                      <option value="system_memory">system_memory (provider unavailable)</option>
                       <option value="file_checksum">file_checksum (SHA-256 integrity calculator)</option>
-                      <option value="process_uptime">process_uptime (Host and daemon uptime)</option>
+                      <option value="process_uptime">process_uptime (elapsed since plugin registration)</option>
                     </select>
                   </div>
 

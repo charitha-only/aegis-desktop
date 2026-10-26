@@ -948,7 +948,7 @@ impl IpcRouter {
                 };
                 let payload = req.payload.get("payload").cloned().unwrap_or(json!({}));
 
-                match self.plugins.dispatch(plugin_name, &payload) {
+                match self.plugins.dispatch(plugin_name, &payload, &self.security) {
                     Ok(result) => IpcResponse::ok(
                         &req.id,
                         json!({

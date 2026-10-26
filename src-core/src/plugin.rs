@@ -11,7 +11,7 @@
 ///     ↓ dispatch(name, payload) → IpcResponse
 /// IpcRouter → plugin_dispatch IPC command
 /// ```
-
+use crate::security::SecurityEngine;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -20,8 +20,10 @@ use std::sync::{Arc, RwLock};
 // ─── Plugin Handler Trait ──────────────────────────────────────────────────
 
 /// A plugin handler is any function that accepts a JSON payload and returns
-/// a JSON value result. Plugins are stateless by design.
-pub type PluginHandlerFn = Box<dyn Fn(&Value) -> Result<Value, String> + Send + Sync>;
+/// a JSON result, with the active security context supplied by the router.
+/// Native handlers are trusted host code, not an untrusted-code sandbox.
+pub type PluginHandlerFn =
+    Box<dyn Fn(&Value, &SecurityEngine) -> Result<Value, String> + Send + Sync>;
 
 // ─── Plugin Descriptor ────────────────────────────────────────────────────
 
@@ -50,7 +52,7 @@ impl PluginRegistry {
     /// Register a plugin with a name, descriptor, and handler function.
     pub fn register<F>(&self, descriptor: PluginDescriptor, handler: F)
     where
-        F: Fn(&Value) -> Result<Value, String> + Send + Sync + 'static,
+        F: Fn(&Value, &SecurityEngine) -> Result<Value, String> + Send + Sync + 'static,
     {
         let mut map = self.plugins.write().unwrap();
         map.insert(descriptor.name.clone(), (descriptor, Box::new(handler)));
@@ -58,10 +60,25 @@ impl PluginRegistry {
     }
 
     /// Dispatch a call to a registered plugin by name.
-    pub fn dispatch(&self, name: &str, payload: &Value) -> Result<Value, String> {
+    pub fn dispatch(
+        &self,
+        name: &str,
+        payload: &Value,
+        security: &SecurityEngine,
+    ) -> Result<Value, String> {
         let map = self.plugins.read().unwrap();
         match map.get(name) {
-            Some((_, handler)) => handler(payload),
+            Some((descriptor, handler)) => {
+                for capability in &descriptor.capabilities {
+                    match capability.as_str() {
+                        "system_info" => security.check_system_info()?,
+                        "crypto" => security.check_crypto()?,
+                        "fs_read" if security.actual_capabilities()["fsRead"] == true => {}
+                        _ => return Err("Plugin capability denied or unsupported".into()),
+                    }
+                }
+                handler(payload, security)
+            }
             None => Err(format!(
                 "Plugin '{}' not found. Registered plugins: [{}]",
                 name,
@@ -94,19 +111,13 @@ pub fn register_builtin_plugins(registry: &Arc<PluginRegistry>) {
         PluginDescriptor {
             name: "system_memory".to_string(),
             version: "1.0.0".to_string(),
-            description: "Reports available and total system memory statistics.".to_string(),
+            description: "Unavailable until a native memory statistics provider is configured."
+                .to_string(),
             author: "Aegis Core".to_string(),
             capabilities: vec!["system_info".to_string()],
         },
-        |_payload| {
-            // In a real plugin, this would use platform APIs (winapi, libc, etc.)
-            Ok(serde_json::json!({
-                "plugin": "system_memory",
-                "totalMB": 16384,
-                "availableMB": 8192,
-                "usagePercent": 50.0,
-                "note": "Simulated — integrate with winapi/libc for real values"
-            }))
+        |_payload, _security| {
+            Err("UNAVAILABLE: Native memory statistics provider is not configured".into())
         },
     );
 
@@ -115,24 +126,46 @@ pub fn register_builtin_plugins(registry: &Arc<PluginRegistry>) {
         PluginDescriptor {
             name: "file_checksum".to_string(),
             version: "1.0.0".to_string(),
-            description: "Computes SHA-256 checksum of any sandboxed file for integrity verification.".to_string(),
+            description:
+                "Computes SHA-256 checksum of any sandboxed file for integrity verification."
+                    .to_string(),
             author: "Aegis Core".to_string(),
             capabilities: vec!["fs_read".to_string(), "crypto".to_string()],
         },
-        |payload| {
+        |payload, security| {
             use sha2::{Digest, Sha256};
             let filename = payload
                 .get("filename")
                 .and_then(|f| f.as_str())
                 .ok_or("Missing 'filename' parameter")?;
 
-            // Read file content from sandbox
-            let path = std::path::Path::new("./sandbox").join(filename);
-            let content = std::fs::read(&path)
-                .map_err(|e| format!("Cannot read file '{}': {}", filename, e))?;
-
+            use std::io::Read;
+            let path = security.check_fs_read(filename)?;
+            let metadata =
+                std::fs::symlink_metadata(&path).map_err(|_| "Cannot inspect checksum file")?;
+            if !metadata.is_file() || metadata.len() > crate::storage::MAX_FILE_BYTES as u64 {
+                return Err(
+                    "Checksum requires a regular file within the storage size limit".into(),
+                );
+            }
+            let file = std::fs::File::open(&path).map_err(|_| "Cannot open checksum file")?;
+            let mut reader = file.take(crate::storage::MAX_FILE_BYTES as u64 + 1);
             let mut hasher = Sha256::new();
-            hasher.update(&content);
+            let mut buffer = zeroize::Zeroizing::new([0u8; 8192]);
+            let mut size = 0usize;
+            loop {
+                let count = reader
+                    .read(&mut *buffer)
+                    .map_err(|_| "Cannot read checksum file")?;
+                if count == 0 {
+                    break;
+                }
+                size += count;
+                if size > crate::storage::MAX_FILE_BYTES {
+                    return Err("Checksum file exceeds size limit".into());
+                }
+                hasher.update(&buffer[..count]);
+            }
             let hash = format!("{:x}", hasher.finalize());
 
             Ok(serde_json::json!({
@@ -140,30 +173,26 @@ pub fn register_builtin_plugins(registry: &Arc<PluginRegistry>) {
                 "filename": filename,
                 "algorithm": "SHA-256",
                 "checksum": hash,
-                "sizeBytes": content.len()
+                "sizeBytes": size
             }))
         },
     );
 
-    // Plugin 3: Process Uptime Reporter
+    // Plugin 3: elapsed time since built-in registration, using a monotonic clock.
+    let started = std::time::Instant::now();
     registry.register(
         PluginDescriptor {
             name: "process_uptime".to_string(),
             version: "1.0.0".to_string(),
-            description: "Returns the current Aegis Core process uptime in seconds.".to_string(),
+            description: "Returns elapsed seconds since built-in plugin registration.".to_string(),
             author: "Aegis Core".to_string(),
             capabilities: vec!["system_info".to_string()],
         },
-        |_payload| {
-            use std::time::{SystemTime, UNIX_EPOCH};
-            let ts = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
+        move |_payload, _security| {
             Ok(serde_json::json!({
                 "plugin": "process_uptime",
-                "currentTimestampUnix": ts,
-                "note": "Track startup timestamp to compute real uptime"
+                "uptimeSeconds": started.elapsed().as_secs_f64(),
+                "measurementScope": "sinceBuiltinPluginRegistration"
             }))
         },
     );

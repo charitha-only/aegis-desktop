@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
-import {mkdtemp, rm} from 'node:fs/promises';
+import {mkdtemp, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {once} from 'node:events';
@@ -47,6 +47,20 @@ try {
   assert.equal((await call('vault_encrypt_store', {filename: 'fixture.vault', content: 'fixture', passphrase: password})).success, true);
   const read = await call('vault_decrypt_retrieve', {filename: 'fixture.vault', passphrase: password});
   assert.equal(read.data.decryptedContent, 'fixture');
+  const checksum = () => call('plugin_dispatch', {plugin: 'file_checksum', payload: {filename: 'fixture.vault'}});
+  const originalChecksum = await checksum();
+  assert.equal(originalChecksum.success, true, 'Checksum plugin must use the active storage root');
+  assert.match(originalChecksum.data.result.checksum, /^[a-f0-9]{64}$/);
+  const outside = path.join(fixture, 'outside-plugin.txt');
+  await writeFile(outside, 'TEST_ONLY outside sandbox');
+  assert.equal((await call('plugin_dispatch', {plugin: 'file_checksum', payload: {filename: outside}})).success, false);
+  assert.equal((await call('profile_switch', {profileId: 'private_vault'})).success, true);
+  assert.equal((await checksum()).success, false, 'A plugin must not hash the prior profile vault');
+  assert.equal((await call('profile_switch', {profileId: 'default'})).success, true);
+  assert.equal((await checksum()).data.result.checksum, originalChecksum.data.result.checksum);
+  assert.equal((await call('plugin_dispatch', {plugin: 'system_memory', payload: {}})).success, false);
+  const uptime = await call('plugin_dispatch', {plugin: 'process_uptime', payload: {}});
+  assert.equal(uptime.data.result.measurementScope, 'sinceBuiltinPluginRegistration');
   if (process.platform !== 'win32') {
     assert.equal((await call('vault_session_unlock', {filename: 'fixture.vault', passphrase: password})).success, false,
       'Retained sessions require an available lifecycle adapter');
