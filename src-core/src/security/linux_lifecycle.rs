@@ -162,11 +162,26 @@ mod tests {
             secrets
                 .store_secret("temporary", "private", "platform-test-password")
                 .unwrap();
-            service.release_name(NAME).await.unwrap();
-            assert!(done_rx
-                .recv_timeout(Duration::from_secs(5))
-                .unwrap()
-                .is_err());
+            assert!(service.release_name(NAME).await.unwrap());
+            // Keep driving the async bus runtime while the other task observes
+            // name loss; a blocking channel wait here stalls that runtime.
+            let deadline = std::time::Instant::now() + Duration::from_secs(5);
+            let result = loop {
+                match done_rx.try_recv() {
+                    Ok(result) => break result,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        panic!("Observer exited without a result")
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {
+                        assert!(
+                            std::time::Instant::now() < deadline,
+                            "Observer must terminate after service loss"
+                        );
+                        Timer::after(Duration::from_millis(10)).await;
+                    }
+                }
+            };
+            assert!(result.is_err());
             worker.join().unwrap();
             assert!(secrets.list_secrets().is_empty());
             assert!(sessions.read(&token, "one.vault", &envelope).is_err());
