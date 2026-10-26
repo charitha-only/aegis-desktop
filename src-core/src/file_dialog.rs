@@ -103,6 +103,21 @@ impl<T: DialogOutcome> DialogJobs<T> {
         &self,
         profile: &str,
         request: &impl Serialize,
+        command: Command,
+    ) -> Result<String, String> {
+        let input = serde_json::to_vec(request).map_err(|_| "Invalid native dialog request")?;
+        self.launch(profile, Some(input), command)
+    }
+
+    /// Start a trusted provider whose configuration is already encoded in its command.
+    pub fn start_command(&self, profile: &str, command: Command) -> Result<String, String> {
+        self.launch(profile, None, command)
+    }
+
+    fn launch(
+        &self,
+        profile: &str,
+        input: Option<Vec<u8>>,
         mut command: Command,
     ) -> Result<String, String> {
         let mut slot = self
@@ -121,7 +136,11 @@ impl<T: DialogOutcome> DialogJobs<T> {
         let mut random = [0u8; 16];
         getrandom::getrandom(&mut random).map_err(|_| "Native dialog identifier unavailable")?;
         let child = command
-            .stdin(Stdio::piped())
+            .stdin(if input.is_some() {
+                Stdio::piped()
+            } else {
+                Stdio::null()
+            })
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
@@ -157,13 +176,14 @@ impl<T: DialogOutcome> DialogJobs<T> {
                 let _ = tx.send(result);
             })
             .map_err(|_| "Native dialog reader could not start")?;
-        let input = serde_json::to_vec(request).map_err(|_| "Invalid native dialog request")?;
-        job.child
-            .stdin
-            .take()
-            .ok_or("Native dialog input unavailable")?
-            .write_all(&input)
-            .map_err(|_| "Native dialog input failed")?;
+        if let Some(input) = input {
+            job.child
+                .stdin
+                .take()
+                .ok_or("Native dialog input unavailable")?
+                .write_all(&input)
+                .map_err(|_| "Native dialog input failed")?;
+        }
         let id = job.id.clone();
         *slot = Some(job);
         Ok(id)

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.8] - 2026-10-26
+
+- Add a separate default-denied notifications capability and typed asynchronous submit/poll/cancel APIs. Replace false delivered claims with pending/providerAccepted results that never assert visual delivery or echo text.
+- Bound notification helpers, timeouts and runtime-wide submission quota; reuse profile-scoped job cleanup and abandoned-request recovery without piping request data to external providers.
+- Parse urgency/timeout without silent loss or integer truncation; reject unsupported platform options and custom icons.
+- Escape Linux markup and backslashes before notify-send decoding. Stop Windows PowerShell errors rather than reporting false success; keep provider text separate from scripts.
+- Correct capability/tray metadata and demo logs, preserving layout. Add a private nonvisual Linux D-Bus transport fixture; physical Windows/macOS toast and desktop acceptance remain pending.
+
 ## [v0.25.7] - 2026-10-26
 
 - Add optional cross-platform native message helpers and typed open/poll/cancel methods; distinguish submission from acknowledgement and require successful provider exit.

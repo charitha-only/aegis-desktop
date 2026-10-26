@@ -1000,3 +1000,109 @@ fn ipc_file_dialog_is_denied_by_default_before_provider_access() {
         .unwrap()
         .contains("'file_dialogs' capability is disabled"));
 }
+
+#[test]
+fn ipc_notifications_are_denied_by_default_before_provider_access() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let manifest = CapabilityManifest::default();
+
+    let security = Arc::new(SecurityEngine::new(manifest, d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload: serde_json::Value| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "session-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    let response = call(
+        "notify_send",
+        serde_json::json!({"title":"x".repeat(1025),"body":"fixture"}),
+    );
+    assert!(!response.success);
+    assert!(response
+        .error
+        .as_deref()
+        .unwrap()
+        .contains("'notifications' capability is disabled"));
+}
+
+#[test]
+fn ipc_notification_submission_quota_is_runtime_wide() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let mut manifest = CapabilityManifest::default();
+    manifest.system.allow_notifications = true;
+
+    let security = Arc::new(SecurityEngine::new(manifest, d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload: serde_json::Value| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "session-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    for _ in 0..30 {
+        let response = call(
+            "notify_send",
+            serde_json::json!({"title":"x".repeat(1025),"body":"fixture"}),
+        );
+        assert!(response
+            .error
+            .as_deref()
+            .unwrap()
+            .contains("Notification text exceeds limits"));
+    }
+    assert!(call("profile_switch", serde_json::json!({"profileId":"default"})).success);
+    let response = call(
+        "notify_send",
+        serde_json::json!({"title":"x".repeat(1025),"body":"fixture"}),
+    );
+    assert!(response
+        .error
+        .as_deref()
+        .unwrap()
+        .contains("Notification submission limit reached"));
+}

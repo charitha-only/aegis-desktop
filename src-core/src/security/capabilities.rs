@@ -14,6 +14,8 @@ pub struct FsCapabilities {
 #[serde(rename_all = "camelCase")]
 pub struct SystemCapabilities {
     #[serde(default)]
+    pub allow_notifications: bool,
+    #[serde(default)]
     pub allow_file_dialogs: bool,
     #[serde(default)]
     pub allow_clipboard_write: bool,
@@ -45,6 +47,7 @@ impl Default for CapabilityManifest {
                 deny_paths: vec!["../".to_string(), "C:\\Windows".to_string()],
             },
             system: SystemCapabilities {
+                allow_notifications: false,
                 allow_file_dialogs: false,
                 allow_clipboard_write: false,
                 allow_system_info: true,
@@ -90,7 +93,7 @@ impl SecurityEngine {
     }
 
     pub fn actual_capabilities(&self) -> serde_json::Value {
-        serde_json::json!({"fsRead":!self.manifest.fs.allow_read.is_empty(),"fsWrite":!self.manifest.fs.allow_write.is_empty(),"systemInfo":self.manifest.system.allow_system_info,"crypto":self.manifest.crypto.allow_hashing,"shellExecution":false})
+        serde_json::json!({"fsRead":!self.manifest.fs.allow_read.is_empty(),"fsWrite":!self.manifest.fs.allow_write.is_empty(),"systemInfo":self.manifest.system.allow_system_info,"crypto":self.manifest.crypto.allow_hashing,"shellExecution":false,"notifications":self.manifest.system.allow_notifications})
     }
 
     pub fn check_fs_read(&self, requested_path: &str) -> Result<PathBuf, String> {
@@ -143,6 +146,14 @@ impl SecurityEngine {
             Ok(())
         } else {
             Err("Security Violation: 'file_dialogs' capability is disabled".into())
+        }
+    }
+
+    pub fn check_notifications(&self) -> Result<(), String> {
+        if self.manifest.system.allow_notifications {
+            Ok(())
+        } else {
+            Err("Security Violation: 'notifications' capability is disabled".into())
         }
     }
 

@@ -469,10 +469,27 @@ export default function App() {
   };
 
   const handleSendNotification = async () => {
-    const res = await aegis.call('notify_send', { title: notifTitle, body: notifBody });
-    addLog(res.success ? 'SUCCESS' : 'BLOCKED', 'notify_send', res.success ? 'OS notification delivered' : (res.error || 'Failed'));
+    const res = await aegis.notifySend(notifTitle, notifBody);
+    if (!res.success || !res.data) {
+      addLog('BLOCKED', 'notify_send', res.error || 'Notification request failed');
+      return;
+    }
+    addLog('INFO', 'notify_send', 'Notification helper submitted; visual delivery is unconfirmed');
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await new Promise(resolve => window.setTimeout(resolve, 1000));
+      const result = await aegis.notifyPoll(res.data.requestId);
+      if (!result.success) {
+        addLog('BLOCKED', 'notify_send', result.error || 'Notification provider failed');
+        break;
+      }
+      if (result.data?.status === 'providerAccepted') {
+        addLog('SUCCESS', 'notify_send', 'Notification provider accepted request; visual delivery is unconfirmed');
+        break;
+      }
+      if (attempt === 29) await aegis.notifyCancel(res.data.requestId);
+    }
     if (!trayStatus) {
-      const ts = await aegis.call('tray_status', {});
+      const ts = await aegis.trayStatus();
       if (ts.success) setTrayStatus(ts.data);
     }
   };
@@ -2243,7 +2260,7 @@ export default function App() {
                     { cap: 'bundler', name: 'Native Executable Bundler', desc: 'InnoSetup & standalone packager', granted: true },
                     { cap: 'multiWindow', name: 'Multi-Window & Native Dialogs', desc: 'Spawn auxiliary windows & message boxes', granted: true },
                     { cap: 'plugins', name: 'Rust Plugin Engine', desc: 'Registered in-memory native plugins', granted: true },
-                    { cap: 'notifications', name: 'OS Native Notifications', desc: 'System tray & desktop alert toasts', granted: true },
+                    { cap: 'notifications', name: 'OS Native Notifications', desc: 'Permission-controlled desktop notification helpers', granted: securityStatus?.activeCapabilities.notifications ?? false },
                     { cap: 'autoUpdater', name: 'SHA-256 Auto-Updater', desc: 'Air-gapped manifest verification & staging', granted: true },
                   ].map((item) => (
                     <div key={item.cap} style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${item.granted ? 'rgba(52,211,153,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: '8px', padding: '14px' }}>

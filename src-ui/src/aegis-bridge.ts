@@ -45,6 +45,18 @@ export type FileSelectionResult =
   | {status: 'selected'; path: string}
   | {status: 'noSelection'};
 
+export interface NotificationSubmission {
+  requestId: string;
+  status: 'pending';
+  submitted: true;
+  deliveryConfirmed: false;
+}
+
+export interface NotificationResult {
+  status: 'pending' | 'providerAccepted';
+  deliveryConfirmed: false;
+}
+
 export interface SecurityStatus {
   engine: string;
   windowsLifecycleMonitorActive?: boolean;
@@ -58,6 +70,7 @@ export interface SecurityStatus {
   bundlerEngineActive?: boolean;
   multiWindowApiActive?: boolean;
   activeCapabilities: {
+    notifications?: boolean;
     fsRead: boolean;
     fsWrite: boolean;
     shellExecution: boolean;
@@ -335,8 +348,16 @@ class AegisBridge {
     return this.invoke('plugin_dispatch', { plugin: name, payload });
   }
 
-  public async notifySend(title: string, body: string, urgency: 'low' | 'normal' | 'critical' = 'normal'): Promise<IpcResponse> {
-    return this.invoke('notify_send', { title, body, urgency });
+  public async notifySend(title: string, body: string, urgency: 'low' | 'normal' | 'critical' = 'normal', timeoutMs?: number): Promise<IpcResponse<NotificationSubmission>> {
+    return this.invoke('notify_send', { title, body, urgency, ...(timeoutMs === undefined ? {} : {timeout_ms: timeoutMs}) });
+  }
+
+  public async notifyPoll(requestId: string): Promise<IpcResponse<NotificationResult>> {
+    return this.invoke('notify_poll', {requestId});
+  }
+
+  public async notifyCancel(requestId: string): Promise<IpcResponse<{status: 'cancelled'; deliveryConfirmed: false}>> {
+    return this.invoke('notify_cancel', {requestId});
   }
 
   public async trayStatus(): Promise<IpcResponse> {

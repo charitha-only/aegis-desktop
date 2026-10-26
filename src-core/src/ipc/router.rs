@@ -12,7 +12,7 @@ use crate::security::{
     HsmPkcs11Engine, PrivacyShield, SecurityEngine, SignatureVerifier, TpmAttestationEngine,
     VaultEngine,
 };
-use crate::tray::{NotificationConfig, NotificationEngine, TrayDaemon};
+use crate::tray::{NotificationEngine, TrayDaemon};
 use crate::updater::{AutoUpdater, UpdateManifest};
 use crate::wasm::{ExecutionTier, WasmSandbox};
 use serde_json::json;
@@ -21,6 +21,8 @@ use std::fs;
 use std::sync::Arc;
 
 pub struct IpcRouter {
+    notification_limiter: crate::security::RateLimiter,
+    notifications: crate::tray::NotificationJobs,
     message_dialogs: crate::message_dialog::MessageDialogJobs,
     file_dialogs: crate::file_dialog::FileDialogJobs,
     clipboard: crate::clipboard::TextClipboard,
@@ -72,6 +74,8 @@ impl IpcRouter {
         #[cfg(all(not(windows), not(test)))]
         vault_sessions.require_platform_monitor();
         Self {
+            notification_limiter: crate::security::RateLimiter::new(30, 60, 60),
+            notifications: crate::tray::NotificationJobs::new(std::time::Duration::from_secs(30)),
             message_dialogs: crate::message_dialog::MessageDialogJobs::new(
                 std::time::Duration::from_secs(120),
             ),
@@ -955,49 +959,61 @@ impl IpcRouter {
             }
 
             // ─── NOTIFICATION ENGINE IPC (v0.13) ───────────────────────────
-            "notify_send" => {
-                let title = req
-                    .payload
-                    .get("title")
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("Aegis Desktop");
-                let body = req
-                    .payload
-                    .get("body")
-                    .and_then(|b| b.as_str())
-                    .unwrap_or("Notification from Aegis Core");
-
-                let config = NotificationConfig {
-                    title: title.to_string(),
-                    body: body.to_string(),
-                    icon: req
-                        .payload
-                        .get("icon")
-                        .and_then(|i| i.as_str())
-                        .map(|s| s.to_string()),
-                    urgency: crate::tray::NotificationUrgency::Normal,
-                    timeout_ms: req
-                        .payload
-                        .get("timeout_ms")
-                        .and_then(|t| t.as_u64())
-                        .map(|t| t as u32),
+            "notify_send" | "notify_poll" | "notify_cancel" => {
+                if let Err(error) = self.security.check_notifications() {
+                    return IpcResponse::err(&req.id, &error);
+                }
+                let profile = self.profile_manager.get_active_profile().id;
+                if req.command == "notify_send" {
+                    if self.notification_limiter.check_request().is_err() {
+                        return IpcResponse::err(
+                            &req.id,
+                            "Notification submission limit reached; retry after 60 seconds",
+                        );
+                    }
+                    let result =
+                        NotificationEngine::parse_request(&req.payload).and_then(|config| {
+                            NotificationEngine::start(&self.notifications, &profile, &config)
+                        });
+                    return match result {
+                        Ok(id) => IpcResponse::ok(
+                            &req.id,
+                            json!({"requestId":id,"status":"pending","submitted":true,"deliveryConfirmed":false}),
+                        ),
+                        Err(error) => IpcResponse::err(&req.id, &error),
+                    };
+                }
+                let id = match req.payload.get("requestId").and_then(|v| v.as_str()) {
+                    Some(id) => id,
+                    None => return IpcResponse::err(&req.id, "Missing 'requestId' parameter"),
                 };
-
-                match NotificationEngine::send(&config) {
-                    Ok(_) => IpcResponse::ok(
+                if req.command == "notify_cancel" {
+                    return match self.notifications.cancel(&profile, id) {
+                        Ok(()) => IpcResponse::ok(
+                            &req.id,
+                            json!({"status":"cancelled","deliveryConfirmed":false}),
+                        ),
+                        Err(error) => IpcResponse::err(&req.id, &error),
+                    };
+                }
+                match self.notifications.poll(&profile, id) {
+                    Ok(None) => IpcResponse::ok(
                         &req.id,
-                        json!({
-                            "delivered": true,
-                            "title": title,
-                            "body": body,
-                            "platform": std::env::consts::OS
-                        }),
+                        json!({"status":"pending","deliveryConfirmed":false}),
                     ),
-                    Err(e) => IpcResponse::err(&req.id, &format!("Notification failed: {}", e)),
+                    Ok(Some(outcome)) => {
+                        IpcResponse::ok(&req.id, serde_json::to_value(outcome).unwrap())
+                    }
+                    Err(error) => IpcResponse::err(&req.id, &error),
                 }
             }
 
-            "tray_status" => IpcResponse::ok(&req.id, TrayDaemon::get_status()),
+            "tray_status" => {
+                let mut status = TrayDaemon::get_status();
+                status["notificationPermissionGranted"] =
+                    json!(self.security.check_notifications().is_ok());
+                IpcResponse::ok(&req.id, status)
+            }
 
             // ─── AUTO-UPDATER IPC (v0.13) ──────────────────────────────────
             "updater_status" => IpcResponse::ok(&req.id, self.updater.get_status()),
@@ -1161,6 +1177,7 @@ impl IpcRouter {
                 self.vault_sessions.lock();
                 self.file_dialogs.invalidate();
                 self.message_dialogs.invalidate();
+                self.notifications.invalidate();
                 let id = match req.payload.get("profileId").and_then(|i| i.as_str()) {
                     Some(i) => i,
                     None => return IpcResponse::err(&req.id, "Missing 'profileId' parameter"),
