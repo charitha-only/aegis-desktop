@@ -582,6 +582,29 @@ fn system_lock_revokes_session_and_requires_fresh_authentication() {
 }
 
 #[test]
+fn unavailable_platform_read_clears_ephemeral_secrets() {
+    use std::sync::Arc;
+    let secrets = Arc::new(crate::secrets::SecretManager::new());
+    let sessions = super::vault_session::VaultSessions::new(secrets.clone());
+    sessions.require_platform_monitor();
+    secrets
+        .store_secret("temporary", "private", "platform-test-password")
+        .unwrap();
+    assert!(sessions.read("invalid", "one.vault", "invalid").is_err());
+    assert!(secrets.list_secrets().is_empty(), "Unavailable OS session must clear secrets immediately, without waiting for monitor callbacks");
+    secrets
+        .store_secret("temporary", "private", "platform-test-password")
+        .unwrap();
+    assert!(sessions
+        .unlock("one.vault", "invalid", "platform-test-password")
+        .is_err());
+    assert!(
+        secrets.list_secrets().is_empty(),
+        "Denied unlock must also clear ephemeral secrets"
+    );
+}
+
+#[test]
 fn ipc_profiles_reject_shared_storage_identities() {
     use std::sync::Arc;
     let d = tempfile::tempdir().unwrap();

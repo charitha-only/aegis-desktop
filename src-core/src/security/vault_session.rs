@@ -70,10 +70,10 @@ impl VaultSessions {
         password: &str,
     ) -> Result<Zeroizing<String>, String> {
         let mut state = self.state.lock().map_err(|_| "Session state unavailable")?;
-        self.check_platform()?;
+        self.check_platform_or_clear(&mut state)?;
         let epoch = self.epoch.load(Ordering::SeqCst);
         let plaintext = Zeroizing::new(VaultEngine::decrypt(envelope, password)?);
-        self.check_platform()?;
+        self.check_platform_or_clear(&mut state)?;
         if epoch != self.epoch.load(Ordering::SeqCst) {
             return Err("System session changed".into());
         }
@@ -106,7 +106,7 @@ impl VaultSessions {
             *state = None;
             self.secrets.clear();
         }
-        self.check_platform()?;
+        self.check_platform_or_clear(&mut state)?;
         let unlocked = state.as_mut().ok_or("Vault is locked")?;
         if unlocked.epoch != self.epoch.load(Ordering::SeqCst) {
             return Err("System session changed".into());
@@ -154,7 +154,17 @@ impl VaultSessions {
             && (!self.monitor_alive.load(Ordering::SeqCst)
                 || !super::windows_lifecycle::desktop_available())
         {
-            return Err("Windows session unavailable or locked".into());
+            return Err("Operating-system session unavailable or locked".into());
+        }
+        Ok(())
+    }
+    fn check_platform_or_clear(&self, state: &mut Option<Unlocked>) -> Result<(), String> {
+        if let Err(error) = self.check_platform() {
+            // The caller already holds the state lock: system_lock() would deadlock.
+            self.epoch.fetch_add(1, Ordering::SeqCst);
+            *state = None;
+            self.secrets.clear();
+            return Err(error);
         }
         Ok(())
     }

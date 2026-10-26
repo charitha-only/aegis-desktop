@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## Unreleased
+
+- Clear retained vault credentials and ephemeral encrypted secrets immediately when a pre-decryption OS-session check fails, including denied unlock attempts. Advance the session epoch without recursively acquiring its mutex. Regression coverage verifies cleanup through the session and secret-manager interfaces.
+- Linux/macOS retained sessions remain unavailable pending authenticated lifecycle adapters and desktop acceptance; this fix does not claim those integrations are complete.
+
 ## [v0.25.8] - 2026-10-26
 
 - Add a separate default-denied notifications capability and typed asynchronous submit/poll/cancel APIs. Replace false delivered claims with pending/providerAccepted results that never assert visual delivery or echo text.
