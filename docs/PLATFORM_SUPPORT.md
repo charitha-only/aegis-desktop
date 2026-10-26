@@ -24,7 +24,7 @@ App-data resolution is independent of the working directory and rejects unsafe a
 
 Window requests are validated before invoking a browser: only local HTTP URLs with a valid port are accepted, and unsupported modal/kiosk/always-on-top/transparent requests return errors. The default backend launches an external browser. Builds with `native-desktop` can select `--native-window`; v0.25.3 passed disposable hosted fixture creation, document readiness, exit and cleanup on all three runner platforms (native workflow 40242908973). This does not establish physical-device, accessibility, multi-display or full interactive acceptance. See [native desktop setup](NATIVE_DESKTOP.md).
 
-Retained vault sessions outside Windows are unavailable until real OS lifecycle monitors exist; fresh-passphrase encrypted-file operations remain available. Platform adapters, supported OS versions, architecture coverage and acceptance criteria must be established before advertising production support.
+Retained vault sessions outside Windows are unavailable until authorizing OS lifecycle monitors and desktop acceptance exist; fresh-passphrase encrypted-file operations remain available. Linux has an optional revoke-only logind observer that clears sessions/secrets on authenticated events and observer failure but cannot authorize retained sessions. See [the Linux lifecycle preview](LINUX_LIFECYCLE.md). Platform adapters, supported OS versions, architecture coverage and acceptance criteria must be established before advertising production support.
 
 Clipboard writes require their own default-denied capability and bounded text input. There is no clipboard-read API or guarantee of secret expiry/history removal. See [the clipboard contract and test scope](CLIPBOARD.md).
 
