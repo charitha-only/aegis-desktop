@@ -20,7 +20,7 @@ try {
   const deadline = Date.now() + 15000;
   let windowId;
   while (Date.now() < deadline && child.exitCode === null) {
-    const search = spawnSync('xdotool', ['search', '--pid', String(child.pid), '--name', '^Aegis Message Fixture$'], {encoding: 'utf8', timeout: 2000});
+    const search = spawnSync('xdotool', ['search', '--onlyvisible', '--pid', String(child.pid), '--name', '^Aegis Message Fixture$'], {encoding: 'utf8', timeout: 2000});
     if (search.status === 0 && /^\d+/.test(search.stdout)) {
       windowId = search.stdout.trim().split('\n')[0];
       break;
@@ -28,7 +28,8 @@ try {
     await delay(100);
   }
   assert.ok(windowId, `Owned message window did not appear: ${stderr}`);
-  assert.equal(spawnSync('xdotool', ['windowfocus', '--sync', windowId], {timeout: 2000}).status, 0);
+  const focus = spawnSync('xdotool', ['windowfocus', '--sync', windowId], {encoding: 'utf8', timeout: 2000});
+  assert.equal(focus.status, 0, `Owned visible window focus failed: ${focus.stderr}`);
   assert.equal(spawnSync('xdotool', ['key', key], {timeout: 2000}).status, 0);
   let timeout;
   const code = await Promise.race([done, new Promise((_, reject) => {timeout = setTimeout(() => reject(new Error('Owned dialog did not respond')), 10000);})]).finally(() => clearTimeout(timeout));
