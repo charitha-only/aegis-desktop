@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.10] - 2026-10-26
+
+- Add a stable packaged `appId` independent of display/package-folder names, with portable validation and fail-closed invalid configuration. Missing IDs retain legacy folder-based behavior; no automatic data migration or merge occurs.
+- Keep the framework demo's established data identity and generate explicit IDs for new source projects. Reject invalid explicit IDs before bundling writes output.
+- Add native packaged rename/restart/vault-authentication acceptance on all three OS runners. See docs/APP_IDENTITY.md for compatibility and namespace limitations.
+
 ## [v0.25.9] - 2026-10-26
 
 - Clear retained vault credentials and ephemeral encrypted secrets immediately when a pre-decryption OS-session check fails, including denied unlock attempts. Advance the session epoch without recursively acquiring its mutex. Regression coverage verifies cleanup through the session and secret-manager interfaces.

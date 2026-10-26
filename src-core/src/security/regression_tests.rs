@@ -52,6 +52,17 @@ fn portable_bundles_use_the_native_binary_and_reject_other_targets() {
         "Bundler must not label a host binary as a different target"
     );
     manifest.target_platforms = vec![std::env::consts::OS.into()];
+    std::fs::write(
+        d.path().join("aegis.config.json"),
+        r#"{"appId":"../outside"}"#,
+    )
+    .unwrap();
+    assert!(
+        crate::bundler::BundleEngine::bundle(d.path(), &manifest).is_err(),
+        "Bundling must reject invalid explicit app identity before writing output"
+    );
+    assert!(!d.path().join("dist-bundle").exists());
+    std::fs::write(d.path().join("aegis.config.json"), "{}").unwrap();
     let report = crate::bundler::BundleEngine::bundle(d.path(), &manifest).unwrap();
     assert!(report.success);
     assert_eq!(

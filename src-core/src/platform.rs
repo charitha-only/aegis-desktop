@@ -125,14 +125,23 @@ impl Platform {
     }
 }
 
-/// Resolve a location from explicit platform environment inputs without touching disk.
-pub fn resolve_app_data_dir(
-    platform: Platform,
-    app_id: &str,
-    home: Option<&Path>,
-    local: Option<&Path>,
-    xdg: Option<&Path>,
-) -> Result<PathBuf, String> {
+/// Choose a configured stable identity, preserving the legacy folder identity when absent.
+pub fn packaged_app_id(
+    configured: Option<&serde_json::Value>,
+    app_dir: &Path,
+) -> Result<String, String> {
+    let id = match configured {
+        Some(value) => value.as_str().ok_or("appId must be a string")?,
+        None => app_dir
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or("Missing portable application folder identity")?,
+    };
+    validate_app_id(id)?;
+    Ok(id.to_owned())
+}
+
+fn validate_app_id(app_id: &str) -> Result<(), String> {
     let device = app_id.split('.').next().unwrap_or("").to_ascii_uppercase();
     if app_id.is_empty()
         || app_id.len() > 128
@@ -149,6 +158,18 @@ pub fn resolve_app_data_dir(
     {
         return Err("Application ID must be a portable single directory name".into());
     }
+    Ok(())
+}
+
+/// Resolve a location from explicit platform environment inputs without touching disk.
+pub fn resolve_app_data_dir(
+    platform: Platform,
+    app_id: &str,
+    home: Option<&Path>,
+    local: Option<&Path>,
+    xdg: Option<&Path>,
+) -> Result<PathBuf, String> {
+    validate_app_id(app_id)?;
     let base = match platform {
         Platform::Windows => local.ok_or("LOCALAPPDATA is required")?.to_path_buf(),
         Platform::Linux => match xdg.filter(|p| p.is_absolute()) {
@@ -190,6 +211,39 @@ pub fn app_data_dir(app_id: &str) -> Result<PathBuf, String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn configured_identity_survives_package_folder_rename() {
+        let config = serde_json::json!("org.example.notes");
+        let first =
+            super::packaged_app_id(Some(&config), std::path::Path::new("FirstFolder")).unwrap();
+        let renamed =
+            super::packaged_app_id(Some(&config), std::path::Path::new("RenamedFolder")).unwrap();
+        assert_eq!(first, "org.example.notes");
+        assert_eq!(renamed, "org.example.notes");
+        assert_eq!(
+            super::packaged_app_id(None, std::path::Path::new("LegacyApp")).unwrap(),
+            "LegacyApp"
+        );
+    }
+    #[test]
+    fn invalid_configured_identity_never_falls_back_to_folder() {
+        for value in [
+            serde_json::Value::Null,
+            serde_json::json!(42),
+            serde_json::json!(true),
+            serde_json::json!({}),
+            serde_json::json!(""),
+            serde_json::json!("../outside"),
+            serde_json::json!("CON"),
+            serde_json::json!("trailing."),
+        ] {
+            assert!(
+                super::packaged_app_id(Some(&value), std::path::Path::new("ValidLegacyFolder"))
+                    .is_err(),
+                "Invalid explicit appId must fail closed: {value}"
+            );
+        }
+    }
     use super::*;
 
     #[test]

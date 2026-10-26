@@ -86,6 +86,14 @@ impl BundleEngine {
         if !project_root.join("aegis.config.json").is_file() {
             return Err("Application configuration missing".into());
         }
+        let config: Value = serde_json::from_str(
+            &fs::read_to_string(project_root.join("aegis.config.json"))
+                .map_err(|e| format!("Cannot read application configuration: {e}"))?,
+        )
+        .map_err(|e| format!("Invalid application configuration: {e}"))?;
+        if let Some(app_id) = config.get("appId") {
+            crate::platform::packaged_app_id(Some(app_id), project_root)?;
+        }
         let bundle_root = project_root.join("dist-bundle").join(&manifest.name);
         if bundle_root.exists() {
             return Err("Bundle output already exists; choose a new package name to avoid mixing old assets".into());

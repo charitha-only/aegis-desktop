@@ -27,6 +27,7 @@ test('create produces a self-contained source project and refuses to overwrite i
     const created = run();
     assert.equal(created.status, 0, created.stderr);
     assert.equal(JSON.parse(await readFile(path.join(destination, 'aegis.config.json'), 'utf8')).name, 'ExampleApp');
+    assert.equal(JSON.parse(await readFile(path.join(destination, 'aegis.config.json'), 'utf8')).appId, 'app.exampleapp');
     await access(path.join(destination, 'src-core/Cargo.toml'));
     await access(path.join(destination, 'src-ui/src/App.tsx'));
     await assert.rejects(access(path.join(destination, 'sandbox')));

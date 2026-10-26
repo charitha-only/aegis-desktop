@@ -97,11 +97,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
     let mut csp = "default-src 'self' 'unsafe-inline';".to_string();
     let mut window_config = WindowConfig::default();
+    let mut configured_app_id = None;
 
     let manifest = if config_path.exists() {
         match fs::read_to_string(config_path) {
             Ok(content) => {
                 let parsed: serde_json::Value = serde_json::from_str(&content)?;
+                configured_app_id = parsed.get("appId").cloned();
                 if let Some(origins) = parsed["security"]["allowedOrigins"].as_array() {
                     allowed_origins = origins
                         .iter()
@@ -125,8 +127,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let base_dir = if packaged {
-        let app_name = app_dir.file_name().ok_or("Missing app name")?;
-        let dir = platform::app_data_dir(app_name.to_str().ok_or("Invalid application ID")?)?;
+        let app_id = platform::packaged_app_id(configured_app_id.as_ref(), app_dir)?;
+        let dir = platform::app_data_dir(&app_id)?;
         fs::create_dir_all(&dir)?;
         dir
     } else {

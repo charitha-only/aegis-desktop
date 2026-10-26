@@ -32,6 +32,8 @@ jobs:
         run: cargo build --release --locked --manifest-path src-core/Cargo.toml
       - name: Verify real native platform IPC and storage
         run: node aegis-cli/bin/portable-smoke.js
+      - name: Verify packaged identity survives rename and invalid IDs fail closed
+        run: node aegis-cli/bin/identity-smoke.js
       - name: Test CLI and benchmark interfaces
         run: node --test aegis-cli/test/metrics.test.js aegis-cli/test/create.test.js
       - name: Record core performance measurements
