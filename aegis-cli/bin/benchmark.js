@@ -1,13 +1,25 @@
 #!/usr/bin/env node
 import {spawn, spawnSync} from 'node:child_process';
-import {mkdtemp, rm, stat} from 'node:fs/promises';
+import {mkdtemp, rm, stat, readFile} from 'node:fs/promises';
 import {tmpdir, cpus, totalmem, release} from 'node:os';
 import path from 'node:path';
 import {performance} from 'node:perf_hooks';
-import {latencySummary} from '../lib/metrics.js';
+import {createReadStream} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {latencySummary, evaluatePerformanceBudget} from '../lib/metrics.js';
 
-const binary = path.resolve(process.argv[2] || `src-core/target/release/aegis-core${process.platform === 'win32' ? '.exe' : ''}`);
-const trials = 3;
+const args=process.argv.slice(2);
+const requestedBinary=args[0] && !args[0].startsWith('--') ? args.shift() : undefined;
+let budget;
+if(args.length) {
+  if(args.length!==1 || !args[0].startsWith('--budget=') || args[0].length<=9) throw new Error('Usage: benchmark.js [binary] [--budget=file.json]');
+  const filename=args[0].slice(9);
+  if((await stat(filename)).size>65536) throw new Error('Budget file exceeds 64 KiB');
+  budget=JSON.parse(await readFile(filename,'utf8'));
+  evaluatePerformanceBudget({schemaVersion:2},budget); // Validate before launching any fixture.
+}
+const binary = path.resolve(requestedBinary || `src-core/target/release/aegis-core${process.platform === 'win32' ? '.exe' : ''}`);
+const trials = 5;
 async function withCore(run) {
   const fixture = await mkdtemp(path.join(tmpdir(), 'aegis-benchmark-'));
   const started = performance.now();
@@ -69,13 +81,23 @@ const workload = await withCore(async ({base, pid}) => {
   await new Promise(resolve => setTimeout(resolve, 2000));
   const after = sampleProcess(pid);
   const elapsedMs = performance.now() - start;
-  return {ipc: latencySummary(ipc), idle: before && after ? {
+  return {ipc: latencySummary(ipc), ipcSamplesMs:ipc, idle: before && after ? {
     durationMs: elapsedMs, rssBytes: after.rssBytes, peakRssBytes: after.peakRssBytes,
     cpuPercentOfOneLogicalCore: Math.max(0, after.cpuSeconds - before.cpuSeconds) / (elapsedMs / 1000) * 100,
   } : {unavailable: true}};
 });
-console.log(JSON.stringify({schemaVersion: 1, measuredAt: new Date().toISOString(),
+const hash=createHash('sha256');
+for await(const chunk of createReadStream(binary)) hash.update(chunk);
+const git=spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8',windowsHide:true,timeout:5000});
+const dirty=spawnSync('git',['status','--porcelain','--untracked-files=no'],{encoding:'utf8',windowsHide:true,timeout:5000});
+const {ipcSamplesMs,...measurements}=workload;
+const report={schemaVersion: 2, measuredAt: new Date().toISOString(),
   environment: {os: process.platform, osRelease: release(), architecture: process.arch, cpu: cpus()[0]?.model, logicalCpus: cpus().length, ramBytes: totalmem()},
-  binaryBytes: (await stat(binary)).size, startup: latencySummary(startup), ...workload,
-  limitations: ['Core process only; no UI rendering or webview cost measured', 'OS filesystem caches are uncontrolled; not a cold-boot benchmark', 'CPU sampling is coarse and excludes child processes; this is not a release performance budget', 'Physical constrained-device acceptance remains required'],
-}, null, 2));
+  provenance:{gitRevision:git.status===0?git.stdout.trim():null,trackedWorkingTreeDirty:dirty.status===0?!!dirty.stdout.trim():null,binarySha256:hash.digest('hex')},
+  binaryBytes: (await stat(binary)).size, startup: latencySummary(startup), ...measurements,
+  rawSamples:{startupMs:startup,ipcMs:ipcSamplesMs},
+  limitations: ['Core process only; no UI rendering or webview cost measured', 'OS filesystem caches are uncontrolled; not a cold-boot benchmark', 'CPU sampling is coarse and excludes child processes; explicit core budgets do not establish whole-app performance', 'Five startup and twenty IPC samples are a small exploratory sample, not a statistical release guarantee', 'Physical constrained-device acceptance remains required'],
+};
+report.budget=budget?evaluatePerformanceBudget(report,budget):null;
+console.log(JSON.stringify(report,null,2));
+if(report.budget && !report.budget.passed) process.exitCode=1;

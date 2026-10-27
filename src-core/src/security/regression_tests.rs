@@ -136,6 +136,45 @@ fn profiles_survive_restart_and_do_not_collide() {
         .any(|p| p.id == "work"));
 }
 #[test]
+fn unreadable_profile_registry_is_preserved_instead_of_replaced() {
+    let d = tempfile::tempdir().unwrap();
+    let registry = d.path().join("profiles.json");
+    let original = b"TEST_ONLY damaged profile metadata";
+    std::fs::write(&registry, original).unwrap();
+    let manager = crate::profile::ProfileManager::new(d.path());
+    assert!(
+        manager.create_profile("work", "Work", "").is_err(),
+        "Unreadable existing metadata must block registry replacement"
+    );
+    assert!(manager.registry_error().is_some());
+    assert_eq!(std::fs::read(&registry).unwrap(), original);
+    assert!(!d.path().join("sandbox_work").exists());
+    drop(manager);
+    std::fs::write(&registry, b"[]").unwrap();
+    let repaired = crate::profile::ProfileManager::new(d.path());
+    assert!(repaired.create_profile("work", "Work", "").is_ok());
+}
+
+#[test]
+fn oversized_valid_profile_registry_is_bounded_and_preserved() {
+    let d = tempfile::tempdir().unwrap();
+    let registry = d.path().join("profiles.json");
+    let mut original = vec![b' '; crate::storage::MAX_FILE_BYTES + 1];
+    original.extend_from_slice(b"[]");
+    std::fs::write(&registry, &original).unwrap();
+    let manager = crate::profile::ProfileManager::new(d.path());
+    assert!(
+        manager.create_profile("work", "Work", "").is_err(),
+        "Even valid registry JSON must respect the storage read budget"
+    );
+    assert_eq!(
+        std::fs::metadata(&registry).unwrap().len(),
+        original.len() as u64
+    );
+    assert!(manager.registry_error().is_some());
+}
+
+#[test]
 fn secure_session_tokens() {
     let a = HandshakeSession::new();
     let b = HandshakeSession::new();

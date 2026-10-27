@@ -35,6 +35,15 @@ own scope, threat model and evidence. Do not count unassessed items as passing.
 | v5.0.0-14.3.1 | Client secret removal: unassessed | Framework lock clears retained backend credentials; plaintext already returned to UI cannot be retracted. App DOM/storage/session-lifecycle acceptance remains required. |
 | Database injection, LDAP/JNDI and mail controls | Not applicable to current built-in service scope | No built-in database/LDAP/JNDI/mail service. Third-party/native plugins are trusted code and are not covered by this exclusion. Reassess per application. |
 
+## v0.27.0 registry preservation slice
+
+Profile registry reads now use the existing bounded storage reader; corrupted,
+unreadable or oversized existing metadata blocks creation instead of allowing
+replacement. Linked/non-file/reparse targets are rejected before opening. Public
+regressions cover corrupt preservation, oversized valid JSON and explicit status.
+This is scoped input/resource/recovery evidence, not complete deserialization or
+cross-process filesystem safety. See [PROFILE_TRANSITIONS.md](PROFILE_TRANSITIONS.md).
+
 ## v0.26.7 profile-transition slice
 
 Public IPC regressions now exercise failed profile directory preparation,

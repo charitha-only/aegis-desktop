@@ -47,3 +47,27 @@ OS directory operations. Those remain separate review items.
 
 See [ASVS_5_MAPPING.md](ASVS_5_MAPPING.md) and the exact-source release ledger in
 [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+
+## Registry-load preservation (v0.27.0)
+
+Existing malformed/unreadable registries now block profile creation rather than
+being treated as an empty registry and overwritten. Reads use the existing
+`storage::MAX_FILE_BYTES` budget (2 MiB + 256 bytes), including an actual read
+cap; a missing path is the new-registry case. Non-regular, symlink and Windows
+reparse targets are rejected before opening. A path-resolution race is not
+eliminated by that check.
+
+`profile_list` adds `registryCreationBlocked` and `registryError`. This is a
+startup load status, not an OS write-permission guarantee. Built-in profiles
+remain available for listing/switching; unavailable custom profiles must not be
+reported as recovered. Existing valid-entry collision filtering remains; this
+change does not certify all saved metadata fields. The original file is preserved.
+An owner must repair/restore it and restart; there is no automatic destructive
+reset. Do not delete a user's registry as a recovery shortcut.
+
+Public manager regressions first reproduced corrupt-file replacement and
+acceptance of oversized but syntactically valid JSON. They now check blocked
+creation, preserved bytes/length, no new directory and successful creation after
+fixture repair and a new manager. Normal profile-list flags are checked through
+real IPC. Existing managers do not monitor external changes; cross-process stale
+writers, later tampering and full physical fault recovery remain unaddressed.

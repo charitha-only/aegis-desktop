@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.27.0] - 2026-10-28
+
+- Begin the performance tooling milestone: schema-2 core reports retain five startup and twenty IPC samples, binary SHA-256, source revision and working-tree state. Host details and measurement limitations remain explicit.
+- Add explicit core performance budgets with fail-closed handling of unknown/invalid limits and absent metrics. Exceeded budgets produce a report and nonzero exit; no default production threshold is invented. Three-OS CI exercises the actual budget CLI and retains raw reports.
+- Preserve damaged, unreadable, linked/non-file or oversized profile registries instead of silently overwriting them during creation. Reads use the existing bounded storage limit. Expose registry diagnostics in profile_list; repair requires owner action and a new manager/restart.
+- Record physical-device procedures and remaining whole-app/process-tree/UI measurement gates. This preview does not complete the v0.27 low-resource acceptance milestone.
+
 ## [v0.26.7] - 2026-10-28
 
 - Return an error when a new profile's storage directory cannot be created; do not register or reserve the ID after failure.

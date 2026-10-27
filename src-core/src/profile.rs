@@ -22,6 +22,7 @@ pub struct ProfileConfig {
 
 pub struct ProfileManager {
     base_dir: PathBuf,
+    registry_error: Option<&'static str>,
     profiles: Mutex<HashMap<String, ProfileConfig>>,
     active_profile_id: Mutex<String>,
 }
@@ -62,30 +63,40 @@ impl ProfileManager {
             },
         );
 
-        let manager = Self {
+        let mut manager = Self {
             base_dir: base_dir.to_path_buf(),
+            registry_error: None,
             profiles: Mutex::new(profiles),
             active_profile_id: Mutex::new("default".to_string()),
         };
-        if let Ok(text) = fs::read_to_string(base_dir.join("profiles.json")) {
-            if let Ok(saved) = serde_json::from_str::<Vec<ProfileConfig>>(&text) {
-                let mut lock = manager.profiles.lock().unwrap();
-                for cfg in saved {
-                    if valid_id(&cfg.id)
-                        && cfg.id != "default"
-                        && cfg.id != "private_vault"
-                        && cfg.sandbox_dir == format!("sandbox_{}", cfg.id)
-                        && !lock.values().any(|existing| {
-                            existing.id.eq_ignore_ascii_case(&cfg.id)
-                                || existing.sandbox_dir.eq_ignore_ascii_case(&cfg.sandbox_dir)
-                        })
-                    {
-                        lock.insert(cfg.id.clone(), cfg);
+        match read_registry(&base_dir.join("profiles.json")) {
+            Ok(text) => match serde_json::from_str::<Vec<ProfileConfig>>(&text) {
+                Ok(saved) => {
+                    let mut lock = manager.profiles.lock().unwrap();
+                    for cfg in saved {
+                        if valid_id(&cfg.id)
+                            && cfg.id != "default"
+                            && cfg.id != "private_vault"
+                            && cfg.sandbox_dir == format!("sandbox_{}", cfg.id)
+                            && !lock.values().any(|existing| {
+                                existing.id.eq_ignore_ascii_case(&cfg.id)
+                                    || existing.sandbox_dir.eq_ignore_ascii_case(&cfg.sandbox_dir)
+                            })
+                        {
+                            lock.insert(cfg.id.clone(), cfg);
+                        }
                     }
                 }
-            }
+                Err(_) => manager.registry_error = Some("Profile registry is invalid; restore it and restart before creating profiles"),
+            },
+            Err(None) => {}
+            Err(Some(_)) => manager.registry_error = Some("Profile registry cannot be read safely; restore it and restart before creating profiles"),
         }
         manager
+    }
+
+    pub fn registry_error(&self) -> Option<&'static str> {
+        self.registry_error
     }
 
     pub fn get_active_sandbox_path(&self) -> PathBuf {
@@ -139,6 +150,9 @@ impl ProfileManager {
         name: &str,
         description: &str,
     ) -> Result<ProfileConfig, String> {
+        if let Some(error) = self.registry_error {
+            return Err(error.into());
+        }
         if !valid_id(id) {
             return Err("Profile ID must be 1-48 ASCII letters, digits or underscores".into());
         }
@@ -187,4 +201,25 @@ impl ProfileManager {
 
 fn valid_id(id: &str) -> bool {
     !id.is_empty() && id.len() <= 48 && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+}
+
+// Only a missing path is a new registry; existing failures must never become
+// permission to overwrite the original metadata. Link races remain out of scope.
+fn read_registry(path: &Path) -> Result<String, Option<String>> {
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Err(None),
+        Err(error) => return Err(Some(error.to_string())),
+    };
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return Err(Some("Linked or non-file registry rejected".into()));
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        if metadata.file_attributes() & 0x400 != 0 {
+            return Err(Some("Reparse registry rejected".into()));
+        }
+    }
+    crate::storage::read_bounded(path).map_err(Some)
 }

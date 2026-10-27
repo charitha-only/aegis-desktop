@@ -1149,7 +1149,9 @@ impl IpcRouter {
                 &req.id,
                 json!({
                     "profiles": self.profile_manager.list_profiles(),
-                    "activeProfile": self.profile_manager.get_active_profile()
+                    "activeProfile": self.profile_manager.get_active_profile(),
+                    "registryCreationBlocked": self.profile_manager.registry_error().is_some(),
+                    "registryError": self.profile_manager.registry_error()
                 }),
             ),
 

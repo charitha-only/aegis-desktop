@@ -93,6 +93,9 @@ try {
   }
   // Keep this fixture below the transport rate budget on fast native runners.
   await new Promise(resolve => setTimeout(resolve, 1100));
+  const profileStatus=await call('profile_list');
+  assert.equal(profileStatus.data.registryCreationBlocked,false);
+  assert.equal(profileStatus.data.registryError,null);
   const diagnostic = await call('crash_record', {errorKind: 'assertion', message: 'TEST_ONLY_omitted-secret'});
   assert.equal(diagnostic.success, true);
   assert.equal(diagnostic.data.persisted, true);
