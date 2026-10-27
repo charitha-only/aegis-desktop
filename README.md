@@ -73,7 +73,7 @@ The roadmap continues with **v0.27** whole-app/low-resource performance, **v0.28
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.26.7`** | 🟢 **Current source** | Failed profile storage preparation now returns errors before registration or active-profile changes. IPC regressions cover state preservation and recovery. See the verification ledger for exact-source checks. |
+| **`v0.26.7`** | 🟢 **Current source** | Failed profile storage preparation now returns errors before registration or active-profile changes. IPC regressions cover state preservation and recovery. Three-OS and Windows installer/upgrade/lock checks passed for source `99bfa49`; see the verification ledger. |
 | **`v0.26.6`** | ⚪ **Previous version** | Strict policy port validation with boundary/default IPC regressions; three-OS and Windows installer acceptance passed. |
 | **`v0.26.5`** | ⚪ **Previous version** | ASVS evidence mapping, browser response protections and corrected documentation; three-OS checks and Windows installer acceptance passed. |
 | **`v0.26.4`** | ⚪ **Previous version** | Owned dynamic core/Vite startup, readiness checks, restart/cleanup and Windows short-path fix; three-OS checks passed. |
