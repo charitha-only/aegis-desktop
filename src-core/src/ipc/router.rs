@@ -1251,10 +1251,19 @@ impl IpcRouter {
                 };
                 let default_input = json!({});
                 let input_payload = req.payload.get("input").unwrap_or(&default_input);
-                let tier = match req.payload.get("tier").and_then(|t| t.as_str()) {
-                    Some("WGPU_JIT") => ExecutionTier::WgpuJit,
-                    Some("INTERPRETER") => ExecutionTier::Interpreter,
-                    _ => ExecutionTier::Auto,
+                let tier = match req.payload.get("tier") {
+                    None => ExecutionTier::Auto,
+                    Some(value) => match value.as_str() {
+                        Some("AUTO") => ExecutionTier::Auto,
+                        Some("WGPU_JIT") => ExecutionTier::WgpuJit,
+                        Some("INTERPRETER") => ExecutionTier::Interpreter,
+                        _ => {
+                            return IpcResponse::err(
+                                &req.id,
+                                "Invalid Wasm tier; expected AUTO, INTERPRETER or WGPU_JIT",
+                            )
+                        }
+                    },
                 };
                 match self
                     .wasm_sandbox

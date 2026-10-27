@@ -62,6 +62,12 @@ try {
   assert.deepEqual((await call('plugin_list', {})).data.disabledPlugins, [], 'An ordinary unavailable-provider error must not disable a handler');
   const uptime = await call('plugin_dispatch', {plugin: 'process_uptime', payload: {}});
   assert.equal(uptime.data.result.measurementScope, 'sinceBuiltinPluginRegistration');
+  const wasm = await call('wasm_execute', {moduleId: 'wasm-schema-validator', input: {}, tier: 'INTERPRETER'});
+  assert.equal(wasm.success, true);
+  assert.equal(wasm.data.memory_used_bytes, 0, 'A guest without linear memory must not report JSON input bytes as guest memory');
+  assert.equal(wasm.data.output_payload.memoryMeasurement, 'guestLinearMemoryBytes');
+  assert.equal(wasm.data.output_payload.inputBytes, 2);
+  assert.equal((await call('wasm_execute', {moduleId: 'wasm-schema-validator', input: {}, tier: 'UNKNOWN'})).success, false);
   if (process.platform !== 'win32') {
     assert.equal((await call('vault_session_unlock', {filename: 'fixture.vault', passphrase: password})).success, false,
       'Retained sessions require an available lifecycle adapter');

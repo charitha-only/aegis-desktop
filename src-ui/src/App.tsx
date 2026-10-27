@@ -2597,7 +2597,7 @@ export default function App() {
                   WebAssembly (Wasm) Plugin Virtual Machine
                 </h1>
                 <p style={{ fontSize: '13px', color: '#94a3b8' }}>
-                  High-speed, memory-capped WebAssembly guest VM. Sandboxed bytecode modules execute with strict gas metering and zero host vulnerability exposure.
+                  WebAssembly interpreter with bounded guest linear memory and instruction fuel. Host imports are disabled.
                 </p>
               </div>
 
@@ -3636,7 +3636,7 @@ export default function App() {
                   </div>
                   <div>
                     <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#f8fafc' }}>GPU-Accelerated Wasm JIT Compute Tier</h2>
-                    <p style={{ fontSize: '12px', color: '#64748b' }}>WGPU-backed JIT compiler • Automated bytecode to WGSL compute shader translation • 12x–20x acceleration</p>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>GPU execution is unavailable. AUTO and INTERPRETER use the Wasm interpreter.</p>
                   </div>
                 </div>
               </div>

@@ -1452,3 +1452,46 @@ fn plugin_handler_can_register_another_plugin_without_deadlock() {
         42
     );
 }
+
+#[test]
+fn ipc_wasm_rejects_unknown_or_malformed_execution_tiers() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let security = Arc::new(SecurityEngine::new(CapabilityManifest::default(), d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    for tier in [
+        serde_json::json!("UNKNOWN"),
+        serde_json::json!(42),
+        serde_json::Value::Null,
+    ] {
+        let response = router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "wasm-tier".into(),
+            command: "wasm_execute".into(),
+            nonce: handshake.get_token(),
+            payload: serde_json::json!({"moduleId":"wasm-schema-validator","input":{},"tier":tier}),
+        });
+        assert!(
+            !response.success,
+            "Explicit invalid tier must not silently execute in AUTO mode"
+        );
+    }
+}

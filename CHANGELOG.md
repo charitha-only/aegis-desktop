@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.13] - 2026-10-27
+
+- Correct Wasm memory reporting to measure guest linear memory, including unexported growth, instead of JSON input bytes. Preserve memory/table/fuel restrictions and expose the measurement scope.
+- Reuse validated modules with fresh execution stores and return metadata without cloning raw binaries. Bound module IDs/display names and reject a full registry before compiling another new entry.
+- Reject malformed explicit execution tiers rather than silently falling back to AUTO. Remove unsupported GPU acceleration and absolute host-security claims from demo text; preserve the interface layout.
+- Add public module/IPC resource-accounting and state-isolation regressions. Whole-process memory/time budgets and physical constrained-device validation remain pending; see docs/WASM_RESOURCE_LIMITS.md.
+
 ## [v0.25.12] - 2026-10-27
 
 - Catch native handler unwind panics and disable the faulted registration. Return typed plugin failures and generic IPC panic errors, revoke retained vault sessions/ephemeral secrets and preserve subsequent IPC commands.
