@@ -109,3 +109,20 @@ long synchronous command harmless. See docs/IPC_TRANSPORT_LIMITS.md for the exac
 contract, verification commands, dependency provenance and remaining limits.
 The earlier threat-model list is scoped coverage, not proof that every malformed
 request or denial-of-service case was already resolved.
+
+
+## v0.26.0 bounded diagnostic events
+
+Source `5fc963a` fixes confirmed diagnostic-history growth, duplicate second-based
+event identities and lost list history on restart. The public IPC regression
+reproduced each before remediation. The new application-wide journal retains
+32 allowlisted diagnostic labels within 64 KiB, omits caller traces/messages,
+uses random event IDs and reports persistence failures. Corrupt or oversized
+history is preserved and rejected. Old sandbox crash files are not imported or
+removed. Read docs/DIAGNOSTICS.md for the complete scope and storage assumptions.
+
+This is bounded diagnostic recording, not automatic panic capture, proof that a
+requested event occurred, cross-profile private logging or a guarantee against
+sustained local flooding. The v0.26 source milestone includes the existing native
+services preview; physical-device/accessibility acceptance and the other
+RELEASE_GATES.md requirements remain open.

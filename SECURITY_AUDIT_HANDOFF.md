@@ -45,3 +45,16 @@ oversized bodies, oversized headers and connection admission/recovery. Review
 `docs/IPC_TRANSPORT_LIMITS.md` and source `39e3af6`. Long-running command deadlines,
 sustained-flood availability, physical resource ceilings and an independent
 review remain open; this project-authored fix does not close those gates.
+
+
+## v0.26.0 diagnostics follow-up
+
+Review source `5fc963a` and docs/DIAGNOSTICS.md. Validate journal limits before
+parsing and after serialization, cooperating-process lock behavior, atomic-write
+failure boundaries, caller-text omission, allowlisted kinds, corrupt-history
+refusal and observed link/reparse rejection. The journal is application-wide;
+old sandbox reports are preserved outside the new retention bound. Independent
+filesystem-race, power-loss and physical-resource testing remains required. The
+public IPC regression covers retention/restart, unique IDs, rejected kinds,
+persistence failure and corrupt history; portable CI exercises the actual native
+binary's aligned UI/backend response contract on all three OS runners.
