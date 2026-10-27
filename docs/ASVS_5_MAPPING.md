@@ -35,6 +35,17 @@ own scope, threat model and evidence. Do not count unassessed items as passing.
 | v5.0.0-14.3.1 | Client secret removal: unassessed | Framework lock clears retained backend credentials; plaintext already returned to UI cannot be retracted. App DOM/storage/session-lifecycle acceptance remains required. |
 | Database injection, LDAP/JNDI and mail controls | Not applicable to current built-in service scope | No built-in database/LDAP/JNDI/mail service. Third-party/native plugins are trusted code and are not covered by this exclusion. Reassess per application. |
 
+## v0.26.6 input-validation slice
+
+The `firewall_evaluate` port contract now has public IPC regressions supporting
+v5.0.0-1.4.2 (numeric range safety) and v5.0.0-2.2.1/2.2.2 (trusted validation).
+An explicit 65979 previously wrapped to 443; checked conversion now rejects it.
+Malformed, zero, negative, fractional, string, null and boolean inputs fail;
+valid boundary values survive unchanged; only omission defaults to 443.
+See [IPC_INPUT_RULES.md](IPC_INPUT_RULES.md). This is one command field, not
+completion of those requirements across the whole framework. Policy decisions
+do not enforce traffic or establish application/server authorization.
+
 ## v0.26.5 response contract
 
 Core application-handled HTTP replies, including rejection/preflight paths, use a common responder. Replies emitted earlier by tiny_http (for example HTTP parse/admission failures) bypass this application responder and remain unassessed for these headers. Consequently this does not establish the standard's all-response requirement.

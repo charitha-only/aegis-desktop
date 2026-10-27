@@ -108,6 +108,20 @@ try {
   const rejectedWindow = await call('window_spawn', {url: 'https://blocked.invalid/', width: 4294968096});
   assert.equal(rejectedWindow.success, false);
   assert.match(rejectedWindow.error, /Invalid window options/);
+  for(const port of [65979,65536,0,-1,1.5,'443',null,true,{}]) {
+    const invalidPort=await call('firewall_evaluate',{host:'localhost',port});
+    assert.equal(invalidPort.success,false,'Explicit invalid ports must not wrap or use a default');
+    assert.match(invalidPort.error,/Invalid port/);
+  }
+  for(const port of [1,65535]) {
+    const result=await call('firewall_evaluate',{host:'localhost',port});
+    assert.equal(result.success,true);
+    assert.equal(result.data.port,port,'A valid port must be preserved exactly');
+  }
+  const defaultPort=await call('firewall_evaluate',{host:'localhost'});
+  assert.equal(defaultPort.success,true);
+  assert.equal(defaultPort.data.port,443,'Only an omitted port selects the documented default');
+  console.log('PASS: policy ports reject overflow/malformed values and preserve boundaries/default');
   console.log('PASS: native platform IPC, directories, encrypted storage and unavailable lifecycle behavior');
 } finally {
   if (child.exitCode === null) child.kill();

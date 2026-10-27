@@ -1403,11 +1403,18 @@ impl IpcRouter {
                     Some(h) => h,
                     None => return IpcResponse::err(&req.id, "Missing 'host' parameter"),
                 };
-                let port = req
-                    .payload
-                    .get("port")
-                    .and_then(|p| p.as_u64())
-                    .unwrap_or(443) as u16;
+                let port = match req.payload.get("port") {
+                    None => 443,
+                    Some(value) => match value.as_u64().and_then(|n| u16::try_from(n).ok()) {
+                        Some(port) if port != 0 => port,
+                        _ => {
+                            return IpcResponse::err(
+                                &req.id,
+                                "Invalid port: expected an integer from 1 to 65535",
+                            )
+                        }
+                    },
+                };
                 let nonce = req
                     .payload
                     .get("nonce")

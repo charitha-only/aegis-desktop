@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.26.6] - 2026-10-28
+
+- Reject explicit malformed, zero or out-of-range `firewall_evaluate.port` inputs before policy evaluation. Checked conversion replaces truncation: 65979 previously became 443. Only an omitted field defaults to 443.
+- Add real-core and packaged-runtime regression checks for overflow, signed/fractional/type errors, valid boundary ports and the omitted default. Clarify that this API evaluates rules and does not enforce OS/browser network traffic.
+- Extend the scoped ASVS input-validation evidence and document the policy command contract. This is a validation/logic fix, not a claim of an exploitable network firewall bypass.
+
 ## [v0.26.5] - 2026-10-28
 
 - Apply a common browser response boundary to successful, rejected, preflight and error responses: MIME sniffing disabled, referrers suppressed, and an additional restrictive CSP prevents framing, object embedding and base-URL changes. The app asset CSP remains separately enforced.

@@ -28,9 +28,10 @@ pub struct NetworkEvaluation {
     pub tpm_verified: bool,
 }
 
-/// Dynamic zero-trust network firewall policy engine
-/// Restricts outbound connections from UI, WebViews, or plugins,
-/// enforcing TPM 2.0 remote attestation proofs on enterprise boundaries.
+/// Advisory network policy evaluator; this does not intercept OS or browser traffic.
+/// A result describes the current rule decision, not a connection attempt or
+/// proof that a target is reachable. TPM-dependent policies fail closed without
+/// a real provider.
 pub struct NetworkPolicyEngine {
     rules: Mutex<Vec<FirewallRule>>,
     allowed_domains: Mutex<HashSet<String>>,
