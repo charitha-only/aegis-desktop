@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.26.7] - 2026-10-28
+
+- Return an error when a new profile's storage directory cannot be created; do not register or reserve the ID after failure.
+- Prepare the target directory before changing the active profile. An existing non-directory destination no longer reports a successful switch or replaces the current storage root.
+- Extend public IPC regressions with owned filesystem failures, profile-list/root preservation, and recovery after the blocking files are removed. Failed switch attempts still revoke retained sessions and pending native jobs as a fail-closed measure.
+
 ## [v0.26.6] - 2026-10-28
 
 - Reject explicit malformed, zero or out-of-range `firewall_evaluate.port` inputs before policy evaluation. Checked conversion replaces truncation: 65979 previously became 443. Only an omitted field defaults to 443.

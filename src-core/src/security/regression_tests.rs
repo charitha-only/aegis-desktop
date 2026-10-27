@@ -685,6 +685,17 @@ fn ipc_profiles_reject_shared_storage_identities() {
         )
         .success
     );
+    std::fs::write(d.path().join("sandbox_blocked"), b"TEST_ONLY blocker").unwrap();
+    assert!(
+        !call("profile_create", serde_json::json!({"profileId":"blocked"})).success,
+        "A failed profile directory creation must not report successful registration"
+    );
+    let listed = call("profile_list", serde_json::json!({}));
+    assert!(!listed.data.as_ref().unwrap()["profiles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|profile| profile["id"] == "blocked"));
     let collision = call("profile_create", serde_json::json!({"profileId":"vault"}));
     assert!(
         !collision.success,
@@ -695,6 +706,36 @@ fn ipc_profiles_reject_shared_storage_identities() {
         !call("profile_create", serde_json::json!({"profileId":"work"})).success,
         "Profile identities must remain distinct on case-insensitive filesystems"
     );
+    std::fs::remove_dir(d.path().join("sandbox_Work")).unwrap();
+    std::fs::write(
+        d.path().join("sandbox_Work"),
+        b"TEST_ONLY blocked destination",
+    )
+    .unwrap();
+    assert!(
+        !call("profile_switch", serde_json::json!({"profileId":"Work"})).success,
+        "An unusable profile directory must not become active"
+    );
+    let listed = call("profile_list", serde_json::json!({}));
+    assert_eq!(
+        listed.data.as_ref().unwrap()["activeProfile"]["id"],
+        "private_vault"
+    );
+    assert!(
+        call("fs_read_file", serde_json::json!({"path":"private.txt"})).success,
+        "Failed switching must preserve the prior storage root"
+    );
+    std::fs::remove_file(d.path().join("sandbox_blocked")).unwrap();
+    assert!(
+        call("profile_create", serde_json::json!({"profileId":"blocked"})).success,
+        "A failed creation must not reserve its profile ID"
+    );
+    std::fs::remove_file(d.path().join("sandbox_Work")).unwrap();
+    assert!(
+        call("profile_switch", serde_json::json!({"profileId":"Work"})).success,
+        "Switching must recover once the destination is usable"
+    );
+    assert!(!call("fs_read_file", serde_json::json!({"path":"private.txt"})).success);
 }
 
 #[test]

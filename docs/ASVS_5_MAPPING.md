@@ -35,6 +35,17 @@ own scope, threat model and evidence. Do not count unassessed items as passing.
 | v5.0.0-14.3.1 | Client secret removal: unassessed | Framework lock clears retained backend credentials; plaintext already returned to UI cannot be retracted. App DOM/storage/session-lifecycle acceptance remains required. |
 | Database injection, LDAP/JNDI and mail controls | Not applicable to current built-in service scope | No built-in database/LDAP/JNDI/mail service. Third-party/native plugins are trusted code and are not covered by this exclusion. Reassess per application. |
 
+## v0.26.7 profile-transition slice
+
+Public IPC regressions now exercise failed profile directory preparation,
+unchanged registration/active identity/storage root, and successful retries.
+Previously, filesystem errors were discarded and success was returned for an
+unusable destination. This provides scoped business-logic/input evidence related
+to v5.0.0-2.2.1/2.2.2; it does not complete those requirements across commands.
+See [PROFILE_TRANSITIONS.md](PROFILE_TRANSITIONS.md). Real power-loss, path races,
+malicious same-account filesystem changes and complete registry recovery remain
+outside this evidence.
+
 ## v0.26.6 input-validation slice
 
 The `firewall_evaluate` port contract now has public IPC regressions supporting

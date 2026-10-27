@@ -119,14 +119,13 @@ impl ProfileManager {
     pub fn switch_profile(&self, id: &str) -> Result<ProfileConfig, String> {
         let p = self.profiles.lock().unwrap();
         if let Some(target) = p.get(id) {
+            // Validate/create storage before publishing the new active identity.
+            // create_dir_all also rejects an existing non-directory target.
+            let path = self.base_dir.join(&target.sandbox_dir);
+            fs::create_dir_all(&path)
+                .map_err(|e| format!("Could not prepare profile directory: {e}"))?;
             let mut active = self.active_profile_id.lock().unwrap();
             *active = id.to_string();
-
-            // Ensure profile sandbox directory exists
-            let path = self.base_dir.join(&target.sandbox_dir);
-            if !path.exists() {
-                let _ = fs::create_dir_all(&path);
-            }
 
             Ok(target.clone())
         } else {
@@ -161,7 +160,8 @@ impl ProfileManager {
             return Err("Profile storage directory is already assigned".into());
         }
         let p_path = self.base_dir.join(&sandbox_dir);
-        let _ = fs::create_dir_all(&p_path);
+        fs::create_dir_all(&p_path)
+            .map_err(|e| format!("Could not create profile directory: {e}"))?;
 
         let cfg = ProfileConfig {
             id: id.to_string(),
