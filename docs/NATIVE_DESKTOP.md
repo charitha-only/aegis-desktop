@@ -18,3 +18,32 @@ Upstream references: [Wry feature definitions](https://github.com/tauri-apps/wry
 Hosted Linux smoke setup includes a temporary AppArmor profile granting user-namespace creation only to `/tmp/aegis-native-*/NativeFixture/aegis-core`. Ubuntu's global namespace restriction is not disabled, and WebKit's sandbox is not disabled. This is a disposable CI prerequisite, not a production confinement profile. The profile is removed in cleanup. Production Linux distribution needs an appropriate supported namespace/sandbox policy; see [Ubuntu's namespace documentation](https://documentation.ubuntu.com/security/security-features/privilege-restriction/apparmor/).
 
 Windows WebView2's cache is directed to the application's data root. The native host releases its webview before its parent window; the smoke harness retries owned fixture cleanup briefly while asynchronous browser processes release handles. This is not a guarantee of complete browser-memory erasure. No user browser processes are killed by the harness.
+
+
+## Dynamic-port startup (v0.26.2)
+
+For packaged applications, `--port=0` binds an OS-selected loopback port and both
+native and external startup use that actual bound origin. Previously the UI URL
+incorrectly retained port zero. Development continues to use the separate
+`http://localhost:5173` UI server. The current development bridge client still
+expects the default core port 48291; inspecting a different/dynamic development
+listener does not configure client-side port discovery. Dynamic packaged startup
+is the behavior covered by this fix.
+
+`--print-launch-plan` prints an `AEGIS_LAUNCH_PLAN=` JSON line with `bridgeUrl`,
+`uiUrl`, packaged mode, whether native mode was requested and whether the native
+feature was compiled. It initializes the ordinary startup configuration/data
+location and temporarily binds the listener, then exits before any desktop
+launch or IPC request loop. It is not a side-effect-free configuration parser,
+and does not include the bearer token. Native availability is reported separately
+from requesting it. Use it to diagnose startup addresses, not as a port reservation
+for a later process. Do not combine this inspection flag with action flags such as
+`--bundle` or helper modes, which retain their existing early-dispatch behavior.
+
+After building the default optimized core, run
+`node aegis-cli/bin/launch-plan-smoke.js` for a temporary, owned packaged and
+development fixture without desktop interaction. The three-OS guarded native GUI
+fixture now uses `--port=0` directly rather than reserving and releasing a port;
+it must load the packaged document and exit successfully. This removes the
+reserve/rebind race and exercises the dynamic native startup path on disposable
+hosted runners. It does not establish physical-device or accessibility acceptance.

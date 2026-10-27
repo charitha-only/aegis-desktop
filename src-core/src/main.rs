@@ -204,18 +204,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[Security] Capabilities enforced: Strict Sandbox & Whitelisted Origins.");
     println!("[Security] Nonce generation: Active (Cryptographic Session Validated).");
 
-    // 3. Parse CLI arguments
-    // --spawn-window flag: launch UI Window
+    let ui_url = if packaged {
+        server.bridge_url()
+    } else {
+        "http://localhost:5173".into()
+    };
+    // Inspect the same launch target used below without opening a desktop window.
+    if args.iter().any(|arg| arg == "--print-launch-plan") {
+        println!(
+            "AEGIS_LAUNCH_PLAN={}",
+            serde_json::json!({
+                "packaged":packaged,"bridgeUrl":server.bridge_url(),"uiUrl":ui_url,
+                "nativeRequested":args.iter().any(|a| a == "--native-window"),
+                "nativeFeatureCompiled":cfg!(feature = "native-desktop")
+            })
+        );
+        return Ok(());
+    }
     if args
         .iter()
         .any(|arg| arg == "--spawn-window" || arg == "--native-window")
     {
         let win_cfg = window_config;
-        let ui_url = if packaged {
-            format!("http://127.0.0.1:{port}")
-        } else {
-            "http://localhost:5173".into()
-        };
         if args.iter().any(|arg| arg == "--native-window") {
             #[cfg(feature = "native-desktop")]
             {

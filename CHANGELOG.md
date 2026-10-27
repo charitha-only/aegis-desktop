@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.26.2] - 2026-10-27
+
+- Fix packaged external/native startup targets when `--port=0` selects a dynamic listener: use the actual bound origin instead of generating a URL with port zero. Development UI still uses its separate Vite origin.
+- Add `--print-launch-plan` for bounded, headless startup inspection without launching a desktop or running the IPC request loop; expose no handshake token. Add real-process packaged/development launch-target regressions on all three OS runners.
+- Use dynamic-port binding in the guarded native GUI fixture, removing the reserve/release port race and verifying that the real embedded window loads the packaged document on Windows, Linux and macOS. Physical-device/accessibility and managed multi-window gates remain open.
+
 ## [v0.26.1] - 2026-10-27
 
 - Validate window dimensions/title for both native and external launches. Reject overflowing, fractional, wrongly typed, null and unknown IPC options before launching; preserve omitted defaults and explicit camel/snake option aliases without silently dropping unsupported requests.

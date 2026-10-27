@@ -40,6 +40,11 @@ impl CoreServer {
         })
     }
 
+    /// Actual bound origin, including the OS-selected port when binding port zero.
+    pub fn bridge_url(&self) -> String {
+        format!("http://{}", self.server.server_addr())
+    }
+
     pub fn run(&self) {
         println!(
             "[Aegis Core] IPC Bridge Server actively listening on http://{}",

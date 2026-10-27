@@ -34,6 +34,8 @@ jobs:
         run: node aegis-cli/bin/portable-smoke.js
       - name: Verify packaged identity survives rename and invalid IDs fail closed
         run: node aegis-cli/bin/identity-smoke.js
+      - name: Verify packaged dynamic-port and development launch targets without a GUI
+        run: node aegis-cli/bin/launch-plan-smoke.js
       - name: Verify incomplete IPC requests have bounded transport lifetimes
         run: node aegis-cli/bin/ipc-deadline-smoke.js
       - name: Test CLI and benchmark interfaces
