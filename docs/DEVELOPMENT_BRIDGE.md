@@ -23,11 +23,12 @@ Linux/macOS shells:
 VITE_AEGIS_BRIDGE_URL=http://127.0.0.1:49321 npm --prefix src-ui run dev
 ```
 
-Keep the UI on the configured development port 5173; core origin policy still
-applies. With a manually started `--port=0` core, read its actual address from the
-startup output and set the same value before starting the UI. The existing
-combined `aegis dev` launcher still starts the default core; this change does not
-add automatic discovery, process supervision or UI-readiness coordination there.
+The default `aegis dev` launcher now builds an owned development core, selects a
+free core port and passes its actual address to Vite automatically. See
+[DEVELOPMENT_STARTUP.md](DEVELOPMENT_STARTUP.md). The manual commands above remain
+available. Keep the manual UI on the configured development port 5173; origin
+policy still applies. For a manually started `--port=0` core, read its actual
+address from startup output and set the same value before starting the UI.
 
 ## Validation and packaged behavior
 

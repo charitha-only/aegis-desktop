@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.26.4] - 2026-10-27
+
+- Replace parallel development startup with an owned dynamic-port core and a Vite server that receives its actual address. Probe the configured UI origin before serving/opening the UI; preserve existing UI servers when strict-port startup fails.
+- Build the core before launch and discover its executable from Cargo artifacts, supporting custom target directories. Add `--no-open`, `--ui-port`, `--core-binary` and side-effect-free `--print-plan` options.
+- Stop owned resources on cancellation, core exit and startup failure. Allow bounded Vite configuration restarts without killing the core; fail if the owned UI does not resume listening. Never terminate a user's browser or unrelated listener.
+- Add public launch-plan/argument tests and real native-core/Vite startup, restart, stale-override, cancellation, occupied-port and failure fixtures on all three OS runners. Default Cargo build discovery is additionally exercised on disposable hosted runners. See docs/DEVELOPMENT_STARTUP.md for limits.
+
 ## [v0.26.3] - 2026-10-27
 
 - Allow development SDK clients to select an explicit core through `VITE_AEGIS_BRIDGE_URL`, retaining port 48291 when omitted. Validate literal IPv4-loopback HTTP origins and reject remote hosts, credentials, paths, query/fragment values, malformed types and invalid ports before any IPC fetch.

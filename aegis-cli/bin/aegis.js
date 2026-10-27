@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import {spawn,spawnSync} from 'node:child_process';
+import {spawn} from 'node:child_process';
 import {createProject} from '../lib/create.js';
+import {developmentPlan, parseDevelopmentArgs, startDevelopment} from '../lib/development.js';
 import path from 'node:path';import fs from 'node:fs';import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const cargoPath=path.join(process.env.USERPROFILE||process.env.HOME||'','.cargo','bin',process.platform==='win32'?'cargo.exe':'cargo');
@@ -23,9 +24,20 @@ async function securityTest(){const base=process.env.AEGIS_BRIDGE_URL||'http://1
  const flood=await Promise.all(Array.from({length:35},()=>call('crypto_hash',{input:'test'})));assert(flood.some(r=>r.status===429),'Rate limiting');
 }
 try{const command=process.argv[2]||'dev';
- if(command==='dev'){const children=[start(cargo,['run','--manifest-path','src-core/Cargo.toml','--','--spawn-window']),start(npm,['run','dev'],path.join(root,'src-ui'))];const cleanup=()=>{for(const p of children){if(process.platform==='win32'&&p.pid)spawnSync('taskkill',['/pid',String(p.pid),'/t','/f'],{stdio:'ignore'});else p.kill();}process.exit();};process.on('SIGINT',cleanup);process.on('SIGTERM',cleanup);for(const p of children)p.on('error',e=>{console.error(e.message);cleanup();});}
+ if(command==='dev') {
+   const options=parseDevelopmentArgs(process.argv.slice(3));
+   if(options.printPlan) console.log(JSON.stringify(developmentPlan(options)));
+   else {
+     const controller=new AbortController();
+     const cancel=()=>controller.abort();
+     process.on('SIGINT',cancel); process.on('SIGTERM',cancel);
+     try {const session=await startDevelopment({projectRoot:root,...options,signal:controller.signal}); await session.finished;}
+     catch(error) {if(!controller.signal.aborted || error.message !== 'Development startup cancelled') throw error;}
+     finally {process.off('SIGINT',cancel);process.off('SIGTERM',cancel);}
+   }
+ }
  else if(command==='create')console.log('Project created: '+await createProject(root,process.argv[3]));
- else if(command==='--help'||command==='help')console.log('Aegis commands:\n  create <new-directory>\n  dev\n  build\n  build-release\n  bundle\n  test-security\n  --version');
+ else if(command==='--help'||command==='help')console.log('Aegis commands:\n  create <new-directory>\n  dev [--no-open] [--ui-port=<port>] [--core-binary=<path>] [--print-plan]\n  build\n  build-release\n  bundle\n  test-security\n  --version');
  else if(command==='--version')console.log(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version);
  else if(command==='build'||command==='build-release')await build();
  else if(command==='bundle'){await build();await run(cargo,['run','--release','--manifest-path','src-core/Cargo.toml','--','--bundle']);}

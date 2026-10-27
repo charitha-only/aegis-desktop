@@ -25,7 +25,7 @@ Windows WebView2's cache is directed to the application's data root. The native 
 For packaged applications, `--port=0` binds an OS-selected loopback port and both
 native and external startup use that actual bound origin. Previously the UI URL
 incorrectly retained port zero. Development continues to use the separate
-`http://localhost:5173` UI server. The development bridge defaults to core port 48291; v0.26.3 adds explicit
+`http://localhost:5173` UI server. The manually started development bridge defaults to core port 48291; v0.26.3 adds explicit
 `VITE_AEGIS_BRIDGE_URL` selection (see DEVELOPMENT_BRIDGE.md). Inspecting a
 different/dynamic development listener does not automatically configure that
 value. Dynamic packaged startup is the behavior covered by the v0.26.2 fix.
@@ -47,3 +47,7 @@ fixture now uses `--port=0` directly rather than reserving and releasing a port;
 it must load the packaged document and exit successfully. This removes the
 reserve/rebind race and exercises the dynamic native startup path on disposable
 hosted runners. It does not establish physical-device or accessibility acceptance.
+
+The v0.26.4 combined `aegis dev` command selects and supervises an owned core
+and Vite server automatically; see [DEVELOPMENT_STARTUP.md](DEVELOPMENT_STARTUP.md).
+It opens an external browser and does not implement managed native multi-window.

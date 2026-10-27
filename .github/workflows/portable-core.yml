@@ -39,7 +39,7 @@ jobs:
       - name: Verify incomplete IPC requests have bounded transport lifetimes
         run: node aegis-cli/bin/ipc-deadline-smoke.js
       - name: Test CLI and benchmark interfaces
-        run: node --test aegis-cli/test/metrics.test.js aegis-cli/test/create.test.js aegis-cli/test/bridge-origin.test.js
+        run: node --test aegis-cli/test/metrics.test.js aegis-cli/test/create.test.js aegis-cli/test/bridge-origin.test.js aegis-cli/test/development.test.js
       - name: Record core performance measurements
         run: node aegis-cli/bin/benchmark.js > core-benchmark.json
       - name: Upload core performance measurements
@@ -50,6 +50,10 @@ jobs:
       - run: npm ci --prefix src-ui
       - name: Verify the TypeScript SDK against its configured native core
         run: node aegis-cli/bin/sdk-smoke.js
+      - name: Verify owned development startup, restart, failure and shutdown
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/src-core/target
+        run: node aegis-cli/bin/dev-smoke.js
       - name: Typecheck and build UI
         run: npm --prefix src-ui run build
       - name: Bundle and boot native portable runtime
