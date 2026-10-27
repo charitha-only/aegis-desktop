@@ -73,7 +73,7 @@ The roadmap continues with **v0.27** whole-app/low-resource performance, **v0.28
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.26.6`** | 🟢 **Current source** | Strict policy port validation prevents overflow/truncation and malformed-value defaults; actual IPC regressions cover boundaries. See the verification ledger for exact-source checks. |
+| **`v0.26.6`** | 🟢 **Current source** | Strict policy port validation prevents overflow/truncation and malformed-value defaults; actual IPC regressions cover boundaries. Three-OS checks and Windows installer/upgrade/lock acceptance passed for source `7ecd96c`; see the verification ledger. |
 | **`v0.26.5`** | ⚪ **Previous version** | ASVS evidence mapping, browser response protections and corrected documentation; three-OS checks and Windows installer acceptance passed. |
 | **`v0.26.4`** | ⚪ **Previous version** | Owned dynamic core/Vite startup, readiness checks, restart/cleanup and Windows short-path fix; three-OS checks passed. |
 | **`v0.26.0–0.26.3`** | ⚪ **Previous versions** | Bounded diagnostics, window request validation, dynamic packaged startup and strict development bridge origin selection. |
