@@ -91,3 +91,21 @@ The hosted Windows CI workflow now builds the actual pinned v0.22 source for upg
 The final explicitly enabled CI step locks the disposable hosted Windows workstation through the real OS API and checks the resulting WTS state, denied scoped session reads/unlocks, and ephemeral-secret cleanup. This script rejects local/self-hosted invocation. It never locks the developer PC. Earlier synthetic window-message tests remain useful handler coverage; real sleep/resume, hibernation, Modern Standby and supported physical-device acceptance remain unperformed.
 
 CI uploads exact-commit, sanitized installer/lock evidence, with external audit and publisher signing clearly pending. The actual upstream-signed Inno Setup fixture was accepted by the publisher-signature verification helper; unsigned/wrong-publisher executables are rejected. This validates signature checking but does not create an Aegis publisher identity. Private certificate containers are ignored by Git. No independent human audit or signed Aegis release was completed.
+
+
+## v0.25.14 transport availability finding
+
+Confirmed local availability issue (Medium, within the local IPC scope): before
+source `39e3af6`, an incomplete POST body could occupy the synchronous HTTP
+handler indefinitely, preventing another client's handshake. Host/origin checks,
+nonce checks and request counters did not impose a socket read deadline.
+The public regression reproduced an eight-second handshake timeout before the fix.
+
+The patched transport uses absolute TCP read/write budgets, single-request
+connections, bounded header parsing, 32 shared live-connection permits and fixed
+scratch space for rejected-body draining. This does not demonstrate a vault or
+user-authentication bypass, and it does not make sustained local flooding or a
+long synchronous command harmless. See docs/IPC_TRANSPORT_LIMITS.md for the exact
+contract, verification commands, dependency provenance and remaining limits.
+The earlier threat-model list is scoped coverage, not proof that every malformed
+request or denial-of-service case was already resolved.

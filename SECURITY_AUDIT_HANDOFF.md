@@ -31,3 +31,17 @@ Publisher-signature verification was checked against the immutable, digest-pinne
 ## Known-advisory scan provenance
 
 Local 2026-10-26 scan: cargo-audit 0.22.2 checked 94 lockfile dependencies against RustSec database commit `21d909e4c8bd4e14c7aea58bf980c881a0053ab1` (1,352 advisories), reporting zero known vulnerabilities and no warnings. This is a point-in-time database result, not proof that dependencies or the application have no flaws. CI repeats RustSec and npm checks with a digest-pinned RustSec executable and uploads their JSON results with commit and lockfile hashes; failed scans fail the job.
+
+
+## v0.25.14 local HTTP transport patch
+
+Review the local tiny_http fork in `src-core/vendor/tiny_http`, especially shared
+socket-clone deadlines, permit lifetime through queued requests, response-close
+semantics, header limits and rejected-body destruction. `AEGIS_PATCH.md` records
+the upstream archive checksum and modified files. Known-advisory scanning does
+not audit local patches. The regression `aegis-cli/bin/ipc-deadline-smoke.js`
+uses an owned ephemeral process and tests incomplete/trickling input, rejected
+oversized bodies, oversized headers and connection admission/recovery. Review
+`docs/IPC_TRANSPORT_LIMITS.md` and source `39e3af6`. Long-running command deadlines,
+sustained-flood availability, physical resource ceilings and an independent
+review remain open; this project-authored fix does not close those gates.
