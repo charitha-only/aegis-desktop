@@ -1303,3 +1303,152 @@ fn uptime_plugin_reports_elapsed_time_instead_of_wall_clock() {
     assert!((0.0..60.0).contains(&elapsed));
     assert_eq!(value["measurementScope"], "sinceBuiltinPluginRegistration");
 }
+
+#[test]
+fn ipc_plugin_panic_revokes_sessions_and_preserves_other_commands() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let security = Arc::new(SecurityEngine::new(CapabilityManifest::default(), d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let secrets = Arc::new(crate::secrets::SecretManager::new());
+    let plugins = crate::plugin::PluginRegistry::new();
+    let first = std::sync::atomic::AtomicBool::new(true);
+    plugins.register(
+        crate::plugin::PluginDescriptor {
+            name: "fault_fixture".into(),
+            version: "1".into(),
+            description: "Test only".into(),
+            author: "Test".into(),
+            capabilities: vec![],
+        },
+        move |_, _| {
+            if first.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                panic!("TEST_ONLY panic payload");
+            }
+            Ok(serde_json::json!({"unexpectedRetry":true}))
+        },
+    );
+    let router = crate::ipc::IpcRouter::new(
+        security,
+        handshake.clone(),
+        plugins,
+        Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(d.path())),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(d.path())),
+        secrets.clone(),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    let call = |command: &str, payload| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "fault-test".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload,
+        })
+    };
+    let password = "plugin-panic-test-password";
+    assert!(
+        call(
+            "vault_encrypt_store",
+            serde_json::json!({"filename":"one.vault","content":"PRIVATE","passphrase":password})
+        )
+        .success
+    );
+    let unlocked = call(
+        "vault_session_unlock",
+        serde_json::json!({"filename":"one.vault","passphrase":password}),
+    );
+    assert!(unlocked.success);
+    let token = unlocked.data.as_ref().unwrap()["sessionToken"]
+        .as_str()
+        .unwrap();
+    secrets
+        .store_secret("temporary", "PRIVATE", password)
+        .unwrap();
+    let response = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        call(
+            "plugin_dispatch",
+            serde_json::json!({"plugin":"fault_fixture"}),
+        )
+    }));
+    assert!(
+        response.is_ok(),
+        "A plugin unwind must not escape the IPC router"
+    );
+    let response = response.unwrap();
+    assert!(!response.success);
+    assert!(!response.error.as_deref().unwrap().contains("TEST_ONLY"));
+    assert!(secrets.list_secrets().is_empty());
+    assert!(
+        !call(
+            "vault_session_read",
+            serde_json::json!({"filename":"one.vault","sessionToken":token})
+        )
+        .success
+    );
+    assert!(
+        call("sys_info", serde_json::json!({})).success,
+        "Other commands must survive a plugin fault"
+    );
+    assert!(
+        !call(
+            "plugin_dispatch",
+            serde_json::json!({"plugin":"fault_fixture"})
+        )
+        .success,
+        "Faulted handler must not be retried"
+    );
+    let listed = call("plugin_list", serde_json::json!({}));
+    assert_eq!(
+        listed.data.as_ref().unwrap()["disabledPlugins"],
+        serde_json::json!(["fault_fixture"])
+    );
+}
+
+#[test]
+fn plugin_handler_can_register_another_plugin_without_deadlock() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let security = Arc::new(SecurityEngine::new(CapabilityManifest::default(), d.path()));
+    let registry = crate::plugin::PluginRegistry::new();
+    let weak = Arc::downgrade(&registry);
+    let descriptor = |name: &str| crate::plugin::PluginDescriptor {
+        name: name.into(),
+        version: "1".into(),
+        description: "Fixture".into(),
+        author: "Test".into(),
+        capabilities: vec![],
+    };
+    registry.register(descriptor("registering"), move |_, _| {
+        weak.upgrade()
+            .unwrap()
+            .register(descriptor("new_fixture"), |_, _| Ok(serde_json::json!(42)));
+        Ok(serde_json::json!("registered"))
+    });
+    let (tx, rx) = std::sync::mpsc::channel();
+    let worker_registry = registry.clone();
+    let worker_security = security.clone();
+    let worker = std::thread::spawn(move || {
+        tx.send(worker_registry.dispatch("registering", &serde_json::json!({}), &worker_security))
+            .unwrap();
+    });
+    let result = rx
+        .recv_timeout(std::time::Duration::from_secs(3))
+        .expect("Plugin registration must not deadlock inside a handler");
+    assert_eq!(result.unwrap(), "registered");
+    worker.join().unwrap();
+    assert_eq!(
+        registry
+            .dispatch("new_fixture", &serde_json::json!({}), &security)
+            .unwrap(),
+        42
+    );
+}

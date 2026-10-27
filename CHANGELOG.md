@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.12] - 2026-10-27
+
+- Catch native handler unwind panics and disable the faulted registration. Return typed plugin failures and generic IPC panic errors, revoke retained vault sessions/ephemeral secrets and preserve subsequent IPC commands.
+- Pin handler registrations with shared ownership and release registry locks before execution, fixing deadlock when a handler registers another plugin. Expose disabled registration names through `plugin_list`.
+- Add public IPC tests for fault recovery, session cleanup, disabled-handler retry rejection and panic-payload exclusion from responses; add a bounded registration-deadlock regression. This is unwind-error handling, not process isolation or rollback of native side effects.
+
 ## [v0.25.11] - 2026-10-26
 
 - Enforce declared native-plugin capabilities before dispatch and pass the active security context to handlers. Fix the checksum plugin's filesystem/hash permission bypass, absolute/traversing path reads and incorrect profile selection.

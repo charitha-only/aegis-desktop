@@ -16,4 +16,16 @@ Repeat the focused checks with `cargo test --locked --manifest-path src-core/Car
 
 ## Native API compatibility
 
+### v0.25.12 fault handling
+
+Handler unwind panics are caught inside dispatch. The affected registration is disabled and subsequent calls fail; IPC revokes retained vault sessions and ephemeral secrets on the caught panic. The router remains available to other commands. `plugin_list.disabledPlugins` returns a sorted list of disabled registration names. Explicitly registering a replacement creates a fresh registration; process restart also rebuilds the registry. Already in-flight native calls are not cancelled.
+
+Dispatch pins the selected registration using shared ownership, then releases its registry lock before calling the handler. A handler can register another plugin without the former read/write-lock deadlock. This also keeps an old in-flight registration alive if trusted host code replaces its name.
+
+`dispatch` returns `Result<Value, PluginError>` with `Rejected(String)`, `Panicked` and `Disabled` variants. Normal handler `Err` results do not disable it. IPC panic responses exclude the panic payload; Rust's configured panic hook still runs and may write the payload to host logs. Native handlers must not put secrets in panic messages.
+
+This catches ordinary unwind panics; it does not roll back writes or native state, enforce execution timeouts, stop unsafe/FFI faults or contain process aborts. Panicking hooks/destructors and arbitrary native code remain host-process risks. Native handlers remain fully trusted.
+
+Public regressions first reproduced the escaped panic and registration deadlock. The IPC fault test proves a fresh session token is revoked, ephemeral secrets are cleared, `sys_info` still works, a disabled handler is not retried and responses omit the test panic payload. Repeat with `cargo test --locked --manifest-path src-core/Cargo.toml ipc_plugin_panic_revokes_sessions_and_preserves_other_commands` and `cargo test --locked --manifest-path src-core/Cargo.toml plugin_handler_can_register_another_plugin_without_deadlock`.
+
 `PluginRegistry::register` handlers now receive `(&serde_json::Value, &SecurityEngine)`. `dispatch` now requires `(name, payload, &SecurityEngine)`. Built-in handlers and IPC use that context. Custom handlers must authorize each actual resource they touch; declaring a grant does not automatically constrain arbitrary Rust filesystem/system calls. Native handlers run synchronously in the host and may block or crash it. Do not run untrusted native code through this interface. Untrusted extension loading, fault/process isolation, authenticated distribution and API stabilization remain roadmap work.

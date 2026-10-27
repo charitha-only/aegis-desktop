@@ -8,14 +8,17 @@
 /// ```
 /// Plugin Registry (HashMap<name, PluginHandler>)
 ///     ↑ register_plugin(name, handler_fn)
-///     ↓ dispatch(name, payload) → IpcResponse
+///     ↓ dispatch(name, payload, security) → Result<Value, PluginError>
 /// IpcRouter → plugin_dispatch IPC command
 /// ```
 use crate::security::SecurityEngine;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, RwLock,
+};
 
 // ─── Plugin Handler Trait ──────────────────────────────────────────────────
 
@@ -36,10 +39,33 @@ pub struct PluginDescriptor {
     pub capabilities: Vec<String>,
 }
 
+#[derive(Debug)]
+pub enum PluginError {
+    Rejected(String),
+    Panicked,
+    Disabled,
+}
+impl std::fmt::Display for PluginError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Rejected(message) => f.write_str(message),
+            Self::Panicked => f.write_str("Plugin panicked; handler disabled"),
+            Self::Disabled => f.write_str("Plugin disabled after a previous panic"),
+        }
+    }
+}
+impl std::error::Error for PluginError {}
+
 // ─── Plugin Registry ──────────────────────────────────────────────────────
 
+struct PluginEntry {
+    descriptor: PluginDescriptor,
+    handler: PluginHandlerFn,
+    faulted: AtomicBool,
+}
+
 pub struct PluginRegistry {
-    plugins: RwLock<HashMap<String, (PluginDescriptor, PluginHandlerFn)>>,
+    plugins: RwLock<HashMap<String, Arc<PluginEntry>>>,
 }
 
 impl PluginRegistry {
@@ -55,7 +81,14 @@ impl PluginRegistry {
         F: Fn(&Value, &SecurityEngine) -> Result<Value, String> + Send + Sync + 'static,
     {
         let mut map = self.plugins.write().unwrap();
-        map.insert(descriptor.name.clone(), (descriptor, Box::new(handler)));
+        map.insert(
+            descriptor.name.clone(),
+            Arc::new(PluginEntry {
+                descriptor,
+                handler: Box::new(handler),
+                faulted: AtomicBool::new(false),
+            }),
+        );
         println!("[PluginEngine] ✅  Plugin registered: '{}'", map.len());
     }
 
@@ -65,32 +98,60 @@ impl PluginRegistry {
         name: &str,
         payload: &Value,
         security: &SecurityEngine,
-    ) -> Result<Value, String> {
-        let map = self.plugins.read().unwrap();
-        match map.get(name) {
-            Some((descriptor, handler)) => {
+    ) -> Result<Value, PluginError> {
+        let entry = self.plugins.read().unwrap().get(name).cloned();
+        match entry {
+            Some(entry) => {
+                let descriptor = &entry.descriptor;
+                let handler = &entry.handler;
+                let faulted = &entry.faulted;
                 for capability in &descriptor.capabilities {
                     match capability.as_str() {
-                        "system_info" => security.check_system_info()?,
-                        "crypto" => security.check_crypto()?,
+                        "system_info" => security
+                            .check_system_info()
+                            .map_err(PluginError::Rejected)?,
+                        "crypto" => security.check_crypto().map_err(PluginError::Rejected)?,
                         "fs_read" if security.actual_capabilities()["fsRead"] == true => {}
-                        _ => return Err("Plugin capability denied or unsupported".into()),
+                        _ => {
+                            return Err(PluginError::Rejected(
+                                "Plugin capability denied or unsupported".into(),
+                            ))
+                        }
                     }
                 }
-                handler(payload, security)
+                if faulted.load(Ordering::SeqCst) {
+                    return Err(PluginError::Disabled);
+                }
+                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    handler(payload, security)
+                })) {
+                    Ok(result) => result.map_err(PluginError::Rejected),
+                    Err(_) => {
+                        faulted.store(true, Ordering::SeqCst);
+                        Err(PluginError::Panicked)
+                    }
+                }
             }
-            None => Err(format!(
-                "Plugin '{}' not found. Registered plugins: [{}]",
-                name,
-                map.keys().cloned().collect::<Vec<_>>().join(", ")
-            )),
+            None => Err(PluginError::Rejected("Plugin not registered".into())),
         }
     }
 
     /// List all registered plugin descriptors.
     pub fn list_plugins(&self) -> Vec<PluginDescriptor> {
         let map = self.plugins.read().unwrap();
-        map.values().map(|(desc, _)| desc.clone()).collect()
+        map.values().map(|entry| entry.descriptor.clone()).collect()
+    }
+
+    /// List registrations disabled after a caught handler panic.
+    pub fn disabled_plugins(&self) -> Vec<String> {
+        let map = self.plugins.read().unwrap();
+        let mut disabled: Vec<_> = map
+            .iter()
+            .filter(|(_, entry)| entry.faulted.load(Ordering::SeqCst))
+            .map(|(name, _)| name.clone())
+            .collect();
+        disabled.sort_unstable();
+        disabled
     }
 
     /// Check if a plugin exists by name.

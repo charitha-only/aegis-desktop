@@ -936,6 +936,7 @@ impl IpcRouter {
                     &req.id,
                     json!({
                         "plugins": plugins,
+                        "disabledPlugins": self.plugins.disabled_plugins(),
                         "count": plugins.len()
                     }),
                 )
@@ -956,7 +957,12 @@ impl IpcRouter {
                             "result": result
                         }),
                     ),
-                    Err(e) => IpcResponse::err(&req.id, &format!("Plugin error: {}", e)),
+                    Err(error) => {
+                        if matches!(error, crate::plugin::PluginError::Panicked) {
+                            self.vault_sessions.system_lock();
+                        }
+                        IpcResponse::err(&req.id, &format!("Plugin error: {error}"))
+                    }
                 }
             }
 

@@ -59,6 +59,7 @@ try {
   assert.equal((await call('profile_switch', {profileId: 'default'})).success, true);
   assert.equal((await checksum()).data.result.checksum, originalChecksum.data.result.checksum);
   assert.equal((await call('plugin_dispatch', {plugin: 'system_memory', payload: {}})).success, false);
+  assert.deepEqual((await call('plugin_list', {})).data.disabledPlugins, [], 'An ordinary unavailable-provider error must not disable a handler');
   const uptime = await call('plugin_dispatch', {plugin: 'process_uptime', payload: {}});
   assert.equal(uptime.data.result.measurementScope, 'sinceBuiltinPluginRegistration');
   if (process.platform !== 'win32') {
