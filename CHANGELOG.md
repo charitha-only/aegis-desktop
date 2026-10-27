@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [v0.26.4] - 2026-10-27
 
+- Canonicalize development project roots before Vite setup. A real Windows short-path regression reproduced forbidden UI responses; the fix preserves Vite filesystem restrictions.
+
 - Replace parallel development startup with an owned dynamic-port core and a Vite server that receives its actual address. Probe the configured UI origin before serving/opening the UI; preserve existing UI servers when strict-port startup fails.
 - Build the core before launch and discover its executable from Cargo artifacts, supporting custom target directories. Add `--no-open`, `--ui-port`, `--core-binary` and side-effect-free `--print-plan` options.
 - Stop owned resources on cancellation, core exit and startup failure. Allow bounded Vite configuration restarts without killing the core; fail if the owned UI does not resume listening. Never terminate a user's browser or unrelated listener.

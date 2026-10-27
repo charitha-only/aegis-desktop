@@ -17,7 +17,9 @@ node aegis-cli/bin/aegis.js dev --no-open --print-plan
 ```
 
 `--core-binary` skips compilation and requires an unpackaged executable; a sibling
-`ui/index.html` is rejected. Paths resolve from the invocation directory.
+`ui/index.html` is rejected. Paths resolve from the invocation directory. The project root is canonicalized
+before Vite configuration, so Windows 8.3 aliases do not trigger Vite's intentional
+short-path denial. Filesystem strictness and deny rules remain enabled.
 `--ui-port` accepts decimal ports 1–65535. Configure the corresponding UI origin
 in `security.allowedOrigins` before using a different port. The launcher never
 widens origin permissions. Unknown, duplicate or malformed options fail before
@@ -49,7 +51,7 @@ node aegis-cli/bin/dev-smoke.js
 ```
 
 Fixtures use temporary project data, real core/Vite endpoints and `--no-open`.
-They cover dynamic address injection over a stale env value, UI restart, normal
+They cover Windows short-path project roots, dynamic address injection over a stale env value, UI restart, normal
 shutdown, cancellation, unexpected core exit and occupied-port preservation.
 Hosted Windows/Linux/macOS CI additionally copies a clean core source fixture
 and exercises the default Cargo build with a custom target directory. No local

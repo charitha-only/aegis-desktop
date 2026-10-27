@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import {mkdtemp,mkdir,cp,readFile,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import {startDevelopment} from '../lib/development.js';
 
-const fixture=await mkdtemp(path.join(tmpdir(),'aegis-dev-'));
+const fixtureRoot=await mkdtemp(path.join(tmpdir(),'aegis-dev-'));
+const fixture=path.join(fixtureRoot,'long-development-project');
+
 const coreBinary=path.resolve(`src-core/target/release/aegis-core${process.platform==='win32'?'.exe':''}`);
 let session, blocker;
 async function configure(port) {
@@ -23,8 +26,14 @@ try {
   await writeFile(path.join(fixture,'src-ui/index.html'),'<!doctype html><title>Owned dev fixture</title><script type="module" src="/src/aegis-bridge.ts"></script>');
   for(const name of ['aegis-bridge.ts','bridge-origin.mjs']) await cp(path.join('src-ui/src',name),path.join(fixture,'src-ui/src',name));
   await writeFile(path.join(fixture,'src-ui/.env.local'),'VITE_AEGIS_BRIDGE_URL=file:///TEST_ONLY_stale-override');
+  let alias=fixture;
+  if(process.platform==='win32') {
+    const result=spawnSync('cmd.exe',['/d','/c',`for %I in ("${fixture}") do @echo %~sI`],{encoding:'utf8',windowsHide:true,windowsVerbatimArguments:true});
+    assert.equal(result.status,0,result.stderr);
+    alias=result.stdout.trim();
+  }
   const port=await freePort();await configure(port);
-  session=await startDevelopment({projectRoot:fixture,coreBinary,uiPort:port,openBrowser:false,log:()=>{}});
+  session=await startDevelopment({projectRoot:alias,coreBinary,uiPort:port,openBrowser:false,log:()=>{}});
   assert.equal((await fetch(session.uiOrigin)).status,200);
   const module=await fetch(`${session.uiOrigin}/src/aegis-bridge.ts`).then(r=>r.text());
   assert.ok(module.includes(session.coreOrigin),'Vite must inject the actual owned core origin');
@@ -75,6 +84,6 @@ try {
 } finally {
   if(session) {await session.close();await session.finished.catch(()=>{});}
   if(blocker) await new Promise(resolve=>blocker.close(resolve));
-  const relative=path.relative(tmpdir(),fixture);
-  if(!relative.startsWith('..')&&!path.isAbsolute(relative)) await rm(fixture,{recursive:true,force:true,maxRetries:10,retryDelay:100});
+  const relative=path.relative(tmpdir(),fixtureRoot);
+  if(!relative.startsWith('..')&&!path.isAbsolute(relative)) await rm(fixtureRoot,{recursive:true,force:true,maxRetries:10,retryDelay:100});
 }

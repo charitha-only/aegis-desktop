@@ -1,5 +1,5 @@
 import {spawn, spawnSync} from 'node:child_process';
-import {access, stat} from 'node:fs/promises';
+import {access, stat, realpath} from 'node:fs/promises';
 import path from 'node:path';
 import {resolveBridgeOrigin} from '../../src-ui/src/bridge-origin.mjs';
 
@@ -94,7 +94,7 @@ async function buildCore(projectRoot, signal, log) {
 export async function startDevelopment({projectRoot, coreBinary, uiPort=5173, openBrowser=true, signal,
   log=text => process.stdout.write(text)} = {}) {
   const plan=developmentPlan({uiPort,openBrowser});
-  projectRoot=path.resolve(projectRoot);
+  projectRoot=await realpath(path.resolve(projectRoot));
   const checkCancelled=() => {if(signal?.aborted) throw new Error('Development startup cancelled');};
   checkCancelled();
   const {createServer}=await import(new URL('../../src-ui/node_modules/vite/dist/node/index.js',import.meta.url).href);
