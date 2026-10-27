@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.26.3] - 2026-10-27
+
+- Allow development SDK clients to select an explicit core through `VITE_AEGIS_BRIDGE_URL`, retaining port 48291 when omitted. Validate literal IPv4-loopback HTTP origins and reject remote hosts, credentials, paths, query/fragment values, malformed types and invalid ports before any IPC fetch.
+- Pin packaged clients to their own validated application origin and ignore development overrides. Resolve configuration inside guarded request paths so configuration errors return normal unsuccessful SDK results, including custom-nonce invocation.
+- Add public origin-resolution regressions and a Vite-transformed TypeScript SDK integration against an owned dynamic-port Rust core on all three OS runners, without opening a browser or binding a Vite HTTP/HMR server. Automatic CLI development port discovery remains pending; see docs/DEVELOPMENT_BRIDGE.md.
+
 ## [v0.26.2] - 2026-10-27
 
 - Fix packaged external/native startup targets when `--port=0` selects a dynamic listener: use the actual bound origin instead of generating a URL with port zero. Development UI still uses its separate Vite origin.

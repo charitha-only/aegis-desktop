@@ -8,6 +8,8 @@
  *  - HsmPkcs11Engine     — native PKCS#11 hardware token integration (YubiHSM & SmartCards)
  */
 
+import {resolveBridgeOrigin} from './bridge-origin.mjs';
+
 export interface IpcResponse<T = any> {
   id: string;
   success: boolean;
@@ -153,13 +155,15 @@ export interface AttestationVerification {
 }
 
 class AegisBridge {
-  private bridgeUrl = import.meta.env.PROD ? window.location.origin : 'http://127.0.0.1:48291';
+  private bridgeOrigin(): string {
+    return resolveBridgeOrigin({production: import.meta.env.PROD, appOrigin: import.meta.env.PROD ? window.location.origin : undefined, configuredOrigin: import.meta.env.VITE_AEGIS_BRIDGE_URL});
+  }
   private sessionNonce: string | null = null;
   private isInitialized = false;
 
   public async init(): Promise<{ success: boolean; token?: string; error?: string }> {
     try {
-      const res = await fetch(`${this.bridgeUrl}/handshake`, {
+      const res = await fetch(`${this.bridgeOrigin()}/handshake`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -204,7 +208,7 @@ class AegisBridge {
     };
 
     try {
-      const res = await fetch(`${this.bridgeUrl}/ipc`, {
+      const res = await fetch(`${this.bridgeOrigin()}/ipc`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
