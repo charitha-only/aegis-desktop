@@ -1337,24 +1337,37 @@ impl IpcRouter {
             }
 
             // ─── AIR-GAPPED CRASH REPORTER IPC (v0.15) ─────────────────────
-            "crash_list" => IpcResponse::ok(
-                &req.id,
-                json!({
-                    "crashes": self.crash_reporter.list_crashes(),
-                    "zeroTelemetry": true,
-                    "storageLocation": "./sandbox/crashes/"
-                }),
-            ),
-
+            "crash_list" => match self.crash_reporter.list_crashes() {
+                Ok(records) => {
+                    let entries: Vec<_> = records.iter().map(|r| json!({"id":r.crash_id,"timestamp":r.timestamp.to_string(),"kind":r.error_kind,"message":r.stack_trace})).collect();
+                    IpcResponse::ok(
+                        &req.id,
+                        json!({"total":records.len(),"crashes":records,"entries":entries,"retentionLimit":32,"scope":"application","zeroTelemetry":true,"storageLocation":"./diagnostics/events.json"}),
+                    )
+                }
+                Err(error) => IpcResponse::err(&req.id, &error),
+            },
             "crash_record" => {
                 let kind = req
                     .payload
                     .get("errorKind")
-                    .and_then(|k| k.as_str())
-                    .unwrap_or("ControlledDiagnosticTrap");
-                let trace = "Application diagnostic event; caller trace omitted to avoid persisting secrets";
-                let report = self.crash_reporter.record_crash(kind, trace);
-                IpcResponse::ok(&req.id, json!(report))
+                    .or_else(|| req.payload.get("kind"));
+                let kind = match kind {
+                    None => "ControlledDiagnosticTrap",
+                    Some(value) => match value.as_str() {
+                        Some(value) => value,
+                        None => return IpcResponse::err(&req.id, "Invalid diagnostic kind"),
+                    },
+                };
+                match self.crash_reporter.record_crash(kind, "") {
+                    Ok(record) => {
+                        let mut data = json!(record);
+                        data["id"] = json!(record.crash_id);
+                        data["persisted"] = json!(true);
+                        IpcResponse::ok(&req.id, data)
+                    }
+                    Err(error) => IpcResponse::err(&req.id, &error),
+                }
             }
 
             // ─── ZERO-KNOWLEDGE SECRETS MANAGER IPC (v0.16) ──────────────────

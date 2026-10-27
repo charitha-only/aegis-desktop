@@ -1495,3 +1495,139 @@ fn ipc_wasm_rejects_unknown_or_malformed_execution_tiers() {
         );
     }
 }
+
+#[test]
+fn ipc_crash_history_is_bounded() {
+    use std::sync::Arc;
+    let d = tempfile::tempdir().unwrap();
+    let manifest = CapabilityManifest::default();
+
+    let security = Arc::new(SecurityEngine::new(manifest, d.path()));
+    let handshake = Arc::new(HandshakeSession::new());
+    let create_router = || {
+        crate::ipc::IpcRouter::new(
+            security.clone(),
+            handshake.clone(),
+            crate::plugin::PluginRegistry::new(),
+            Arc::new(crate::updater::AutoUpdater::new("test", d.path())),
+            Arc::new(HardwareKeyEngine::new()),
+            Arc::new(crate::profile::ProfileManager::new(d.path())),
+            Arc::new(crate::wasm::WasmSandbox::new()),
+            Arc::new(BiometricEnclave::new()),
+            Arc::new(crate::crash::CrashReporter::new(d.path())),
+            Arc::new(crate::secrets::SecretManager::new()),
+            Arc::new(crate::network::NetworkPolicyEngine::new()),
+            Arc::new(SignatureVerifier::new()),
+            Arc::new(TpmAttestationEngine::new()),
+            Arc::new(crate::package_pipeline::MultiOsPipeline),
+            Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+            Arc::new(HsmPkcs11Engine::new()),
+        )
+    };
+    let router = create_router();
+    let mut ids = std::collections::HashSet::new();
+    for _ in 0..40 {
+        let response = router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "crash-fixture".into(),
+            command: "crash_record".into(),
+            nonce: handshake.get_token(),
+            payload: serde_json::json!({"errorKind":"ControlledDiagnosticTrap"}),
+        });
+        assert!(response.success);
+        assert!(
+            ids.insert(
+                response.data.as_ref().unwrap()["crash_id"]
+                    .as_str()
+                    .unwrap()
+                    .to_string()
+            ),
+            "Every diagnostic event must have a distinct ID"
+        );
+    }
+    let response = router.handle_request(crate::ipc::protocol::IpcRequest {
+        id: "crash-list".into(),
+        command: "crash_list".into(),
+        nonce: handshake.get_token(),
+        payload: serde_json::json!({}),
+    });
+    assert!(response.success);
+    assert_eq!(
+        response.data.as_ref().unwrap()["crashes"]
+            .as_array()
+            .unwrap()
+            .len(),
+        32,
+        "Crash history must retain at most 32 events instead of growing for the process lifetime"
+    );
+    for kind in [
+        serde_json::json!("TEST_ONLY_secret-not-a-kind"),
+        serde_json::json!("x".repeat(65536)),
+        serde_json::Value::Null,
+    ] {
+        let denied = router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "reject-kind".into(),
+            command: "crash_record".into(),
+            nonce: handshake.get_token(),
+            payload: serde_json::json!({"errorKind":kind,"stackTrace":"TEST_ONLY_hidden-trace"}),
+        });
+        assert!(
+            !denied.success,
+            "Diagnostic labels must be allowlisted instead of storing arbitrary payload strings"
+        );
+    }
+    assert!(!serde_json::to_string(&response)
+        .unwrap()
+        .contains("TEST_ONLY_"));
+    drop(router);
+    let restarted = create_router();
+    let response = restarted.handle_request(crate::ipc::protocol::IpcRequest {
+        id: "restart-list".into(),
+        command: "crash_list".into(),
+        nonce: handshake.get_token(),
+        payload: serde_json::json!({}),
+    });
+    assert_eq!(
+        response.data.as_ref().unwrap()["crashes"]
+            .as_array()
+            .unwrap()
+            .len(),
+        32,
+        "Bounded diagnostics must survive a normal process restart"
+    );
+    let store = d.path().join("diagnostics/events.json");
+    let saved = d.path().join("diagnostics/saved-fixture.json");
+    std::fs::rename(&store, &saved).unwrap();
+    std::fs::create_dir(&store).unwrap();
+    let failed = restarted.handle_request(crate::ipc::protocol::IpcRequest {
+        id: "failed-write".into(),
+        command: "crash_record".into(),
+        nonce: handshake.get_token(),
+        payload: serde_json::json!({"errorKind":"panic"}),
+    });
+    assert!(
+        !failed.success,
+        "A failed persistence attempt must never report persisted success"
+    );
+    std::fs::remove_dir(&store).unwrap();
+    std::fs::rename(&saved, &store).unwrap();
+    let restored = restarted.handle_request(crate::ipc::protocol::IpcRequest {
+        id: "restored-list".into(),
+        command: "crash_list".into(),
+        nonce: handshake.get_token(),
+        payload: serde_json::json!({}),
+    });
+    assert_eq!(restored.data.as_ref().unwrap()["total"], 32);
+    std::fs::write(&store, b"{invalid history").unwrap();
+    for command in ["crash_record", "crash_list"] {
+        let failure = restarted.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "corrupt-history".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload: serde_json::json!({}),
+        });
+        assert!(
+            !failure.success,
+            "Corrupted history must fail closed instead of being silently replaced"
+        );
+    }
+}

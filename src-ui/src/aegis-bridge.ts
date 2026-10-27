@@ -434,8 +434,9 @@ class AegisBridge {
     return this.invoke('crash_list');
   }
 
-  public async crashRecord(kind: string, message: string): Promise<IpcResponse<{ id: string; persisted: boolean }>> {
-    return this.invoke('crash_record', { kind, message });
+  public async crashRecord(kind: string, _message: string): Promise<IpcResponse<{ id: string; persisted: boolean }>> {
+    // Free-form messages/traces are intentionally not sent or persisted.
+    return this.invoke('crash_record', { errorKind: kind });
   }
 
   // --- v0.15 Extensions: Biometric Enclave ---

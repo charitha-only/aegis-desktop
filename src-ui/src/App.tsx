@@ -3030,7 +3030,7 @@ export default function App() {
                   </div>
 
                   <div style={{ marginBottom: '12px' }}>
-                    <label style={{ fontSize: '12px', color: '#64748b', marginBottom: '5px', display: 'block' }}>Message / Stack Trace</label>
+                    <label style={{ fontSize: '12px', color: '#64748b', marginBottom: '5px', display: 'block' }}>Message / Stack Trace (not stored)</label>
                     <textarea
                       value={crashMessage}
                       onChange={(e) => setCrashMessage(e.target.value)}
@@ -3089,7 +3089,7 @@ export default function App() {
               <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: '10px', padding: '16px' }}>
                 <div style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 600, marginBottom: '8px' }}>🛡️ Privacy Guarantee</div>
                 <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.7' }}>
-                  All crash diagnostics are stored exclusively at <code style={{ color: '#fcd34d' }}>./sandbox/crashes/</code>.
+                  The newest 32 diagnostic labels are stored at <code style={{ color: '#fcd34d' }}>./diagnostics/events.json</code>. Free-form messages and stack traces are omitted.
                   There are no outbound network calls, no telemetry endpoints, and no crash-upload background threads.
                   Aegis Desktop never sends any diagnostic data off-device.
                 </div>

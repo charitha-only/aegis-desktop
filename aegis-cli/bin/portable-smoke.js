@@ -72,6 +72,20 @@ try {
     assert.equal((await call('vault_session_unlock', {filename: 'fixture.vault', passphrase: password})).success, false,
       'Retained sessions require an available lifecycle adapter');
   }
+  // Keep this fixture below the transport rate budget on fast native runners.
+  await new Promise(resolve => setTimeout(resolve, 1100));
+  const diagnostic = await call('crash_record', {errorKind: 'assertion', message: 'TEST_ONLY_omitted-secret'});
+  assert.equal(diagnostic.success, true);
+  assert.equal(diagnostic.data.persisted, true);
+  assert.match(diagnostic.data.id, /^crash_[a-f0-9]{32}$/);
+  const diagnostics = await call('crash_list');
+  assert.equal(diagnostics.data.total, 1);
+  assert.equal(diagnostics.data.entries[0].id, diagnostic.data.id);
+  assert.equal(diagnostics.data.entries[0].kind, 'assertion');
+  assert.equal(diagnostics.data.retentionLimit, 32);
+  assert.equal(diagnostics.data.scope, 'application');
+  assert.equal(JSON.stringify(diagnostics).includes('TEST_ONLY_omitted-secret'), false);
+  assert.equal((await call('crash_record', {errorKind: 'unrecognized-kind'})).success, false);
   console.log('PASS: native platform IPC, directories, encrypted storage and unavailable lifecycle behavior');
 } finally {
   if (child.exitCode === null) child.kill();

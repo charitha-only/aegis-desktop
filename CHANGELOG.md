@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.26.0] - 2026-10-27
+
+- Publish the cross-platform native-services preview milestone: optional embedded Windows/macOS/Linux hosts, bounded dialog/clipboard/notification interfaces and the previously validated transport/profile safeguards. Physical-device, accessibility and full multi-window acceptance remain open; see docs/RELEASE_GATES.md.
+- Replace unbounded diagnostic history and second-based file-name collisions with a 32-event, 64 KiB persistent journal and random event IDs. Use serialized atomic writes, cooperating-process locks, bounded restart reads and fail-closed corrupt/linked/non-file history handling.
+- Allowlist diagnostic labels, omit caller messages/traces, return real persistence errors and align the TypeScript/demo contracts with the backend. Diagnostics are explicitly application-wide; old sandbox crash files remain untouched.
+- Add public IPC retention/restart/identity/privacy/failure regressions and real native-binary diagnostic checks on all three OS runners. This preview does not complete signing, physical-device validation or an independent audit.
+
 ## [v0.25.14] - 2026-10-27
 
 - Reproduce and fix indefinite local IPC starvation by an incomplete body. Apply absolute five-second socket ingress and response-write budgets, preserve deadlines across socket clones and disable connection reuse/pipelining with `Connection: close`.
