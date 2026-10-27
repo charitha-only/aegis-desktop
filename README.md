@@ -73,7 +73,7 @@ The roadmap continues with **v0.27** whole-app/low-resource performance, **v0.28
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.26.5`** | 🟢 **Current source** | ASVS evidence mapping, consistent browser response protections and corrected current documentation. Exact-source results are recorded in the verification ledger after CI. |
+| **`v0.26.5`** | 🟢 **Current source** | ASVS evidence mapping, consistent browser response protections and corrected current documentation. Three-OS core/UI and native checks plus Windows installer/upgrade/lock acceptance passed for source `79724d7`; see the verification ledger. |
 | **`v0.26.4`** | ⚪ **Previous version** | Owned dynamic core/Vite startup, readiness checks, restart/cleanup and Windows short-path fix; three-OS checks passed. |
 | **`v0.26.0–0.26.3`** | ⚪ **Previous versions** | Bounded diagnostics, window request validation, dynamic packaged startup and strict development bridge origin selection. |
 | **`v0.25` series** | ⚪ **Previous versions** | Portable OS adapters, native previews, profile identity, plugin/Wasm limits and bounded IPC transport. See the detailed ledger. |
@@ -121,7 +121,7 @@ Aegis is an open-source enterprise desktop architecture engineered with **defens
    - Built-in sandboxed file system manager.
 
 2. **Zero-Trust Capability Security Model**
-   - **No Arbitrary Execution:** Shell command execution (`cmd.exe`, `powershell`, `bash`) is permanently blocked by default policy.
+   - **No Arbitrary Execution:** Arbitrary shell execution through IPC is rejected. Trusted native helpers may invoke fixed OS tools with validated arguments.
    - **Path Traversal Defense:** Canonicalization algorithms prevent `../` directory climbs outside the isolated `./sandbox/` root.
    - **Cryptographic Nonce Handshake:** Requests use a reusable process bearer token with Host/Origin checks. The token does not identify a user or prevent replay; vault sessions authorize retained vault access separately.
    - **Origin Isolation & Strict CSP:** Allowed development origins and the exact packaged origin can access browser IPC. Browser responses deny framing, object embedding and base-URL changes; CSP hardening remains scoped in the ASVS matrix.

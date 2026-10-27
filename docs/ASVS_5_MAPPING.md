@@ -22,9 +22,9 @@ own scope, threat model and evidence. Do not count unassessed items as passing.
 
 | Pinned requirement | Scope / status | Evidence and remaining work |
 | --- | --- | --- |
-| v5.0.0-3.4.4 | MIME sniffing protection: implemented/tested scope | `src-core/src/server.rs` has one response boundary. `portable-smoke.js` checks handshake, asset/root requests, denied origin, preflight, unsupported body type and missing route. CI repeats against raw and packaged cores. |
-| v5.0.0-3.4.5 | Referrer suppression: implemented/tested scope | Same boundary sets `Referrer-Policy: no-referrer`, including error paths. The regression failed on an absent header before remediation. Browser-network enforcement itself is not exercised by this headless HTTP fixture. |
-| v5.0.0-3.4.6 | Framing restriction: implemented/tested header scope | Every core response carries a separate CSP with `frame-ancestors 'none'`. This intersects with the app asset policy. Interactive hostile-frame acceptance remains unperformed. |
+| v5.0.0-3.4.4 | MIME sniffing protection: partial; application response scope tested | `src-core/src/server.rs` has one response boundary. `portable-smoke.js` checks handshake, asset/root requests, denied origin, preflight, unsupported body type and missing route. CI repeats against raw and packaged cores. |
+| v5.0.0-3.4.5 | Referrer suppression: partial; application response scope tested | Same boundary sets `Referrer-Policy: no-referrer`, including error paths. The regression failed on an absent header before remediation. Browser-network enforcement itself is not exercised by this headless HTTP fixture. |
+| v5.0.0-3.4.6 | Framing restriction: implemented/tested header scope | Every application-handled core response carries a separate CSP with `frame-ancestors 'none'`. This intersects with the app asset policy. Interactive hostile-frame acceptance remains unperformed. |
 | v5.0.0-3.4.3 | Content policy: partial | Separate baseline includes `object-src 'none'` and `base-uri 'none'`; packaged assets retain configured CSP. Existing policy permits inline content and broad resource sources. A trusted-resource allowlist/nonces/hashes assessment, app compatibility and L3 per-response policy remain open. |
 | v5.0.0-4.1.1 | Response media types: partial | Handshake/IPC and JSON error branches have JSON media types; known packaged assets have mapped types. Complete media-type/charset coverage of arbitrary application assets remains unassessed. |
 | v5.0.0-3.5.2 | Cross-origin requests: partial | Exact Host, configured/exact-app Origin, JSON-only IPC and token checks; denied-origin regression in `portable-smoke.js`. Missing Origin is allowed for native clients. Process token is not user authentication; application CSRF scope and all browser request contexts need separate assessment. |
@@ -37,7 +37,7 @@ own scope, threat model and evidence. Do not count unassessed items as passing.
 
 ## v0.26.5 response contract
 
-Core HTTP replies, including rejection/preflight paths, use a common responder.
+Core application-handled HTTP replies, including rejection/preflight paths, use a common responder. Replies emitted earlier by tiny_http (for example HTTP parse/admission failures) bypass this application responder and remain unassessed for these headers. Consequently this does not establish the standard's all-response requirement.
 It sets `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and an
 additional `Content-Security-Policy` containing `frame-ancestors 'none';
 object-src 'none'; base-uri 'none'`. Multiple CSP policies are intentionally
