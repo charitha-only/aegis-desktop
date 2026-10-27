@@ -9,7 +9,7 @@ export async function createProject(source, requestedDestination) {
   const relative = path.relative(source, destination);
   if (!relative || (!relative.startsWith('..') && !path.isAbsolute(relative))) throw new Error('Create the application outside the framework source directory');
   const files = ['package.json', 'LICENSE', 'aegis.config.json',
-    'src-core/Cargo.toml', 'src-core/Cargo.lock', 'src-core/src',
+    'src-core/Cargo.toml', 'src-core/Cargo.lock', 'src-core/src', 'src-core/vendor',
     'src-ui/package.json', 'src-ui/package-lock.json', 'src-ui/tsconfig.json', 'src-ui/vite.config.ts', 'src-ui/index.html', 'src-ui/src',
     'aegis-cli/package.json', 'aegis-cli/bin', 'aegis-cli/lib', 'aegis-cli/test'];
   async function rejectLinks(location) {

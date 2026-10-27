@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.25.14] - 2026-10-27
+
+- Reproduce and fix indefinite local IPC starvation by an incomplete body. Apply absolute five-second socket ingress and response-write budgets, preserve deadlines across socket clones and disable connection reuse/pipelining with `Connection: close`.
+- Bound HTTP lines to 8 KiB and headers to 100 fields / 64 KiB. Bound accepted TCP connections to 32 with permits retained by queued requests and socket clones. Reject excess connections before worker allocation. Drain rejected request bodies with a fixed 8 KiB buffer instead of allocating from untrusted Content-Length.
+- Vendor the narrowly patched tiny_http 0.12.0 source with both upstream licenses and archive provenance; copy it into generated source applications. Add real-process socket regressions on Windows/Linux/macOS CI.
+- These are transport bounds, not command cancellation or a guarantee of availability against sustained local flooding. See docs/IPC_TRANSPORT_LIMITS.md and src-core/vendor/tiny_http/AEGIS_PATCH.md.
+
 ## [v0.25.13] - 2026-10-27
 
 - Correct Wasm memory reporting to measure guest linear memory, including unexported growth, instead of JSON input bytes. Preserve memory/table/fuel restrictions and expose the measurement scope.
