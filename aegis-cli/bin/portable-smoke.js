@@ -31,6 +31,25 @@ try {
   const browserHandshake = await fetch(`${base}/handshake`, {headers: {Origin: base}, signal: AbortSignal.timeout(5000)});
   assert.equal(browserHandshake.status, 200, 'The actual bound application origin must work with a dynamically allocated port');
   assert.equal((await fetch(`${base}/handshake`, {headers: {Origin: 'https://untrusted.example'}, signal: AbortSignal.timeout(5000)})).status, 403);
+  // ASVS v5.0.0 V3.4.4/V3.4.5/V3.4.6: error paths retain browser protections.
+  for (const [route, options, expected] of [
+    ['/handshake', {}, 200],
+    ['/', {}, null],
+    ['/handshake', {headers:{Origin:'https://untrusted.example'}}, 403],
+    ['/ipc', {method:'OPTIONS',headers:{Origin:base}}, 204],
+    ['/ipc', {method:'POST',headers:{'Content-Type':'text/plain'},body:'{}'}, 415],
+    ['/missing', {method:'POST'}, 404],
+  ]) {
+    const response=await fetch(`${base}${route}`,{...options,signal:AbortSignal.timeout(5000)});
+    if(expected !== null) assert.equal(response.status,expected);
+    assert.equal(response.headers.get('x-content-type-options'),'nosniff');
+    assert.equal(response.headers.get('referrer-policy'),'no-referrer');
+    assert.match(response.headers.get('content-security-policy') || '',/frame-ancestors 'none'/);
+    if(route==='/handshake' && expected===200) assert.equal(response.headers.get('cache-control'),'no-store');
+    if(route==='/missing') assert.match(response.headers.get('content-type') || '',/^application\/json/);
+    await response.arrayBuffer();
+  }
+  console.log('PASS: ASVS browser headers cover success, rejected origins, preflight and errors');
   let seq = 0;
   const call = async (command, payload = {}) => fetch(`${base}/ipc`, {
     method: 'POST', headers: {'Content-Type': 'application/json'},

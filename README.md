@@ -2,10 +2,10 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.23-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.23-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.26.5-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.26.5-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Rust](https://img.shields.io/badge/Rust-1.89%2B-orange?logo=rust)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
 [![Vue](https://img.shields.io/badge/Vue.js-3.x-4FC08D?logo=vuedotjs)](https://vuejs.org/)
 [![Svelte](https://img.shields.io/badge/Svelte-5.x-FF3E00?logo=svelte)](https://svelte.dev/)
@@ -16,32 +16,36 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run-in-30-seconds) • [📜 What's New in v0.23 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
+[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.26.5 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
 
 </div>
 
-> **v0.23.0 status:** This README preserves the original project presentation. Current functionality and limitations are documented in [Security fixes and verification](SECURITY_FIXES.md) and the [v0.23 changelog](CHANGELOG.md). Hardware authentication, HSM/PKCS#11, TPM, biometrics, GPU, P2P, encrypted IPC and auto-updates are unavailable; native macOS/Linux webviews and packages remain unimplemented. Earlier descriptions and performance figures below describe prototype goals and are not verified production guarantees. Windows uses an external browser backend. Vault encryption now uses Argon2id + XChaCha20-Poly1305; legacy V1 migration needs the original version.
+> **v0.26.5 — experimental framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock acceptance runs on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
+>
+> Hardware authentication, TPM, HSM/PKCS#11, biometrics, GPU, P2P, encrypted IPC and automatic updates remain unavailable. Native Linux/macOS installers, owner signing/notarization, managed native multi-window and physical/accessibility acceptance remain incomplete. Sensitive production applications require application-specific verification and an independent audit. Historical prototype descriptions below do not establish present capabilities or performance guarantees.
+>
+> **ASVS-guided development:** [OWASP ASVS v5.0.0](https://github.com/OWASP/ASVS/tree/v5.0.0/5.0) now supplies requirements for the applicable web/IPC surface. The [scoped evidence matrix](docs/ASVS_5_MAPPING.md) records checks and gaps; it is not ASVS certification or a complete audit.
 
 
 ---
 
 ## 💡 What is Aegis Desktop?
 
-**Aegis Desktop** is a modern, open-source desktop framework designed to replace heavy, insecure desktop setups. It allows you to build **ultra-fast, native desktop software** using familiar web frontend technologies (**React, Vue, Svelte, Solid, or Tailwind**) backed by a memory-safe, impenetrable **Rust systems core**.
+**Aegis Desktop** is a modern, open-source desktop framework designed to replace heavy, insecure desktop setups. It allows you to build **ultra-fast, native desktop software** using familiar web frontend technologies (**React, Vue, Svelte, Solid, or Tailwind**) backed by a **Rust systems core** with explicit capability checks.
 
-Traditional desktop frameworks like Electron bundle an entire Chromium browser and Node.js runtime with your app. This leads to bloated binary sizes (**150MB+**), heavy memory consumption (**300MB–500MB+ RAM**), and severe security risks—where an XSS vulnerability can grant an attacker full access to run shell commands (`cmd.exe`) on the user's computer.
+Aegis uses an external browser by default and offers optional OS webviews, avoiding a bundled Node.js application runtime. Performance depends on the selected backend, application workload and device; the [benchmark harness](aegis-cli/bin/benchmark.js) currently measures the core process only.
 
-**Aegis solves these issues by design:**
-* 🪶 **Ultra Lightweight:** Minimal ~8MB binary footprint and under 50MB RAM usage.
-* 🛡️ **Zero-Trust Security:** Shell execution is permanently blocked, file access is locked inside an isolated sandbox, and every IPC request is cryptographically authenticated.
-* 🔐 **Encrypted Vault at Rest:** Sensitive records encrypted with 10,000 PBKDF2/SHA-256 iterations & HMAC-SHA256 authentication tags.
+**Current framework capabilities and goals:**
+* 🪶 **Ultra Lightweight:** A small core is a design goal; whole-app memory and constrained-device budgets remain to be measured.
+* 🛡️ **Zero-Trust Security:** Arbitrary shell IPC is rejected, file operations use profile-scoped permissions, and IPC checks a process bearer token. This is not OS-level isolation or user authentication.
+* 🔐 **Encrypted Vault at Rest:** V2 vaults use Argon2id and XChaCha20-Poly1305, authenticated updates, encrypted backup recovery and password rotation.
 * ⚡ **Anti-DoS Sliding Rate Limiter:** Protects the IPC bridge from local fuzzing and brute-force nonce floods.
-* 📦 **One-Click Standalone Bundler:** Package into a portable `.exe` installer with InnoSetup — zero Rust/Node required on end-user machines.
+* 📦 **One-Click Standalone Bundler:** Build native portable folders; Windows installer generation requires Inno Setup. End-user runtime prerequisites depend on the chosen browser/webview backend.
 * 🌐 **Frontend Agnostic:** Use React, Vue, Svelte, or plain HTML/CSS with seamless type-safe IPC communication to Rust.
 
 ---
 
-## ⚡ Quick Install & Run (in 30 Seconds)
+## ⚡ Quick Install & Run
 
 Getting started with Aegis is fast and straightforward:
 
@@ -57,17 +61,24 @@ npm run setup
 npm run dev
 ```
 
-> 📋 **Prerequisites:** Make sure you have [Node.js](https://nodejs.org/) (v18+) and [Rust & Cargo](https://www.rust-lang.org/tools/install) (v1.75+) installed on your machine.
+> 📋 **Prerequisites:** Make sure you have [Node.js](https://nodejs.org/) (Node 22 tested in CI) and [Rust & Cargo](https://www.rust-lang.org/tools/install) (v1.92+; current stable tested) installed on your machine.
 
 ---
 
-## 📜 Version & Release Notes (`v0.23`)
+## 📜 Version & Release Notes (`v0.26.5`)
 
-The current version is **`v0.23.0` (Experimental)**.
+The current source version is **`v0.26.5` (Experimental)**. Published tags and completed checks are recorded in the [verification ledger](docs/IMPLEMENTATION_STATUS.md).
+
+The roadmap continues with **v0.27** whole-app/low-resource performance, **v0.28** three-OS installers/signing/verified updates, **v0.29** developer APIs/templates/plugins, and **v1.0** stable APIs plus physical-device and independent audit evidence. These are acceptance goals, not completed features.
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.23`** | 🟢 **Current Version** | Previous-version upgrade and reinstall recovery checks, real Windows lock testing in a disposable hosted runner, and exact-commit validation evidence. External audit, signing credentials and physical-device suspend/resume remain gated. No application or hardware provider is added. See [security review gates](SECURITY_REVIEW.md). |
+| **`v0.26.5`** | 🟢 **Current source** | ASVS evidence mapping, consistent browser response protections and corrected current documentation. Exact-source results are recorded in the verification ledger after CI. |
+| **`v0.26.4`** | ⚪ **Previous version** | Owned dynamic core/Vite startup, readiness checks, restart/cleanup and Windows short-path fix; three-OS checks passed. |
+| **`v0.26.0–0.26.3`** | ⚪ **Previous versions** | Bounded diagnostics, window request validation, dynamic packaged startup and strict development bridge origin selection. |
+| **`v0.25` series** | ⚪ **Previous versions** | Portable OS adapters, native previews, profile identity, plugin/Wasm limits and bounded IPC transport. See the detailed ledger. |
+| **`v0.24`** | ⚪ **Previous version** | Profile/security regression fixes and three-OS validation. |
+| **`v0.23`** | ⚪ **Previous version** | Previous-version upgrade and reinstall recovery checks, real Windows lock testing in a disposable hosted runner, and exact-commit validation evidence. External audit, signing credentials and physical-device suspend/resume remain gated. No application or hardware provider is added. See [security review gates](SECURITY_REVIEW.md). |
 | **`v0.22`** | ⚪ **Previous Version** | Native Windows lifecycle revocation, signing setup and disposable installer checks. |
 | **`v0.21`** | ⚪ **Previous Version** | Authenticated vault sessions, idle/absolute expiry, credential cleanup and profile-change revocation. |
 | **`v0.20`** | ⚪ **Previous Version** | Authenticated atomic vault updates, encrypted backup restore, password rotation, secret-buffer cleanup and restricted packaged IPC. |
@@ -81,7 +92,6 @@ The current version is **`v0.23.0` (Experimental)**.
 | **`v0.12`** | ⚪ *Previous Release* | Standalone Bundler & Multi-Window Release: One-click native `.exe` bundler & InnoSetup packager, Multi-Window Manager with window registry, new `bundle_status` & `window_list` IPC commands. 👉 [**View v0.12 Notes**](CHANGELOG.md#-v0120---2026-10-25) |
 | **`v0.11`** | ⚪ *Previous Release* | Cryptographic Hardening: Zero-Knowledge Encrypted Vault (PBKDF2/HMAC), Anti-DoS Sliding Window Rate Limiter, Air-Gap privacy shield. 👉 [**View v0.11 Notes**](CHANGELOG.md#-v0110---2026-10-25) |
 | **`v0.10`** | ⚪ *Previous Release* | Initial open-source release with Rust core engine, sandbox filesystem, and React/Vite UI. 👉 [**View v0.10 Notes**](CHANGELOG.md#-v0100---2026-10-25) |
-| **`v0.24`** | 🟡 *Next Roadmap (Q1 2027)* | Decentralized Zero-Knowledge Identity (DID/VC), Post-Quantum Lattice Cryptography (ML-KEM / ML-DSA), Ephemeral Memory Sanitization. 👉 [**View Upcoming Roadmap**](CHANGELOG.md) |
 
 👉 **[Click here to view all Version Updates, Bug Fixes, and Roadmap in CHANGELOG.md](CHANGELOG.md)**
 
@@ -93,11 +103,11 @@ With Aegis Desktop, developers can build any desktop application requiring **mod
 
 | Application Type | Why Aegis is the Ideal Framework |
 | :--- | :--- |
-| 🔐 **Encrypted Vaults & Password Managers** | Sensitive data remains strictly quarantined inside an isolated sandbox folder that malicious external scripts cannot touch. |
-| 🪙 **Crypto, Web3 & FinTech Desktop Tools** | The revoked shell execution policy and SHA-256 session handshake guarantee that malicious third-party dependencies cannot inject arbitrary commands. |
-| 📝 **Private Local-First Notes & Documents** | Build responsive offline markdown editors and personal knowledge vaults with zero memory lag and instant startup times. |
-| 📊 **Enterprise Dashboards & Admin Tools** | Safely display internal system diagnostics and data without exposing operating-system-level vulnerabilities. |
-| 🛠️ **Developer Utilities & Native GUIs** | Fast, reactive tooling with a fraction of the CPU and memory footprint of Electron apps. |
+| 🔐 **Encrypted Vaults & Password Managers** | Encrypted storage primitives are available; production password managers still require application-specific hardening, UI secret cleanup and independent review. |
+| 🪙 **Crypto, Web3 & FinTech Desktop Tools** | Capability-controlled IPC is available; banking authorization, transactions, server security and compliance are separate application responsibilities. |
+| 📝 **Private Local-First Notes & Documents** | Build responsive offline markdown editors and personal knowledge vaults with workload-specific performance testing. |
+| 📊 **Enterprise Dashboards & Admin Tools** | Safely display internal system diagnostics and data through explicit framework capabilities. |
+| 🛠️ **Developer Utilities & Native GUIs** | Fast, reactive tooling using web UI technology and a Rust core; benchmark the complete app on target devices. |
 
 ---
 
@@ -106,15 +116,15 @@ With Aegis Desktop, developers can build any desktop application requiring **mod
 Aegis is an open-source enterprise desktop architecture engineered with **defense-in-depth**:
 
 1. **Rust Core Engine (`src-core/`)**
-   - High performance, memory-safe, minimal binary footprint (~8MB vs ~150MB Electron).
+   - Rust core with explicit storage, transport and guest-resource limits; see measured benchmark artifacts.
    - Fast compile times on Windows via the native GNU toolchain.
    - Built-in sandboxed file system manager.
 
 2. **Zero-Trust Capability Security Model**
    - **No Arbitrary Execution:** Shell command execution (`cmd.exe`, `powershell`, `bash`) is permanently blocked by default policy.
    - **Path Traversal Defense:** Canonicalization algorithms prevent `../` directory climbs outside the isolated `./sandbox/` root.
-   - **Cryptographic Nonce Handshake:** Every IPC request is authenticated with a 256-bit SHA-256 session token to eliminate CSRF and replay attacks.
-   - **Origin Isolation & Strict CSP:** Only whitelisted origins (`http://localhost:5173`, `http://127.0.0.1:5173`) can communicate across the bridge.
+   - **Cryptographic Nonce Handshake:** Requests use a reusable process bearer token with Host/Origin checks. The token does not identify a user or prevent replay; vault sessions authorize retained vault access separately.
+   - **Origin Isolation & Strict CSP:** Allowed development origins and the exact packaged origin can access browser IPC. Browser responses deny framing, object embedding and base-URL changes; CSP hardening remains scoped in the ASVS matrix.
 
 3. **Frontend Freedom (`src-ui/`)**
    - **Agnostic Architecture:** Ships with React 18 + Vite by default, but completely framework-agnostic.
@@ -156,7 +166,7 @@ Aegis is an open-source enterprise desktop architecture engineered with **defens
 
 ## 🎨 Supported Frontend Frameworks & UI Libraries
 
-Aegis connects to frontend code over a standard, type-safe HTTP/WebSocket Loopback IPC bridge. This means **you can use any modern web framework and UI library of your choice**!
+Aegis connects to frontend code over a standard, type-safe HTTP loopback IPC bridge. This means **you can use any modern web framework and UI library of your choice**!
 
 ### 1. Framework Compatibility Matrix
 
@@ -321,8 +331,8 @@ Import Tailwind directives in `src-ui/src/index.css`:
 ## 📋 Prerequisites
 
 Before running Aegis, ensure you have the following installed:
-* [Node.js](https://nodejs.org/) (v18.0 or newer)
-* [Rust & Cargo](https://www.rust-lang.org/tools/install) (v1.75 or newer)
+* [Node.js](https://nodejs.org/) (Node 22 tested in CI)
+* [Rust & Cargo](https://www.rust-lang.org/tools/install) (v1.92 minimum; current stable tested in CI)
 
 ---
 
@@ -338,12 +348,14 @@ npm run setup
 ```
 
 ### 2. Start Development Mode
-Launches the Rust Security Core and Vite dev server simultaneously:
+Builds an owned Rust core, waits for its dynamic loopback endpoint, then starts Vite and opens the UI:
 ```bash
 npm run dev
 ```
 
-Alternatively, run each process in separate terminal windows:
+Use `npm run dev -- --no-open` for headless development, or inspect options with `node aegis-cli/bin/aegis.js help`. See [development startup and cleanup](docs/DEVELOPMENT_STARTUP.md).
+
+Alternatively, run each process in separate terminal windows (see [manual endpoint selection](docs/DEVELOPMENT_BRIDGE.md)):
 * **Rust Core:** `npm run dev:core`
 * **Frontend UI:** `npm run dev:ui`
 

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.26.5] - 2026-10-28
+
+- Apply a common browser response boundary to successful, rejected, preflight and error responses: MIME sniffing disabled, referrers suppressed, and an additional restrictive CSP prevents framing, object embedding and base-URL changes. The app asset CSP remains separately enforced.
+- Label JSON error bodies with their actual content type. Add actual-process IPC and packaged-runtime regressions; the missing referrer policy was reproduced before the fix.
+- Add a pinned ASVS 5.0.0 evidence/gap matrix and update the README version, platform status, cryptography, development instructions and unsupported claims while retaining the presentation structure.
+
 ## [v0.26.4] - 2026-10-27
 
 - Canonicalize development project roots before Vite setup. A real Windows short-path regression reproduced forbidden UI responses; the fix preserves Vite filesystem restrictions.

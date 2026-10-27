@@ -60,7 +60,7 @@ impl CoreServer {
                 .map(|h| h.value.as_str())
                 .unwrap_or("");
             if host != self.server.server_addr().to_string() {
-                let _ = request.respond(Response::empty(StatusCode(403)));
+                let _ = respond(request, Response::empty(StatusCode(403)));
                 continue;
             }
             if *request.method() == Method::Get && request.url() != "/handshake" {
@@ -109,14 +109,14 @@ impl CoreServer {
                                             Header::from_bytes("X-Content-Type-Options", "nosniff")
                                                 .unwrap(),
                                         );
-                                    let _ = request.respond(response);
+                                    let _ = respond(request, response);
                                     continue;
                                 }
                             }
                         }
                     }
                 }
-                let _ = request.respond(Response::empty(StatusCode(404)));
+                let _ = respond(request, Response::empty(StatusCode(404)));
                 continue;
             }
             let origin_header = request
@@ -140,7 +140,7 @@ impl CoreServer {
                 .unwrap_or_else(|| format!("http://{}", self.server.server_addr()));
 
             if !is_allowed_origin {
-                let _ = request.respond(Response::empty(StatusCode(403)));
+                let _ = respond(request, Response::empty(StatusCode(403)));
                 continue;
             }
 
@@ -168,7 +168,7 @@ impl CoreServer {
                         )
                         .unwrap(),
                     );
-                let _ = request.respond(response);
+                let _ = respond(request, response);
                 continue;
             }
 
@@ -184,7 +184,7 @@ impl CoreServer {
                     .with_header(
                         Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap(),
                     );
-                let _ = request.respond(resp);
+                let _ = respond(request, resp);
                 continue;
             }
 
@@ -207,7 +207,7 @@ impl CoreServer {
                         )
                         .unwrap(),
                     );
-                let _ = request.respond(resp);
+                let _ = respond(request, resp);
                 continue;
             }
 
@@ -229,7 +229,7 @@ impl CoreServer {
                         )
                         .unwrap(),
                     );
-                let _ = request.respond(resp);
+                let _ = respond(request, resp);
                 continue;
             }
 
@@ -262,7 +262,7 @@ impl CoreServer {
                             )
                             .unwrap(),
                         );
-                    let _ = request.respond(resp);
+                    let _ = respond(request, resp);
                 }
 
                 (Method::Post, "/ipc") => {
@@ -273,11 +273,11 @@ impl CoreServer {
                         .map(|h| h.value.as_str().split(';').next().unwrap_or(""))
                         .unwrap_or("");
                     if content_type != "application/json" {
-                        let _ = request.respond(Response::empty(StatusCode(415)));
+                        let _ = respond(request, Response::empty(StatusCode(415)));
                         continue;
                     }
                     if request.body_length().is_none_or(|n| n > 1024 * 1024) {
-                        let _ = request.respond(Response::empty(StatusCode(413)));
+                        let _ = respond(request, Response::empty(StatusCode(413)));
                         continue;
                     }
                     let mut body = zeroize::Zeroizing::new(String::new());
@@ -319,20 +319,26 @@ impl CoreServer {
                                 )
                                 .unwrap(),
                             );
-                        let _ = request.respond(resp);
+                        let _ = respond(request, resp);
                     } else {
                         let resp = Response::from_string(
                             json!({ "error": "Could not read body" }).to_string(),
                         )
+                        .with_header(
+                            Header::from_bytes("Content-Type", "application/json").unwrap(),
+                        )
                         .with_status_code(StatusCode(400));
-                        let _ = request.respond(resp);
+                        let _ = respond(request, resp);
                     }
                 }
 
                 _ => {
                     let resp = Response::from_string(json!({ "error": "Not Found" }).to_string())
+                        .with_header(
+                            Header::from_bytes("Content-Type", "application/json").unwrap(),
+                        )
                         .with_status_code(StatusCode(404));
-                    let _ = request.respond(resp);
+                    let _ = respond(request, resp);
                 }
             }
         }
@@ -363,4 +369,29 @@ fn sensitive_response(text: String) -> Response<WipingBody> {
         Some(length),
         None,
     )
+}
+
+// One response boundary keeps rejected requests and preflight protected too.
+fn respond<R: std::io::Read>(
+    request: tiny_http::Request,
+    mut response: Response<R>,
+) -> std::io::Result<()> {
+    if !response
+        .headers()
+        .iter()
+        .any(|h| h.field.equiv("X-Content-Type-Options"))
+    {
+        response.add_header(Header::from_bytes("X-Content-Type-Options", "nosniff").unwrap());
+    }
+    response.add_header(Header::from_bytes("Referrer-Policy", "no-referrer").unwrap());
+    // An additional CSP policy intersects with the configured asset policy.
+    // It cannot be weakened by a custom app CSP or duplicate directives there.
+    response.add_header(
+        Header::from_bytes(
+            "Content-Security-Policy",
+            "frame-ancestors 'none'; object-src 'none'; base-uri 'none'",
+        )
+        .unwrap(),
+    );
+    request.respond(response)
 }
