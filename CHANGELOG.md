@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.26.1] - 2026-10-27
+
+- Validate window dimensions/title for both native and external launches. Reject overflowing, fractional, wrongly typed, null and unknown IPC options before launching; preserve omitted defaults and explicit camel/snake option aliases without silently dropping unsupported requests.
+- Reject unsupported external resizing/decoration controls, developer tools and custom protocols. Report external launch requests without claiming visible-window confirmation or applied size/title settings.
+- Add pure request-preparation and public IPC regressions without opening the developer desktop, plus native-binary malformed-request checks on all three OS runners. Full managed multi-window behavior and physical/accessibility acceptance remain open.
+
 ## [v0.26.0] - 2026-10-27
 
 - Publish the cross-platform native-services preview milestone: optional embedded Windows/macOS/Linux hosts, bounded dialog/clipboard/notification interfaces and the previously validated transport/profile safeguards. Physical-device, accessibility and full multi-window acceptance remain open; see docs/RELEASE_GATES.md.

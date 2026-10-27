@@ -9,25 +9,28 @@ pub struct WindowConfig {
     pub title: String,
     pub width: u32,
     pub height: u32,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub resizable: bool,
     #[serde(default)]
     pub modal: bool,
     #[serde(default)]
+    #[serde(alias = "alwaysOnTop")]
     pub always_on_top: bool,
     #[serde(default)]
     pub kiosk: bool,
-    #[serde(default = "default_decorations")]
+    #[serde(default = "default_true")]
     pub decorations: bool,
     #[serde(default)]
     pub transparent: bool,
     #[serde(default)]
+    #[serde(alias = "devtoolsEnabled")]
     pub devtools_enabled: bool,
     #[serde(default)]
+    #[serde(alias = "customProtocols")]
     pub custom_protocols: Vec<String>,
 }
 
-fn default_decorations() -> bool {
+fn default_true() -> bool {
     true
 }
 
@@ -148,6 +151,60 @@ impl NativeWindowPolicy {
     }
 }
 impl WindowManager {
+    /// Parse a browser-launch request without opening a window or executing a process.
+    pub fn prepare_spawn_request(
+        payload: &serde_json::Value,
+    ) -> Result<(String, WindowConfig), String> {
+        let mut options = payload
+            .as_object()
+            .ok_or("Invalid window options: expected an object")?
+            .clone();
+        if options.keys().any(|key| {
+            !matches!(
+                key.as_str(),
+                "url"
+                    | "title"
+                    | "width"
+                    | "height"
+                    | "resizable"
+                    | "modal"
+                    | "always_on_top"
+                    | "alwaysOnTop"
+                    | "kiosk"
+                    | "decorations"
+                    | "transparent"
+                    | "devtools_enabled"
+                    | "devtoolsEnabled"
+                    | "custom_protocols"
+                    | "customProtocols"
+            )
+        }) {
+            return Err("Invalid window options: unknown option".into());
+        }
+        let url = match options.remove("url") {
+            None => "http://localhost:5173".to_string(),
+            Some(serde_json::Value::String(url)) => url,
+            _ => return Err("Invalid window options: URL must be a string".into()),
+        };
+        for (key, value) in [
+            ("title", serde_json::json!("Aegis Secondary Window")),
+            ("width", serde_json::json!(800)),
+            ("height", serde_json::json!(600)),
+        ] {
+            options.entry(key).or_insert(value);
+        }
+        let config: WindowConfig = serde_json::from_value(serde_json::Value::Object(options))
+            .map_err(|_| "Invalid window options: incorrect type or numeric range")?;
+        Self::validate_request(&url, &config)?;
+        Self::validate_external_controls(&config)?;
+        Ok((url, config))
+    }
+    fn validate_external_controls(config: &WindowConfig) -> Result<(), String> {
+        if !config.resizable || !config.decorations {
+            return Err("Requested resizing or decoration controls are unsupported by the external-browser backend".into());
+        }
+        Ok(())
+    }
     /// Prepare the currently implemented simple Windows message-box helper.
     /// Preparation does not execute a process or open a desktop dialog.
     pub fn prepare_dialog(
@@ -224,6 +281,7 @@ impl WindowManager {
         config: &WindowConfig,
     ) -> Result<String, Box<dyn std::error::Error>> {
         Self::validate_request(url, config)?;
+        Self::validate_external_controls(config)?;
         #[cfg(target_os = "windows")]
         {
             let mut found = false;
@@ -257,14 +315,27 @@ impl WindowManager {
 
     /// Validate without launching a browser or interacting with the desktop.
     pub fn validate_request(url: &str, config: &WindowConfig) -> Result<(), String> {
+        if config.width == 0
+            || config.height == 0
+            || config.width > 16384
+            || config.height > 16384
+            || config.title.len() > 1024
+            || config.title.contains('\0')
+        {
+            return Err("Invalid window dimensions or title".into());
+        }
+        if config.devtools_enabled || !config.custom_protocols.is_empty() {
+            return Err("Requested developer tools or custom protocols are unsupported".into());
+        }
         if config.modal || config.kiosk || config.always_on_top || config.transparent {
             return Err(
                 "Requested window controls are unsupported by the external-browser backend".into(),
             );
         }
-        if url
-            .chars()
-            .any(|c| c.is_control() || c.is_whitespace() || c == '"' || c == '\\')
+        if url.len() > 8192
+            || url
+                .chars()
+                .any(|c| c.is_control() || c.is_whitespace() || c == '"' || c == '\\')
         {
             return Err("Invalid window URL".into());
         }
@@ -390,6 +461,58 @@ mod tests {
         let mut modal = config;
         modal.modal = true;
         assert!(WindowManager::validate_request("http://localhost:5173", &modal).is_err());
+    }
+    #[test]
+    fn window_validation_rejects_invalid_dimensions_and_titles_before_launch() {
+        for (width, height) in [(0, 720), (1024, 0), (16385, 720), (1024, u32::MAX)] {
+            let config = WindowConfig {
+                width,
+                height,
+                ..Default::default()
+            };
+            assert!(
+                WindowManager::validate_request("http://127.0.0.1:48291/", &config).is_err(),
+                "Invalid dimensions must be rejected for every launch backend"
+            );
+        }
+        for title in ["bad\0title".to_string(), "x".repeat(1025)] {
+            let config = WindowConfig {
+                title,
+                ..Default::default()
+            };
+            assert!(WindowManager::validate_request("http://127.0.0.1:48291/", &config).is_err());
+        }
+    }
+    #[test]
+    fn prepared_spawn_requests_validate_options_without_desktop_work() {
+        let (url, defaults) = WindowManager::prepare_spawn_request(&serde_json::json!({})).unwrap();
+        assert_eq!(url, "http://localhost:5173");
+        assert_eq!((defaults.width, defaults.height), (800, 600));
+        let (_, custom) = WindowManager::prepare_spawn_request(&serde_json::json!({
+            "url":"http://127.0.0.1:48291/", "title":"සිංහල title", "width":1200,"height":800
+        }))
+        .unwrap();
+        assert_eq!(custom.title, "සිංහල title");
+        for options in [
+            serde_json::json!({"resizable":false}),
+            serde_json::json!({"decorations":false}),
+            serde_json::json!({"alwaysOnTop":true}),
+            serde_json::json!({"kiosk":true}),
+            serde_json::json!({"devtoolsEnabled":true}),
+            serde_json::json!({"customProtocols":["custom"]}),
+            serde_json::json!({"width":4294968096u64}),
+            serde_json::json!({"height":-1}),
+            serde_json::json!({"width":1.5}),
+            serde_json::json!({"url":null}),
+            serde_json::json!({"devtoolsEnabled":false,"devtools_enabled":false}),
+            serde_json::json!({"unknown":true}),
+            serde_json::json!([]),
+        ] {
+            assert!(
+                WindowManager::prepare_spawn_request(&options).is_err(),
+                "{options}"
+            );
+        }
     }
     #[test]
     fn truthful_runtime() {

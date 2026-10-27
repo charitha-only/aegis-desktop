@@ -803,6 +803,22 @@ fn ipc_window_capabilities_do_not_advertise_unimplemented_controls() {
             "{unsupported} is not implemented by the external-browser backend"
         );
     }
+    // This remote URL is always rejected, so the regression cannot open a desktop
+    // even when a broken parser silently accepts the malformed options.
+    for options in [
+        serde_json::json!({"width":4294968096u64}),
+        serde_json::json!({"height":"600"}),
+        serde_json::json!({"modal":"true"}),
+        serde_json::json!({"title":null}),
+        serde_json::json!({"unexpectedOption":true}),
+    ] {
+        let mut options = options;
+        options["url"] = serde_json::json!("https://blocked.invalid/");
+        let result = call("window_spawn", options);
+        assert!(!result.success);
+        assert!(result.error.as_ref().unwrap().contains("Invalid window options"),
+            "Malformed options must be rejected before launch validation, not truncated or defaulted: {:?}", result.error);
+    }
 }
 
 #[test]

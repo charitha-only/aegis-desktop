@@ -758,53 +758,25 @@ impl IpcRouter {
             },
 
             "window_spawn" => {
-                let url = req
-                    .payload
-                    .get("url")
-                    .and_then(|u| u.as_str())
-                    .unwrap_or("http://localhost:5173");
-                let title = req
-                    .payload
-                    .get("title")
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("Aegis Secondary Window");
-                let width = req
-                    .payload
-                    .get("width")
-                    .and_then(|w| w.as_u64())
-                    .unwrap_or(800) as u32;
-                let height = req
-                    .payload
-                    .get("height")
-                    .and_then(|h| h.as_u64())
-                    .unwrap_or(600) as u32;
-                let modal = req
-                    .payload
-                    .get("modal")
-                    .and_then(|m| m.as_bool())
-                    .unwrap_or(false);
+                let (url, cfg) =
+                    match crate::window::WindowManager::prepare_spawn_request(&req.payload) {
+                        Ok(request) => request,
+                        Err(error) => return IpcResponse::err(&req.id, &error),
+                    };
 
-                let cfg = crate::window::WindowConfig {
-                    title: title.to_string(),
-                    width,
-                    height,
-                    resizable: true,
-                    modal,
-                    always_on_top: false,
-                    kiosk: false,
-                    ..Default::default()
-                };
-
-                match crate::window::WindowManager::spawn_window(url, &cfg) {
+                match crate::window::WindowManager::spawn_window(&url, &cfg) {
                     Ok(win_id) => IpcResponse::ok(
                         &req.id,
                         json!({
-                            "status": "Window Spawned Successfully",
+                            "status": "External Browser Launch Requested",
+                            "backend": "EXTERNAL_BROWSER",
+                            "configurationApplied": false,
+                            "windowVisibilityConfirmed": false,
                             "windowId": win_id,
-                            "title": title,
+                            "title": cfg.title,
                             "url": url,
-                            "width": width,
-                            "height": height,
+                            "width": cfg.width,
+                            "height": cfg.height,
                             "runtime": crate::window::WindowManager::detect_runtime()
                         }),
                     ),

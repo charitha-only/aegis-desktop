@@ -86,6 +86,9 @@ try {
   assert.equal(diagnostics.data.scope, 'application');
   assert.equal(JSON.stringify(diagnostics).includes('TEST_ONLY_omitted-secret'), false);
   assert.equal((await call('crash_record', {errorKind: 'unrecognized-kind'})).success, false);
+  const rejectedWindow = await call('window_spawn', {url: 'https://blocked.invalid/', width: 4294968096});
+  assert.equal(rejectedWindow.success, false);
+  assert.match(rejectedWindow.error, /Invalid window options/);
   console.log('PASS: native platform IPC, directories, encrypted storage and unavailable lifecycle behavior');
 } finally {
   if (child.exitCode === null) child.kill();

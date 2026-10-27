@@ -879,14 +879,14 @@ export default function App() {
   const handleSpawnSecondaryWindow = async (modal = false) => {
     addLog('INFO', 'window_spawn', `Spawning ${modal ? 'Modal' : 'Secondary'} Window via Rust WindowManager...`);
     const res = await aegis.spawnWindow({
-      url: 'http://localhost:5173',
+      url: window.location.origin,
       title: modal ? 'Aegis Modal Inspector' : 'Aegis Secondary Secure Window',
       width: 900,
       height: 600,
       modal,
     });
     if (res.success) {
-      addLog('SUCCESS', 'window_spawn', 'Native window process spawned successfully');
+      addLog('SUCCESS', 'window_spawn', 'External browser launch requested; window visibility is not confirmed');
     } else {
       addLog('BLOCKED', 'window_spawn_error', res.error || 'Failed to spawn window');
     }
