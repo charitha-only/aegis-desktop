@@ -88,7 +88,7 @@ The [release ledger](IMPLEMENTATION_STATUS.md) records completed exact-source CI
 
 The benchmark now uses `withBenchmarkCore` for one owned process and temporary
 project per measurement. It waits for a newline-terminated startup address,
-keeps at most 16 KiB of recent stdout and validates the loopback origin. A chunk
+keeps a bounded recent decoded-stdout buffer and validates the loopback origin. A chunk
 ending halfway through a port cannot become readiness. Startup defaults to a
 15-second deadline. Cleanup requests direct-child termination, waits at most
 three seconds, then force-terminates that still-live owned child and waits at

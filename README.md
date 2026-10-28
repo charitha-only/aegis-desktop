@@ -81,7 +81,7 @@ The current **v0.27** performance tooling preview still requires whole-app/low-r
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.27.1`** | 🟢 **Performance tooling preview** | Benchmark lifecycle controls: complete startup-line readiness, bounded owned-process cleanup and timeout/failure regressions. See the verification ledger for exact-source checks. Whole-app/physical-device acceptance remains open. |
+| **`v0.27.1`** | 🟢 **Performance tooling preview** | Benchmark lifecycle controls: complete startup-line readiness, bounded owned-process cleanup and timeout/failure regressions. Three-OS and Windows installer checks passed for source `9b80134`; see the verification ledger. Whole-app/physical-device acceptance remains open. |
 | **`v0.27.0`** | ⚪ **Previous version** | Raw core samples/provenance, explicit budgets and damaged registry preservation; three-OS and Windows installer acceptance passed. |
 | **`v0.26.7`** | ⚪ **Previous version** | Failed profile storage transitions preserve registration/active root; three-OS and Windows installer acceptance passed. |
 | **`v0.26.6`** | ⚪ **Previous version** | Strict policy port validation with boundary/default IPC regressions; three-OS and Windows installer acceptance passed. |
