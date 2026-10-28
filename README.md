@@ -96,7 +96,7 @@ The **v0.27** performance tooling still requires whole-app/low-resource measurem
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.28.0`** | 🟢 **Distribution tooling preview** | Explicit package file manifests and verification against a separately trusted descriptor digest; bounded inventory, tamper/link rejection and real bundle CLI tests. Signing, Linux/macOS installers and authenticated updates remain open. See the verification ledger. |
+| **`v0.28.0`** | 🟢 **Distribution tooling preview** | Explicit package file manifests and verification against a separately trusted descriptor digest; bounded inventory, tamper/link rejection and real bundle CLI tests. Three-OS and Windows installer checks passed for source `06b69a5`; see the verification ledger. Signing, Linux/macOS installers and authenticated updates remain open. |
 | **`v0.27.1`** | ⚪ **Previous version** | Bounded owned benchmark lifecycle and complete startup-line handling; three-OS and Windows installer acceptance passed. |
 | **`v0.27.0`** | ⚪ **Previous version** | Raw core samples/provenance, explicit budgets and damaged registry preservation; three-OS and Windows installer acceptance passed. |
 | **`v0.26.7`** | ⚪ **Previous version** | Failed profile storage transitions preserve registration/active root; three-OS and Windows installer acceptance passed. |
