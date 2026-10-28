@@ -20,9 +20,9 @@ Bridging a high-performance **Rust systems engine** with **any modern web fronte
 
 </div>
 
-> **v0.28.2 — experimental framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock and Linux Debian install/upgrade/reinstall data-preservation acceptance run on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
+> **v0.28.2 — experimental framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock and Linux Debian/macOS package install/upgrade/reinstall data-preservation acceptance run on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
 >
-> Hardware authentication, TPM, HSM/PKCS#11, biometrics, GPU, P2P, encrypted IPC and automatic updates remain unavailable. Full Linux installer coverage, macOS installers, owner signing/notarization, managed native multi-window and physical/accessibility acceptance remain incomplete. Sensitive production applications require application-specific verification and an independent audit. Historical prototype descriptions below do not establish present capabilities or performance guarantees.
+> Hardware authentication, TPM, HSM/PKCS#11, biometrics, GPU, P2P, encrypted IPC and automatic updates remain unavailable. Full distribution/architecture installer coverage, owner signing/notarization, managed native multi-window and physical/accessibility acceptance remain incomplete. Sensitive production applications require application-specific verification and an independent audit. Historical prototype descriptions below do not establish present capabilities or performance guarantees.
 >
 > **ASVS-guided development:** [OWASP ASVS v5.0.0](https://github.com/OWASP/ASVS/tree/v5.0.0/5.0) now supplies requirements for the applicable web/IPC surface. The [scoped evidence matrix](docs/ASVS_5_MAPPING.md) records checks and gaps; it is not ASVS certification or a complete audit.
 
@@ -96,7 +96,7 @@ The **v0.27** performance tooling still requires whole-app/low-resource measurem
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.28.2`** | **macOS package preview; CI pending** | Native unsigned `.pkg` builder, stable `.app` identity and guarded install/upgrade/reinstall data-preservation fixture. See [macOS packaging](docs/MACOS_PACKAGING.md). |
+| **`v0.28.2`** | **macOS package preview** | Native unsigned `.pkg` builder, stable `.app` identity and guarded install/upgrade/reinstall data-preservation fixture. Three-OS checks and Windows acceptance passed for source `65ff429`. See [macOS packaging](docs/MACOS_PACKAGING.md). |
 | **`v0.28.1`** | **Linux Debian preview** | Native Debian builder and guarded install/upgrade/reinstall vault preservation fixture; see [Debian packaging](docs/DEBIAN_PACKAGING.md). Ubuntu package lifecycle, three-OS checks and Windows acceptance passed for source `d872e4c`; packages remain unsigned. |
 | **`v0.28.0`** | 🟢 **Distribution tooling preview** | Explicit package file manifests and verification against a separately trusted descriptor digest; bounded inventory, tamper/link rejection and real bundle CLI tests. Three-OS and Windows installer checks passed for source `06b69a5`; see the verification ledger. Signing, Linux/macOS installers and authenticated updates remain open. |
 | **`v0.27.1`** | ⚪ **Previous version** | Bounded owned benchmark lifecycle and complete startup-line handling; three-OS and Windows installer acceptance passed. |

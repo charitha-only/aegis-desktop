@@ -33,3 +33,5 @@ Keep one evidence record per source commit, OS, architecture, package format and
 The user has authorized public-interface testing for session/IPC, platform directories, windows, native services, CLI/build/package/update, plugins and performance reporting. These approvals do not turn unperformed physical tests or an unavailable external audit into passing evidence.
 
 Linux Debian preview evidence: source `d872e4c` verifies native package installation, renamed upgrade, removal/reinstallation and authenticated vault/backup preservation on hosted Ubuntu. See [Debian packaging](DEBIAN_PACKAGING.md). This does not establish compatibility with all distributions or replace signing, macOS packaging and physical-device gates.
+
+macOS package preview evidence: source `65ff429` verifies actual hosted installation, receipt versions, renamed upgrade, launcher inspection and app removal/reinstall with preserved vault/backup bytes. See [macOS packaging](MACOS_PACKAGING.md). This is unsigned and does not establish notarization, Gatekeeper/Finder launch, older-OS/Intel coverage or physical recovery acceptance.
