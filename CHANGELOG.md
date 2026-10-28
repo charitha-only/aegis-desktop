@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.27.1] - 2026-10-28
+
+- Isolate benchmark core lifecycle behind a shared measurement runner. Readiness requires the complete newline-terminated loopback address, avoiding partial numeric ports across stdout chunks.
+- Bound owned-child cleanup with a graceful request followed by direct-child force termination if needed. Startup timeout and workload failure close the owned process before temporary data removal; failure to stop is surfaced rather than waiting indefinitely.
+- Add actual OS-process fixtures for split readiness lines, callback failure and a non-ready process, alongside the actual Rust benchmark budget fixture on all three OS runners. These checks remain core-only and do not certify whole-app performance.
+
 ## [v0.27.0] - 2026-10-28
 
 - Begin the performance tooling milestone: schema-2 core reports retain five startup and twenty IPC samples, binary SHA-256, source revision and working-tree state. Host details and measurement limitations remain explicit.

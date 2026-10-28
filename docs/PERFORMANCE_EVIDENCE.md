@@ -83,3 +83,27 @@ Hosted results are separate from physical-device acceptance.
 Full UI/process-tree automation, physical workloads, baseline-derived budgets
 and release regression policy remain in [RELEASE_GATES.md](RELEASE_GATES.md).
 The [release ledger](IMPLEMENTATION_STATUS.md) records completed exact-source CI.
+
+## v0.27.1 lifecycle evidence
+
+The benchmark now uses `withBenchmarkCore` for one owned process and temporary
+project per measurement. It waits for a newline-terminated startup address,
+keeps at most 16 KiB of recent stdout and validates the loopback origin. A chunk
+ending halfway through a port cannot become readiness. Startup defaults to a
+15-second deadline. Cleanup requests direct-child termination, waits at most
+three seconds, then force-terminates that still-live owned child and waits at
+most another three seconds. A failure to close is reported; temporary project
+removal follows successful closure only. Only the owned direct child is targeted;
+this is not descendant/process-tree lifecycle management or a process sandbox.
+Forced termination of the benchmark parent remains outside this guarantee.
+
+The public runner accepts trusted executable/argument settings and a measurement
+callback; it is not an IPC surface accepting untrusted programs. Public tests use
+actual owned Node processes that emit a split address or never become ready,
+then verify closure after callback failure/timeout. POSIX fixtures ignore the
+initial termination request to exercise escalation; Windows termination semantics
+differ. The separate benchmark smoke fixture still measures an actual Rust core
+and verifies the deliberately exceeded budget. No test opens user desktops.
+An early startup/workload error exits unsuccessfully and reports an error rather
+than producing a falsely complete measurement report. Reporting failure must not
+be counted as a passing performance result.

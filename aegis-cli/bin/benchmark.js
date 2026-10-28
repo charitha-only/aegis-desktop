@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-import {spawn, spawnSync} from 'node:child_process';
-import {mkdtemp, rm, stat, readFile} from 'node:fs/promises';
-import {tmpdir, cpus, totalmem, release} from 'node:os';
+import {spawnSync} from 'node:child_process';
+import {stat, readFile} from 'node:fs/promises';
+import {cpus, totalmem, release} from 'node:os';
 import path from 'node:path';
 import {performance} from 'node:perf_hooks';
 import {createReadStream} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {latencySummary, evaluatePerformanceBudget} from '../lib/metrics.js';
+import {withBenchmarkCore} from '../lib/benchmark-core.js';
 
 const args=process.argv.slice(2);
 const requestedBinary=args[0] && !args[0].startsWith('--') ? args.shift() : undefined;
@@ -20,32 +21,7 @@ if(args.length) {
 }
 const binary = path.resolve(requestedBinary || `src-core/target/release/aegis-core${process.platform === 'win32' ? '.exe' : ''}`);
 const trials = 5;
-async function withCore(run) {
-  const fixture = await mkdtemp(path.join(tmpdir(), 'aegis-benchmark-'));
-  const started = performance.now();
-  const child = spawn(binary, ['--port=0'], {cwd: fixture, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe']});
-  const done = new Promise(resolve => child.once('close', resolve));
-  try {
-    const base = await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Core startup timed out')), 15000);
-      let output = '';
-      child.once('error', error => {clearTimeout(timer); reject(error);});
-      child.once('exit', () => {clearTimeout(timer); reject(new Error('Core exited before ready'));});
-      child.stderr.resume();
-      child.stdout.on('data', data => {
-        output = (output + data.toString()).slice(-8192);
-        const match = output.match(/IPC Bridge Server actively listening on (http:\/\/127\.0\.0\.1:\d+)/);
-        if (match) {clearTimeout(timer); resolve(match[1]);}
-      });
-    });
-    return await run({base, pid: child.pid, startupMs: performance.now() - started});
-  } finally {
-    if (child.pid && child.exitCode === null) child.kill();
-    await done;
-    const relative = path.relative(tmpdir(), fixture);
-    if (!relative.startsWith('..') && !path.isAbsolute(relative)) await rm(fixture, {recursive: true, force: true});
-  }
-}
+const withCore=run=>withBenchmarkCore({binary},run);
 
 function sampleProcess(pid) {
   if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Invalid owned process ID');
