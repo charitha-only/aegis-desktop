@@ -81,7 +81,7 @@ The current **v0.27** performance tooling preview still requires whole-app/low-r
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.27.0`** | 🟢 **Performance tooling preview** | Raw core samples, binary/source provenance and explicit performance budget checks; damaged/oversized profile registry preservation. Whole-app and physical low-resource acceptance remain open. See the verification ledger. |
+| **`v0.27.0`** | 🟢 **Performance tooling preview** | Raw core samples, binary/source provenance and explicit performance budget checks; damaged/oversized profile registry preservation. Three-OS and Windows installer checks passed for source `4f401d4`. Whole-app and physical low-resource acceptance remain open; see the verification ledger. |
 | **`v0.26.7`** | ⚪ **Previous version** | Failed profile storage transitions preserve registration/active root; three-OS and Windows installer acceptance passed. |
 | **`v0.26.6`** | ⚪ **Previous version** | Strict policy port validation with boundary/default IPC regressions; three-OS and Windows installer acceptance passed. |
 | **`v0.26.5`** | ⚪ **Previous version** | ASVS evidence mapping, browser response protections and corrected documentation; three-OS checks and Windows installer acceptance passed. |
