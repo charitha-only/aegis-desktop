@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.27.1-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.27.1-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.28.0-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.28.0-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -16,11 +16,11 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.27.1 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
+[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.28.0 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
 
 </div>
 
-> **v0.27.1 — experimental framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock acceptance runs on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
+> **v0.28.0 — experimental framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock acceptance runs on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
 >
 > Hardware authentication, TPM, HSM/PKCS#11, biometrics, GPU, P2P, encrypted IPC and automatic updates remain unavailable. Native Linux/macOS installers, owner signing/notarization, managed native multi-window and physical/accessibility acceptance remain incomplete. Sensitive production applications require application-specific verification and an independent audit. Historical prototype descriptions below do not establish present capabilities or performance guarantees.
 >
@@ -65,6 +65,21 @@ npm run dev
 
 ---
 
+## 📦 Package file verification
+
+After producing a trusted, clean portable bundle:
+
+```text
+node aegis-cli/bin/aegis.js package-manifest dist-bundle/YourApp
+node aegis-cli/bin/aegis.js verify-package dist-bundle/YourApp TRUSTED_MANIFEST_SHA256
+```
+
+Retain the generated descriptor digest through a separately trusted channel.
+Verification checks file bytes and inventory; it does not authenticate a publisher,
+install anything or enable automatic updates. These developer commands require
+Node.js and are separate from the packaged runtime. See [package integrity and
+remaining distribution gates](docs/PACKAGE_INTEGRITY.md).
+
 ## 📊 Performance evidence
 
 Run `node aegis-cli/bin/benchmark.js > core-benchmark.json` to retain five startup
@@ -73,15 +88,16 @@ and twenty IPC samples with host details and binary SHA-256. Use
 explicit limits. These are core-only measurements, not whole-app RAM or UI latency.
 See [performance tooling and physical device procedure](docs/PERFORMANCE_EVIDENCE.md).
 
-## 📜 Version & Release Notes (`v0.27.1`)
+## 📜 Version & Release Notes (`v0.28.0`)
 
-The current source version is **`v0.27.1` (Experimental)**. Published tags and completed checks are recorded in the [verification ledger](docs/IMPLEMENTATION_STATUS.md).
+The current source version is **`v0.28.0` (Experimental)**. Published tags and completed checks are recorded in the [verification ledger](docs/IMPLEMENTATION_STATUS.md).
 
-The current **v0.27** performance tooling preview still requires whole-app/low-resource measurements. The roadmap continues with **v0.28** three-OS installers/signing/verified updates, **v0.29** developer APIs/templates/plugins, and **v1.0** stable APIs plus physical-device and independent audit evidence. These are acceptance goals, not completed features.
+The **v0.27** performance tooling still requires whole-app/low-resource measurements. The current **v0.28** distribution tooling preview still requires native installer parity, signing and authenticated updates. The roadmap continues with **v0.29** developer APIs/templates/plugins, and **v1.0** stable APIs plus physical-device and independent audit evidence. These are acceptance goals, not completed features.
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.27.1`** | 🟢 **Performance tooling preview** | Benchmark lifecycle controls: complete startup-line readiness, bounded owned-process cleanup and timeout/failure regressions. Three-OS and Windows installer checks passed for source `9b80134`; see the verification ledger. Whole-app/physical-device acceptance remains open. |
+| **`v0.28.0`** | 🟢 **Distribution tooling preview** | Explicit package file manifests and verification against a separately trusted descriptor digest; bounded inventory, tamper/link rejection and real bundle CLI tests. Signing, Linux/macOS installers and authenticated updates remain open. See the verification ledger. |
+| **`v0.27.1`** | ⚪ **Previous version** | Bounded owned benchmark lifecycle and complete startup-line handling; three-OS and Windows installer acceptance passed. |
 | **`v0.27.0`** | ⚪ **Previous version** | Raw core samples/provenance, explicit budgets and damaged registry preservation; three-OS and Windows installer acceptance passed. |
 | **`v0.26.7`** | ⚪ **Previous version** | Failed profile storage transitions preserve registration/active root; three-OS and Windows installer acceptance passed. |
 | **`v0.26.6`** | ⚪ **Previous version** | Strict policy port validation with boundary/default IPC regressions; three-OS and Windows installer acceptance passed. |

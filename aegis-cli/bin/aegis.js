@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {spawn} from 'node:child_process';
 import {createProject} from '../lib/create.js';
+import {writePackageIntegrity,verifyPackageIntegrity} from '../lib/package-integrity.js';
 import {developmentPlan, parseDevelopmentArgs, startDevelopment} from '../lib/development.js';
 import path from 'node:path';import fs from 'node:fs';import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
@@ -36,8 +37,16 @@ try{const command=process.argv[2]||'dev';
      finally {process.off('SIGINT',cancel);process.off('SIGTERM',cancel);}
    }
  }
+ else if(command==='package-manifest') {
+   if(process.argv.length!==4 || !process.argv[3]) throw new Error('Usage: aegis package-manifest <bundle-directory>');
+   console.log(JSON.stringify(await writePackageIntegrity(process.argv[3])));
+ }
+ else if(command==='verify-package') {
+   if(process.argv.length!==5 || !process.argv[3]) throw new Error('Usage: aegis verify-package <bundle-directory> <trusted-manifest-sha256>');
+   console.log(JSON.stringify(await verifyPackageIntegrity(process.argv[3],process.argv[4])));
+ }
  else if(command==='create')console.log('Project created: '+await createProject(root,process.argv[3]));
- else if(command==='--help'||command==='help')console.log('Aegis commands:\n  create <new-directory>\n  dev [--no-open] [--ui-port=<port>] [--core-binary=<path>] [--print-plan]\n  build\n  build-release\n  bundle\n  test-security\n  --version');
+ else if(command==='--help'||command==='help')console.log('Aegis commands:\n  create <new-directory>\n  dev [--no-open] [--ui-port=<port>] [--core-binary=<path>] [--print-plan]\n  build\n  build-release\n  bundle\n  test-security\n  package-manifest <bundle-directory>\n  verify-package <bundle-directory> <trusted-manifest-sha256>\n  --version');
  else if(command==='--version')console.log(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version);
  else if(command==='build'||command==='build-release')await build();
  else if(command==='bundle'){await build();await run(cargo,['run','--release','--manifest-path','src-core/Cargo.toml','--','--bundle']);}

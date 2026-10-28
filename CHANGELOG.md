@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.28.0] - 2026-10-28
+
+- Start distribution integrity tooling with explicit `package-manifest` and `verify-package` developer commands. Canonical file/size/SHA-256 inventories require a separately trusted manifest digest; existing descriptors are never overwritten automatically.
+- Bound file/entry counts, nesting, byte totals and descriptor reads; reject linked/non-file entries, common unsafe portable names and normalized case collisions. Verification rebuilds the actual inventory without interpreting manifest-provided paths.
+- Add missing/extra/altered-file and replaced-descriptor tests, known SHA-256 evidence, linked-directory checks and real CLI checks on an actual portable bundle. Results explicitly report that publisher authentication was not performed.
+- Keep native Linux/macOS installers, publisher signing/notarization, authenticated automatic updates and physical recovery acceptance open. This preview is not a signed release or completion of the distribution milestone.
+
 ## [v0.27.1] - 2026-10-28
 
 - Isolate benchmark core lifecycle behind a shared measurement runner. Readiness requires the complete newline-terminated loopback address, avoiding partial numeric ports across stdout chunks.
