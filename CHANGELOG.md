@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.28.2] - 2026-10-29
+
+- Add native macOS `package-macos` CLI tooling: pinned source snapshot, stable `.app`/receipt identity, escaped property-list metadata, native architecture/system-library checks, normalized permissions and exclusive unsigned `.pkg` output. No install or elevation in the builder.
+- Add public metadata/unsupported-host regressions and guarded hosted macOS install, renamed upgrade, app removal/reinstall, launcher inspection and authenticated vault/backup preservation acceptance. Exact-source CI pending.
+- Signing/notarization, Finder/Gatekeeper acceptance, older macOS/Intel compatibility, physical recovery and authenticated updates remain open.
+
 ## [v0.28.1] - 2026-10-29
 
 - Add Linux-native `package-deb` tooling with pinned bundle verification, stable app-ID-derived installation identity, ELF architecture validation, derived library dependencies and exclusive output creation. The builder never installs or elevates.

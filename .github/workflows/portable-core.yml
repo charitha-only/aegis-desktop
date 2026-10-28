@@ -39,7 +39,7 @@ jobs:
       - name: Verify incomplete IPC requests have bounded transport lifetimes
         run: node aegis-cli/bin/ipc-deadline-smoke.js
       - name: Test CLI and benchmark interfaces
-        run: node --test aegis-cli/test/metrics.test.js aegis-cli/test/create.test.js aegis-cli/test/bridge-origin.test.js aegis-cli/test/development.test.js aegis-cli/test/benchmark-core.test.js aegis-cli/test/package-integrity.test.js aegis-cli/test/debian-package.test.js
+        run: node --test aegis-cli/test/metrics.test.js aegis-cli/test/create.test.js aegis-cli/test/bridge-origin.test.js aegis-cli/test/development.test.js aegis-cli/test/benchmark-core.test.js aegis-cli/test/package-integrity.test.js aegis-cli/test/debian-package.test.js aegis-cli/test/macos-package.test.js
       - name: Verify explicit core performance budgets and raw evidence
         run: node aegis-cli/bin/benchmark-smoke.js
       - name: Record core performance measurements
@@ -68,5 +68,8 @@ jobs:
       - name: Verify Debian install upgrade removal and vault preservation
         if: matrix.os == 'ubuntu-latest'
         run: node aegis-cli/bin/debian-package-smoke.js
+      - name: Verify macOS package install upgrade removal and vault preservation
+        if: matrix.os == 'macos-latest'
+        run: node aegis-cli/bin/macos-package-smoke.js
       - name: Create and build a clean application template
         run: node aegis-cli/bin/scaffold-smoke.js
