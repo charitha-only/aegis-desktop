@@ -30,6 +30,8 @@ jobs:
         run: cargo test --locked --manifest-path src-core/Cargo.toml
       - name: Build optimized core
         run: cargo build --release --locked --manifest-path src-core/Cargo.toml
+      - name: Verify signed offline metadata against actual native artifact bytes
+        run: node aegis-cli/bin/update-verification-smoke.js
       - name: Verify real native platform IPC and storage
         run: node aegis-cli/bin/portable-smoke.js
       - name: Verify packaged identity survives rename and invalid IDs fail closed
@@ -39,7 +41,7 @@ jobs:
       - name: Verify incomplete IPC requests have bounded transport lifetimes
         run: node aegis-cli/bin/ipc-deadline-smoke.js
       - name: Test CLI and benchmark interfaces
-        run: node --test aegis-cli/test/metrics.test.js aegis-cli/test/create.test.js aegis-cli/test/bridge-origin.test.js aegis-cli/test/development.test.js aegis-cli/test/benchmark-core.test.js aegis-cli/test/package-integrity.test.js aegis-cli/test/debian-package.test.js aegis-cli/test/macos-package.test.js
+        run: node --test aegis-cli/test/metrics.test.js aegis-cli/test/create.test.js aegis-cli/test/bridge-origin.test.js aegis-cli/test/development.test.js aegis-cli/test/benchmark-core.test.js aegis-cli/test/package-integrity.test.js aegis-cli/test/debian-package.test.js aegis-cli/test/macos-package.test.js aegis-cli/test/update-verification.test.js
       - name: Verify explicit core performance budgets and raw evidence
         run: node aegis-cli/bin/benchmark-smoke.js
       - name: Record core performance measurements

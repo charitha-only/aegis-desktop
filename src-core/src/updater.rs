@@ -1,14 +1,7 @@
-/// Aegis Desktop — Air-Gapped Auto-Update Engine (v0.13.0)
-///
-/// Provides a cryptographically-verified, signature-checked, zero-trust
-/// self-contained update mechanism. Updates are verified before applying
-/// — the engine NEVER auto-executes unsigned payloads.
-///
-/// # Security Model
-/// - All update manifests are SHA-256 fingerprint verified
-/// - Version comparison enforces strict semver monotonic ordering
-/// - No outbound network connections — supply your own manifest URL
-/// - Patch payloads are quarantined in ./sandbox/updates/ before application
+/// Disabled legacy updater prototype, retained for compatibility with old source.
+/// Its hashes check integrity only; they do not authenticate a publisher.
+/// Runtime updater IPC remains unavailable. The offline developer verifier is
+/// documented in docs/UPDATE_VERIFICATION.md and does not enable auto-apply.
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
