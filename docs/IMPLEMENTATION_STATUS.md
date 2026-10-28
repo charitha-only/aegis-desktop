@@ -40,3 +40,5 @@ This is the release ledger for the roadmap. A source version does not certify pr
 Independent review cannot be self-certified. Missing physical hardware or signing credentials must not be replaced by fabricated passing results. Keep implementing independent work while recording these gates.
 
 Detailed remaining criteria are in RELEASE_GATES.md. Published tags identify validated source milestones; they are not publisher-signed installer releases or completion of every roadmap row.
+
+| 0.28.1 | Source work; CI pending | Native Linux Debian builder and guarded hosted install/upgrade/remove/reinstall vault and backup preservation test. Twenty CLI tests pass locally on Windows. Native package execution awaits CI. See DEBIAN_PACKAGING.md. |

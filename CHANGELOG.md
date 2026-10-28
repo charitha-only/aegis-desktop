@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v0.28.1] - 2026-10-29
+
+- Add Linux-native `package-deb` tooling with pinned bundle verification, stable app-ID-derived installation identity, ELF architecture validation, derived library dependencies and exclusive output creation. The builder never installs or elevates.
+- Add metadata/CLI regressions and a disposable hosted Ubuntu install, renamed upgrade, removal/reinstall and encrypted vault/backup preservation fixture. Exact-source CI remains pending.
+- Packages remain unsigned previews tied to their build host ABI. macOS installers, signing, verified updates and physical-device acceptance remain open.
+
 ## [v0.28.0] - 2026-10-28
 
 - Start distribution integrity tooling with explicit `package-manifest` and `verify-package` developer commands. Canonical file/size/SHA-256 inventories require a separately trusted manifest digest; existing descriptors are never overwritten automatically.
