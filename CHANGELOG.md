@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Add native macOS `package-macos` CLI tooling: pinned source snapshot, stable `.app`/receipt identity, escaped property-list metadata, native architecture/system-library checks, normalized permissions and exclusive unsigned `.pkg` output. No install or elevation in the builder.
 - Add public metadata/unsupported-host regressions and guarded hosted macOS install, renamed upgrade, app removal/reinstall, launcher inspection and authenticated vault/backup preservation acceptance. Exact-source CI pending.
+- Reject reserved device IDs and trailing-dot identities in both native package planners, matching the runtime portability rules; regression tests reproduce the formerly accepted invalid configurations.
 - Signing/notarization, Finder/Gatekeeper acceptance, older macOS/Intel compatibility, physical recovery and authenticated updates remain open.
 
 ## [v0.28.1] - 2026-10-29

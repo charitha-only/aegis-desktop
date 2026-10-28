@@ -21,3 +21,6 @@ test('macOS packaging CLI rejects unsupported hosts before opening input',{skip:
  const result=spawnSync(process.execPath,[path.resolve('aegis-cli/bin/aegis.js'),'package-macos','missing','app.pkg','a'.repeat(64)],{encoding:'utf8'});
  assert.equal(result.status,1);assert.match(result.stderr,/native macOS/);
 });
+test('macOS plans reject identities the cross-platform runtime cannot open',()=>{
+ for(const appId of ['Example.','CON','nul.settings','COM1.app','lpt9']) assert.throws(()=>macosPackagePlan({...config,appId},{architecture:'arm64'}));
+});

@@ -10,6 +10,7 @@ async function command(program,args,cwd) {return (await execute(program,args,{cw
 export function debianPackagePlan(config,{architecture,maintainer}) {
   const field=(value,max=256)=>typeof value==='string' && value.length>0 && value.length<=max && !/[\p{Cc}\p{Cf}]/u.test(value);
   if(!config || !field(config.appId,128) || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(config.appId)
+    || config.appId.endsWith('.') || /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(config.appId)
     || !field(config.name) || !field(config.version,128) || !/^[0-9][A-Za-z0-9.+~:-]*$/.test(config.version)
     || (config.description!==undefined && !field(config.description,1024))
     || !field(maintainer) || !/^[^<>]+ <[^<>\s@]+@[^<>\s@]+>$/.test(maintainer)

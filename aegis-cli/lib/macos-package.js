@@ -11,6 +11,7 @@ const xml=value=>value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll
 const plist=body=>`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">${body}</plist>\n`;
 export function macosPackagePlan(config,{architecture}) {
   if(!config || typeof config.appId!=='string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(config.appId)
+    || config.appId.endsWith('.') || /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(config.appId)
     || typeof config.name!=='string' || !config.name.trim() || config.name.length>256 || /[\p{Cc}\p{Cf}\p{Cs}]/u.test(config.name)
     || typeof config.version!=='string' || !/^[0-9]{1,4}\.[0-9]{1,2}\.[0-9]{1,2}$/.test(config.version)
     || !['x64','arm64'].includes(architecture)) throw new Error('Invalid macOS package metadata or architecture; use a numeric major.minor.patch version');

@@ -28,3 +28,6 @@ test('Debian CLI reports its native-host requirement before reading an input bun
   assert.equal(result.status,1);
   assert.match(result.stderr,/native Linux/);
 });
+test('Debian plans reject identities the cross-platform runtime cannot open',()=>{
+ for(const appId of ['Example.','CON','nul.settings','COM1.app','lpt9']) assert.throws(()=>debianPackagePlan({...config,appId},options));
+});
