@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Add offline `verify-update` developer tooling with domain-separated Ed25519 signatures over exact JSON payload bytes and separately provisioned public key/policy inputs. No network retrieval, installation, execution or policy mutation occurs.
 - Require matching app/OS/architecture, strictly newer numeric release version, advancing caller-supplied sequence floor, unexpired metadata, exact artifact size and SHA-256. Bound metadata/artifact reads and reject ambiguous schema/base64/JSON forms and non-public signing-key inputs.
-- Add publisher/tamper/target/expiry/rollback/schema/size/CLI regressions plus actual native-core artifact verification with ephemeral test keys. Exact-source three-OS CI pending.
+- Add publisher/tamper/target/expiry/rollback/schema/size/CLI regressions plus actual native-core artifact verification with ephemeral test keys. Exact-source three-OS checks and Windows installer acceptance passed; see the verification ledger.
 - Runtime updater remains disabled. Persistent rollback/retry state, owner key provisioning/rotation, transactional application/recovery, OS signing and production update acceptance remain open. This is not a TUF implementation.
 
 ## [v0.28.2] - 2026-10-29
