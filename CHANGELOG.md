@@ -4,7 +4,7 @@
 - Resolve npm-cli.js beside the active Node runtime and execute it directly with Node rather than selecting PATH npm/npm.cmd through a Windows shell. Doctor reports those same tool choices; debug development shares Cargo selection and honors CARGO_HOME.
 - Doctor also checks the core Rust 1.92+ compiler floor and runs version diagnostics in project context. Missing tools remain structured diagnostic failures with installation hints. Plans do not execute tools or establish compiler/linker usability.
 - Prevent diagnostic version queries from implicitly installing a missing Rustup toolchain using RUSTUP_AUTO_INSTALL=0; a real Rustup proxy/owned-loopback regression reproduced distribution requests before the fix.
-- Add five public plan/diagnostic regressions. Existing both-template build/package and development lifecycle acceptance cover execution. Exact-source CI pending.
+- Add five public plan/diagnostic regressions. Existing both-template build/package and development lifecycle acceptance cover execution. Exact-source three-OS portable/native and Windows installer checks passed; see the verification ledger.
 
 # v0.29.6 — Vanilla TypeScript starter (2026-10-29)
 
