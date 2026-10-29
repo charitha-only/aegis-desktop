@@ -24,7 +24,7 @@ try {
   await mkdir(path.join(fixture,'src-ui/src'),{recursive:true});
   await writeFile(path.join(fixture,'src-ui/package.json'),'{"type":"module"}');
   await writeFile(path.join(fixture,'src-ui/index.html'),'<!doctype html><title>Owned dev fixture</title><script type="module" src="/src/aegis-bridge.ts"></script>');
-  for(const name of ['aegis-bridge.ts','bridge-origin.mjs']) await cp(path.join('src-ui/src',name),path.join(fixture,'src-ui/src',name));
+  for(const name of ['aegis-bridge.ts','bridge-origin.mjs','ipc-contract.ts']) await cp(path.join('src-ui/src',name),path.join(fixture,'src-ui/src',name));
   await writeFile(path.join(fixture,'src-ui/.env.local'),'VITE_AEGIS_BRIDGE_URL=file:///TEST_ONLY_stale-override');
   let alias=fixture;
   if(process.platform==='win32') {
