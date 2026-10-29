@@ -3,7 +3,7 @@
 - Replace silent native-handler overwrites with `RegistrationError::DuplicateName`, preserving the original registration and its disabled state.
 - Validate bounded descriptor names/version/author/description and supported unique grants before publication. Limit registry size to 128 including built-ins.
 - `register` and `register_builtin_plugins` now return `Result`; application startup propagates built-in registration errors. Native callers must handle errors. Faulted handlers require process restart; registration no longer resets them.
-- Three public Rust regressions reproduced duplicate overwrite, invalid-descriptor publication and unlimited registration before fixes. Exact-source CI pending. Native handlers remain trusted host code with no CPU/memory sandbox.
+- Three public Rust regressions reproduced duplicate overwrite, invalid-descriptor publication and unlimited registration before fixes. Exact-source three-OS portable/native and Windows installer checks passed; see the verification ledger. Native handlers remain trusted host code with no CPU/memory sandbox.
 
 # v0.29.0 — Developer workflow preview (2026-10-29)
 
