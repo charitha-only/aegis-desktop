@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Add read-only `inspect-update-state` operator diagnostics: validated cached observation, lock/pending presence and a point-in-time blocker snapshot. Explicitly report that the cached record is not fresh authentication.
 - Preserve all files and fail closed on missing/corrupt committed state. Do not infer stale locks, inspect blocker contents, clear files, advance floors or enable installation.
-- Add four public API/CLI regressions and native-artifact diagnostic checks, including inspection under real Linux filesystem exhaustion. Exact-source CI pending.
+- Add four public API/CLI regressions and native-artifact diagnostic checks, including inspection under real Linux filesystem exhaustion. Exact-source three-OS checks, Linux full-filesystem inspection and Windows installer acceptance passed; see the verification ledger.
 - Operator crash recovery, runtime install/recovery, physical durability and tamper-resistant state remain separate gates.
 
 ## [v0.28.6] - 2026-10-29
