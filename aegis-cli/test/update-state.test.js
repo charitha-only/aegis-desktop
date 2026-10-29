@@ -71,3 +71,30 @@ test('a state directory stays bound to its original app and target even if exter
  const policy=JSON.parse(await readFile(options.policyFile,'utf8'));policy.appId='org.other.app';await writeFile(options.policyFile,JSON.stringify(policy));
  await publish({appId:policy.appId,version:'3.0.0',sequence:3});await assert.rejects(verifyTrackedUpdate(options),/identity/);
 }));
+test('state inspection reports cached observations without authenticating or modifying them',()=>fixture(async({options})=>{
+ const {inspectUpdateState}=await import('../lib/update-state.js');
+ await initializeUpdateState(options);await verifyTrackedUpdate(options);
+ const before=await readFile(path.join(options.stateDirectory,'state.json'));
+ const report=await inspectUpdateState(options);
+ assert.equal(report.lastVerified.version,'2.0.0');assert.equal(report.lockPresent,false);assert.equal(report.pendingPresent,false);
+ assert.equal(report.verificationBlockedAtInspection,false);assert.equal(report.recordAuthenticated,false);assert.equal(report.snapshotOnly,true);
+ assert.deepEqual(await readFile(path.join(options.stateDirectory,'state.json')),before);
+}));
+test('state inspection sees blockers without deleting or reading their contents',()=>fixture(async({options})=>{
+ const {inspectUpdateState}=await import('../lib/update-state.js');await initializeUpdateState(options);
+ const lock=path.join(options.stateDirectory,'.lock'),pending=path.join(options.stateDirectory,'state.pending');
+ await writeFile(lock,'preserve lock');await writeFile(pending,'preserve pending');
+ const report=await inspectUpdateState(options);assert.equal(report.lastVerified,null);assert.equal(report.lockPresent,true);assert.equal(report.pendingPresent,true);assert.equal(report.verificationBlockedAtInspection,true);
+ assert.equal(await readFile(lock,'utf8'),'preserve lock');assert.equal(await readFile(pending,'utf8'),'preserve pending');
+}));
+test('state inspection fails closed on missing or malformed committed state',()=>fixture(async({options})=>{
+ const {inspectUpdateState}=await import('../lib/update-state.js');await assert.rejects(inspectUpdateState(options));
+ await initializeUpdateState(options);const filename=path.join(options.stateDirectory,'state.json');await writeFile(filename,'corrupt');
+ await assert.rejects(inspectUpdateState(options));assert.equal(await readFile(filename,'utf8'),'corrupt');
+}));
+test('state inspection CLI reports blockers without implying successful verification',()=>fixture(async({options})=>{
+ await initializeUpdateState(options);await writeFile(path.join(options.stateDirectory,'.lock'),'preserve');
+ const result=spawnSync(process.execPath,[path.resolve('aegis-cli/bin/aegis.js'),'inspect-update-state',options.stateDirectory],{encoding:'utf8',timeout:10000});
+ assert.equal(result.status,0,result.stderr);const report=JSON.parse(result.stdout);assert.equal(report.verificationBlockedAtInspection,true);assert.equal(report.recordAuthenticated,false);
+ assert.equal(await readFile(path.join(options.stateDirectory,'.lock'),'utf8'),'preserve');
+}));

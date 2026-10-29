@@ -56,3 +56,14 @@ export async function verifyTrackedUpdate(options) {
   return {...verified,tracked:true,retry,installed:false,stateDirectory:directory};
  } finally {await lock.close();await rm(lockPath);}
 }
+/** Read-only point-in-time diagnostics; cached state is not fresh authentication. */
+export async function inspectUpdateState(options) {
+ const directory=root(options),state=await readState(directory);
+ async function present(name) {
+  try {await lstat(path.join(directory,name));return true;}
+  catch(error) {if(error.code==='ENOENT') return false;throw error;}
+ }
+ const lockPresent=await present('.lock'),pendingPresent=await present('state.pending');
+ return {schemaVersion:1,stateDirectory:directory,lastVerified:state.lastVerified,lockPresent,pendingPresent,
+  verificationBlockedAtInspection:lockPresent||pendingPresent,recordAuthenticated:false,snapshotOnly:true,autoApply:false};
+}

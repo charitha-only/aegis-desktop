@@ -26,3 +26,15 @@ Tests cover persisted retries/new CLI processes, rollback/equivocation, invalid 
 Implementation references: [Node filesystem API](https://nodejs.org/download/release/v22.16.0/docs/api/fs.html) for file sync/rename operations and [TUF security goals](https://theupdateframework.io/docs/security/) for the wider threat model. This project-specific observation record does not implement the complete TUF roles or client workflow.
 
 Exact-source evidence: `7662d6f`, portable workflow `40837986760`, passed tracked native-artifact retries on Windows/Linux/macOS and real Linux ENOSPC state-preservation/advancement checks. Native workflow `40837986717` and Windows installer/upgrade/backup/real-lock workflow `40837986783` also passed. These are hosted tests, not physical power-loss or tamper-proof storage evidence.
+
+## Read-only operator diagnostics
+
+```text
+node aegis-cli/bin/aegis.js inspect-update-state <trusted-state-directory>
+```
+
+The inspector validates the committed state using the same bounded strict reader, then reports `lastVerified`, `lockPresent`, `pendingPresent` and `verificationBlockedAtInspection`. It never acquires a writer lock, writes files, reads lock/pending contents, clears them or decides whether a lock is stale. Missing/corrupt state is an error, not an invitation to reset history.
+
+Reports have `snapshotOnly: true`, `recordAuthenticated: false` and `autoApply: false`. This is cached local metadata, not fresh signature/artifact/expiry verification. A false blocker flag is not permission to install: another process can change the directory immediately, and key/policy/clock checks have not run. Use tracked verification for an actual attempt and stop all state users before operator recovery. A coherent transactional snapshot, automated stale-lock clearing and crash recovery are not provided.
+
+Tests preserve committed and blocker bytes, reject invalid state, exercise separate CLI execution and check the native-artifact record on all three hosted OSes. The Linux filesystem-fault fixture also inspects the retained observation while its private tmpfs is full; inspection must require no filesystem writes.

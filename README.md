@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.28.6-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.28.6-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.28.7-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.28.7-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -16,11 +16,11 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.28.6 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
+[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.28.7 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
 
 </div>
 
-> **v0.28.6 — experimental framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock and Linux Debian/macOS package install/upgrade/reinstall data-preservation acceptance run on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
+> **v0.28.7 — experimental framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock and Linux Debian/macOS package install/upgrade/reinstall data-preservation acceptance run on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
 >
 > Hardware authentication, TPM, HSM/PKCS#11, biometrics, GPU, P2P, encrypted IPC and automatic updates remain unavailable. Full distribution/architecture installer coverage, owner signing/notarization, managed native multi-window and physical/accessibility acceptance remain incomplete. Sensitive production applications require application-specific verification and an independent audit. Historical prototype descriptions below do not establish present capabilities or performance guarantees.
 >
@@ -88,14 +88,15 @@ and twenty IPC samples with host details and binary SHA-256. Use
 explicit limits. These are core-only measurements, not whole-app RAM or UI latency.
 See [performance tooling and physical device procedure](docs/PERFORMANCE_EVIDENCE.md).
 
-## 📜 Version & Release Notes (`v0.28.6`)
+## 📜 Version & Release Notes (`v0.28.7`)
 
-The current source version is **`v0.28.6` (Experimental)**. Published tags and completed checks are recorded in the [verification ledger](docs/IMPLEMENTATION_STATUS.md).
+The current source version is **`v0.28.7` (Experimental)**. Published tags and completed checks are recorded in the [verification ledger](docs/IMPLEMENTATION_STATUS.md).
 
 The **v0.27** performance tooling still requires whole-app/low-resource measurements. The current **v0.28** distribution tooling preview still requires native installer parity, signing and authenticated updates. The roadmap continues with **v0.29** developer APIs/templates/plugins, and **v1.0** stable APIs plus physical-device and independent audit evidence. These are acceptance goals, not completed features.
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
+| **`v0.28.7`** | **State diagnostics preview; CI pending** | Read-only cached-observation and lock/pending inspection; no stale-lock inference, clearing or authentication claim. See [state diagnostics](docs/UPDATE_STATE.md#read-only-operator-diagnostics). |
 | **`v0.28.6`** | **Persistent observation preview** | Explicit state initialization, tracked signed verification, sequence/version floors and authenticated same-release retries. No installed-version or automatic-apply change. Three-OS and Windows installer checks passed for source `7662d6f`. See [update state](docs/UPDATE_STATE.md). |
 | **`v0.28.5`** | **Bounded Linux filesystem fault acceptance** | Real Linux tmpfs exhaustion, partial-stage rejection/cleanup, space-restoration retry and preservation of an existing verified stage/policy. Windows/macOS disk-full and physical fault acceptance remain open. Three-OS and Windows installer checks passed for source `2ead4e7`. See [filesystem fault tests](docs/UPDATE_FILESYSTEM_FAULTS.md). |
 | **`v0.28.4`** | **Verified staging preview** | Independent bounded update copy, post-copy signature verification, readiness marker and explicit inspection. Existing stages are never overwritten; automatic installation stays disabled. Three-OS and Windows installer checks passed for source `af77854`. See [staging](docs/UPDATE_STAGING.md). |

@@ -66,6 +66,8 @@ try {
  const retained=inspect(destination);assert.equal(retained.status,0,retained.stderr);
  await publish({...manifest,version:'3.0.0',sequence:3});
  const failedObservation=track();assert.equal(failedObservation.status,1,failedObservation.stderr);assert.match(failedObservation.stderr,/ENOSPC/);
+ const diagnostic=invoke(['inspect-update-state',state]);assert.equal(diagnostic.status,0,diagnostic.stderr);
+ const snapshot=JSON.parse(diagnostic.stdout);assert.equal(snapshot.lastVerified.version,'2.0.0');assert.equal(snapshot.recordAuthenticated,false);assert.equal(snapshot.verificationBlockedAtInspection,false);
  await publish(manifest);const oldObservation=track();assert.equal(oldObservation.status,0,oldObservation.stderr);assert.equal(JSON.parse(oldObservation.stdout).retry,true);
  await rm(filler);const recovered=stage(second);assert.equal(recovered.status,0,recovered.stderr);assert.equal(inspect(second).status,0);
  assert.equal(await readFile(policyFile,'utf8'),policyBytes);
