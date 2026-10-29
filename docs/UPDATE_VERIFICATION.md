@@ -35,3 +35,5 @@ Public API/CLI tests cover valid signatures, wrong publishers, changed metadata/
 Remaining gates: securely provisioned/rotated owner keys, threshold/revocation policy, persisted rollback/retry state, transactional install/recovery, installer/code signing, physical interruption tests and independent review. This preview is not TUF compliance. Design references: [Node crypto API](https://nodejs.org/api/crypto.html) and [TUF's security design](https://theupdateframework.io/docs/security/).
 
 Hosted evidence: source `bcff691` passed actual Windows/Linux/macOS native-artifact CLI verification and byte-tamper rejection in portable workflow `40781168778`. Test publishers are ephemeral and distinct from any deployed trust root. Exact full-source workflow results are recorded in IMPLEMENTATION_STATUS.md.
+
+For a separately copied, reverified artifact and explicit readiness inspection, use [offline staging](UPDATE_STAGING.md). Staging does not advance policy or complete the runtime installation/recovery gates.

@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Add offline `stage-update` and `inspect-update` commands. Create an exclusive new directory, bound copied artifact/envelope bytes, reverify the copy against external trust inputs, sync files and publish the readiness marker last. No installation or trusted-policy mutation.
 - Reject missing/modified readiness markers, extra files, staged-byte tampering, newly expired/disallowed metadata and replacement of existing stages. Concurrent attempts produce one complete stage. Invalid downloads leave no destination and repaired downloads can retry.
-- Add six public API/CLI tests and actual native-core staging/source-change/tamper fixtures. Exact-source CI pending.
+- Add six public API/CLI tests and actual native-core staging/source-change/tamper fixtures. Exact-source three-OS checks and Windows installer acceptance passed; see the verification ledger.
 - Runtime updates remain disabled. Full power-loss/disk-full acceptance, persistent rollback/retry state, owner key lifecycle and transactional application/recovery remain open.
 
 ## [v0.28.3] - 2026-10-29

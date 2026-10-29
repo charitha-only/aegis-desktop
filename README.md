@@ -96,7 +96,7 @@ The **v0.27** performance tooling still requires whole-app/low-resource measurem
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.28.4`** | **Verified staging preview; CI pending** | Independent bounded update copy, post-copy signature verification, readiness marker and explicit inspection. Existing stages are never overwritten; automatic installation stays disabled. See [staging](docs/UPDATE_STAGING.md). |
+| **`v0.28.4`** | **Verified staging preview** | Independent bounded update copy, post-copy signature verification, readiness marker and explicit inspection. Existing stages are never overwritten; automatic installation stays disabled. Three-OS and Windows installer checks passed for source `af77854`. See [staging](docs/UPDATE_STAGING.md). |
 | **`v0.28.3`** | **Signed metadata verification preview** | Offline Ed25519 verification against a separately trusted key/policy; target, expiry, version/sequence and streamed artifact checks. Runtime automatic updates remain disabled. Three-OS and Windows installer checks passed for source `bcff691`. See [update verification](docs/UPDATE_VERIFICATION.md). |
 | **`v0.28.2`** | **macOS package preview** | Native unsigned `.pkg` builder, stable `.app` identity and guarded install/upgrade/reinstall data-preservation fixture. Three-OS checks and Windows acceptance passed for source `65ff429`. See [macOS packaging](docs/MACOS_PACKAGING.md). |
 | **`v0.28.1`** | **Linux Debian preview** | Native Debian builder and guarded install/upgrade/reinstall vault preservation fixture; see [Debian packaging](docs/DEBIAN_PACKAGING.md). Ubuntu package lifecycle, three-OS checks and Windows acceptance passed for source `d872e4c`; packages remain unsigned. |
