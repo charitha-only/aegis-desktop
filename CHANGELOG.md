@@ -1,3 +1,10 @@
+# v0.29.6 — Vanilla TypeScript starter (2026-10-29)
+
+- Add `create <new-directory> --template=vanilla` alongside the existing React default/explicit option. The DOM-based starter uses the same typed SDK/security defaults without a React renderer in its frontend bundle. Shared development dependencies remain locked and include React tooling.
+- Generate application-specific HTML titles and starter entry paths. Reject unsupported/repeated options before output; validate malformed source configuration before creating partial projects. General filesystem failures are not made transactional.
+- Extend three-OS clean-project acceptance to locked Rust/UI builds and verified portable packages for both templates, with a 64 KiB raw-JavaScript budget for the stock vanilla starter. This is a fixture asset budget, not whole-app or physical-device performance evidence.
+- Four new public create regressions cover vanilla output, malformed source config, invalid template options and reusing a generated vanilla project to create either template. Exact-source CI pending.
+
 # v0.29.5 — Vault SDK data contracts (2026-10-29)
 
 - Validate vault write receipts, session credentials and ordered positive integer timeouts before exposing typed success. Keep process-handshake credentials distinct from returned vault-session tokens.
