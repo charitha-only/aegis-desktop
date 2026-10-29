@@ -3,7 +3,7 @@
 - Bound actual received JSON body bytes before decoding/parsing: 4 KiB handshake/rate-limit bodies and configurable IPC success bodies (16 MiB default, 1 KiB–64 MiB allowed). Oversized responses return RESPONSE_TOO_LARGE and abort the owned fetch.
 - Coalesce concurrent init/invoke calls into one pending handshake per client. Explicit refresh clears the cached token before joining callers; failed handshakes send no dependent commands and permit a fresh shared retry. Already-issued commands are not cancelled.
 - Use a growing bounded byte buffer instead of retaining arbitrarily many chunks. This limits response-byte accumulation, not total JS/browser memory or server-side effects.
-- Add five real-loopback SDK regressions, bringing the fault suite to nine. Exact-source CI pending; nested data schemas, browser/device acceptance and independent audit remain open.
+- Add five real-loopback SDK regressions, bringing the fault suite to nine. Exact-source portable/native checks on all three OSes and Windows installer acceptance passed; see the verification ledger. Nested data schemas, browser/device acceptance and independent audit remain open.
 
 # v0.29.2 — SDK transport contract (2026-10-29)
 
