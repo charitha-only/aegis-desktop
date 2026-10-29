@@ -46,6 +46,24 @@ try {
   assert.equal(security.success, true, security.error);
   assert.equal(security.data.nonceVerified, true);
   assert.equal(typeof security.data.activeCapabilities.crypto, 'boolean');
+  const password='TEST_ONLY_password_123';
+  const stored=await sdk.vaultEncryptStore('sdk-contract','TEST_ONLY_hello',password);
+  assert.equal(stored.success,true,stored.error);
+  assert.equal(stored.data.filename,'sdk-contract.vault');
+  const decrypted=await sdk.vaultDecryptRetrieve(stored.data.filename,password);
+  assert.equal(decrypted.success,true,decrypted.error);
+  assert.equal(decrypted.data.decryptedContent,'TEST_ONLY_hello');
+  const unlocked=await sdk.vaultSessionUnlock(stored.data.filename,password);
+  if(platform.data.os==='windows' && security.data.windowsLifecycleMonitorActive && security.data.windowsSessionAvailable) {
+    assert.equal(unlocked.success,true,unlocked.error);
+    const read=await sdk.vaultSessionRead(stored.data.filename,unlocked.data.sessionToken);
+    assert.equal(read.success,true,read.error);
+    assert.equal(read.data.decryptedContent,'TEST_ONLY_hello');
+  } else {
+    assert.equal(unlocked.success,false,'Retained session must fail when lifecycle monitoring is unavailable');
+  }
+  assert.equal((await sdk.vaultSessionLock()).success,true);
+  if(unlocked.success) assert.equal((await sdk.vaultSessionRead(stored.data.filename,unlocked.data.sessionToken)).success,false);
   const denied = await client('file:///not-an-ipc-origin');
   const init = await denied.init();
   assert.equal(init.success, false);
@@ -53,7 +71,7 @@ try {
   const invoke = await denied.invoke('platform_info', {}, 'TEST_ONLY_invalid-nonce');
   assert.equal(invoke.success, false);
   assert.match(invoke.error, /Invalid IPC bridge origin/);
-  console.log('PASS: real TypeScript SDK validates native platform/directories/security contracts and rejects invalid endpoints before fetching');
+  console.log('PASS: real TypeScript SDK validates platform/security/vault contracts, retained-session lifecycle gates and invalid endpoints');
 } finally {
   await Promise.all(servers.map(server => server.close()));
   if (child.exitCode === null) child.kill();

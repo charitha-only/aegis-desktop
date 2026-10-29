@@ -5,8 +5,21 @@ const text = (value: unknown): value is string => typeof value === 'string' && v
 const booleans = (value: Record<string, unknown>, keys: string[]) => keys.every(key => typeof value[key] === 'boolean');
 const optionalBooleans = (value: Record<string, unknown>, keys: string[]) =>
   keys.every(key => !(key in value) || typeof value[key] === 'boolean');
+const positiveInteger = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 
 export function validCommandData(command: string, data: unknown): boolean {
+  if (command === 'vault_session_lock') return record(data) && data.locked === true;
+  if (command === 'vault_session_unlock') {
+    return record(data) && typeof data.sessionToken === 'string' && /^[a-f0-9]{64}$/.test(data.sessionToken)
+      && positiveInteger(data.idleTimeoutSeconds) && positiveInteger(data.absoluteTimeoutSeconds)
+      && data.idleTimeoutSeconds <= data.absoluteTimeoutSeconds;
+  }
+  if (command === 'vault_session_read' || command === 'vault_decrypt_retrieve') {
+    return record(data) && text(data.filename) && typeof data.decryptedContent === 'string' && data.integrityVerified === true;
+  }
+  if (command === 'vault_encrypt_store') {
+    return record(data) && text(data.filename) && text(data.status) && positiveInteger(data.envelopeLength);
+  }
   if (command === 'platform_info') {
     return record(data) && ['windows','linux','macos'].includes(data.os as string)
       && text(data.architecture) && booleans(data, ['embeddedWebview','lifecycleAdapterCompiled','installerAdapterCompiled','osKeyStore','encryptedFileStorage']);

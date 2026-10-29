@@ -1,4 +1,4 @@
-# TypeScript SDK transport preview — v0.29.4
+# TypeScript SDK transport preview — v0.29.5
 
 The existing `aegis` singleton remains available. Applications may instead import `AegisBridge` from their generated `src/aegis-bridge` and construct an independent client:
 
@@ -14,7 +14,7 @@ The default timeout is 15000 ms, configurable to an integer from 1 to 120000 ms.
 
 Handshake tokens must match the current core's 32-byte lowercase hex encoding. Failed explicit initialization clears the cached process token. It does not lock an authenticated vault or invalidate credentials held by another client. Concurrent `init` calls and automatic initialization by `invoke` share one pending handshake per client. Calling `init` after initialization starts an explicit refresh and clears cached credentials before subsequent dependent invocations join it. A failed handshake sends no dependent commands; a later call starts a fresh attempt. Separate client instances do not share state. Already-issued commands continue and cannot be revoked by refreshing the process token.
 
-IPC responses must use a successful HTTP status and a JSON envelope with the matching request ID and a boolean success field. Backend failure envelopes require a string error. HTTP 429 remains an HTTP failure with a string message even if its response field is malformed. As of v0.29.4, the three commands listed below additionally validate runtime data. Other commands remain unvalidated below the envelope; compile-time types do not establish runtime data validity.
+IPC responses must use a successful HTTP status and a JSON envelope with the matching request ID and a boolean success field. Backend failure envelopes require a string error. HTTP 429 remains an HTTP failure with a string message even if its response field is malformed. As of v0.29.5, the covered commands listed below additionally validate runtime data. Other commands remain unvalidated below the envelope; compile-time types do not establish runtime data validity.
 
 Local failures add optional `errorCode` values: `HTTP_ERROR`, `INVALID_RESPONSE`, `NETWORK_ERROR`, `TIMEOUT`, `RESPONSE_TOO_LARGE`. Existing `id`, `success` and human-readable `error` fields remain. Backend authorization/validation errors retain their existing wire contract and do not necessarily include this local field. A timeout or interrupted response can leave operation completion unknown. Error strings are diagnostic text, not stable identifiers or safe HTML.
 
@@ -44,4 +44,21 @@ Malformed successful data returns `success:false`, the original request ID and `
 
 These are runtime shape checks, not proof that a capability is actually enforced, a directory is safe/authorized/absolute, or a backend is trustworthy. The Rust runtime still authorizes operations and resolves directories. Applications must not derive permissions from a type check or treat data from a compromised core as trusted. Existing integrations returning incomplete shapes for these known commands must match the documented contract; otherwise they now fail closed.
 
-The SDK fault suite has twelve cases, including malformed platform/directory/security shapes, true/false typing, nested grants, additive fields, Unicode strings and unchanged backend denials. The actual-core fixture also calls all three commands on each OS and checks native directory roots. Browser engines, physical devices and remaining command schemas require additional acceptance.
+The SDK fault suite has sixteen cases, including malformed platform/directory/security shapes, true/false typing, nested grants, additive fields, Unicode strings and unchanged backend denials. The actual-core fixture calls the platform commands on each OS and checks native directory roots. It also exercises the vault contract described below. Browser engines, physical devices and remaining command schemas require additional acceptance.
+
+## Vault response contracts — v0.29.5
+
+Successful data for these commands is also validated through the shared invoke path:
+
+| Command | Required data |
+| --- | --- |
+| `vault_encrypt_store` | Nonempty filename/status strings and positive safe-integer envelopeLength. |
+| `vault_session_unlock` | A 64-character lowercase-hex sessionToken, positive safe-integer idleTimeoutSeconds and absoluteTimeoutSeconds, with idle no greater than absolute. |
+| `vault_session_lock` | Object containing locked exactly true. |
+| `vault_session_read`, `vault_decrypt_retrieve` | Nonempty filename, string decryptedContent (including empty string) and integrityVerified exactly true. |
+
+The current core emits these shapes; custom implementations returning malformed fields now receive INVALID_RESPONSE. Successful responses can include additive fields. Error envelopes remain unchanged. Rejected data, including plaintext or malformed session credentials, is not copied into the returned failure or its error message. This does not erase the fetched/parsed bytes from JavaScript/browser memory, retract earlier results or lock the server automatically. A server-side operation may already have happened despite client rejection; do not automatically replay writes or unlocks.
+
+Validation of integrityVerified is validation of the server's acknowledgement, not independent cryptographic verification by the browser. It cannot detect a malicious core that fabricates an otherwise valid result. Vault authorization and encryption remain backend responsibilities. The SDK does not retain returned vault-session tokens or use them as the process handshake nonce; the application owns their handling.
+
+The actual-core fixture writes/decrypts TEST_ONLY content under owned temporary roots, confirms lock acknowledgement and tests retained-session reads plus post-lock rejection when Windows lifecycle/session monitoring is available. On other/unavailable lifecycle environments it requires unlock failure. This is not physical lock/suspend acceptance or enabling retained sessions on unsupported platforms.

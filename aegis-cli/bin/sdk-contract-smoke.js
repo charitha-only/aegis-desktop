@@ -226,3 +226,88 @@ test('SDK validates nested security flags without treating false as a missing va
     assert.equal(accepted.data.activeCapabilities.futureGrant,'kept');
   });
 });
+test('SDK requires a confirmed lock acknowledgement before returning vault lock success',async()=>{
+  let data;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake') return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request) body+=chunk;
+    json(response,{id:JSON.parse(body).id,success:true,data});
+  },async({aegis})=>{
+    for(const invalid of [null,{}, {locked:false}, {locked:'true'}]) {
+      data=invalid;
+      const result=await aegis.vaultSessionLock();
+      assert.equal(result.success,false);
+      assert.equal(result.errorCode,'INVALID_RESPONSE');
+    }
+    data={locked:true};
+    assert.equal((await aegis.vaultSessionLock()).success,true);
+  });
+});
+test('SDK accepts only valid vault session credentials and positive ordered timeout values',async()=>{
+  const valid={sessionToken:'d'.repeat(64),idleTimeoutSeconds:60,absoluteTimeoutSeconds:300};
+  let data;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake') return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request) body+=chunk;
+    json(response,{id:JSON.parse(body).id,success:true,data});
+  },async({aegis})=>{
+    for(const invalid of [null,{}, {...valid,sessionToken:'bad'}, {...valid,idleTimeoutSeconds:0}, {...valid,idleTimeoutSeconds:'60'}, {...valid,absoluteTimeoutSeconds:30}, {...valid,absoluteTimeoutSeconds:300.5}]) {
+      data=invalid;
+      const result=await aegis.vaultSessionUnlock('fixture.vault','TEST_ONLY_password');
+      assert.equal(result.success,false);
+      assert.equal(result.errorCode,'INVALID_RESPONSE');
+      assert.equal(result.data,undefined);
+    }
+    data=valid;
+    const accepted=await aegis.vaultSessionUnlock('fixture.vault','TEST_ONLY_password');
+    assert.equal(accepted.success,true);
+    assert.equal(accepted.data.idleTimeoutSeconds,60);
+    assert.equal(aegis.getNonce(),'a'.repeat(64),'Vault credentials must not replace the process handshake token');
+  });
+});
+test('SDK rejects unverified or malformed vault plaintext without exposing it as successful data',async()=>{
+  let data;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake') return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request) body+=chunk;
+    json(response,{id:JSON.parse(body).id,success:true,data});
+  },async({aegis})=>{
+    for(const call of [()=>aegis.vaultSessionRead('fixture.vault','d'.repeat(64)),()=>aegis.vaultDecryptRetrieve('fixture.vault','TEST_ONLY_password')]) {
+      for(const invalid of [null,{}, {filename:'fixture.vault',decryptedContent:'TEST_ONLY_plaintext',integrityVerified:false}, {filename:'fixture.vault',decryptedContent:42,integrityVerified:true}]) {
+        data=invalid;
+        const result=await call();
+        assert.equal(result.success,false);
+        assert.equal(result.errorCode,'INVALID_RESPONSE');
+        assert.equal(result.data,undefined);
+        assert.equal(JSON.stringify(result).includes('TEST_ONLY_plaintext'),false);
+      }
+      data={filename:'fixture.vault',decryptedContent:'',integrityVerified:true};
+      const accepted=await call();
+      assert.equal(accepted.success,true);
+      assert.equal(accepted.data.decryptedContent,'');
+    }
+  });
+});
+test('SDK validates vault write receipts and leaves backend errors unchanged',async()=>{
+  let data,denied=false;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake') return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request) body+=chunk;
+    const {id}=JSON.parse(body);
+    json(response,denied?{id,success:false,error:'Fixture write denied'}:{id,success:true,data});
+  },async({aegis})=>{
+    for(const invalid of [null,{}, {filename:'fixture.vault',status:'stored',envelopeLength:-1}, {filename:'fixture.vault',status:'stored',envelopeLength:'200'}, {filename:'',status:'stored',envelopeLength:200}]) {
+      data=invalid;
+      const result=await aegis.vaultEncryptStore('fixture','TEST_ONLY_plaintext','TEST_ONLY_password');
+      assert.equal(result.success,false);
+      assert.equal(result.errorCode,'INVALID_RESPONSE');
+    }
+    data={filename:'fixture.vault',status:'stored',envelopeLength:200};
+    assert.equal((await aegis.vaultEncryptStore('fixture','TEST_ONLY_plaintext','TEST_ONLY_password')).success,true);
+    denied=true;
+    const result=await aegis.vaultEncryptStore('fixture','TEST_ONLY_plaintext','TEST_ONLY_password');
+    assert.equal(result.success,false);
+    assert.equal(result.error,'Fixture write denied');
+    assert.equal(result.errorCode,undefined);
+  });
+});
