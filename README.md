@@ -96,7 +96,7 @@ The **v0.27** performance tooling still requires whole-app/low-resource measurem
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.29.4`** | **Runtime SDK data contracts** | Validate platform, directory and nested security response data before exposing typed success. Windows/Linux checks passed for `244655a`; macOS runners pending, release not tagged. See [SDK contract](docs/SDK_TRANSPORT.md). |
+| **`v0.29.4`** | **Runtime SDK data contracts** | Validate platform, directory and nested security response data before exposing typed success. Three-OS and Windows installer checks passed for source `244655a`. See [SDK contract](docs/SDK_TRANSPORT.md). |
 | **`v0.29.3`** | **Bounded SDK responses** | Actual response-byte budgets and shared concurrent initialization with fail-closed retry. Three-OS and Windows installer checks passed for source `076504a`. See [SDK contract](docs/SDK_TRANSPORT.md). |
 | **`v0.29.2`** | **SDK transport contract** | Validated handshake/envelopes, request deadlines and typed local transport errors. Three-OS and Windows installer checks passed for source `c79ed9f`. See [SDK contract](docs/SDK_TRANSPORT.md). |
 | **`v0.29.1`** | **Plugin registration contract** | Reject duplicate names and invalid descriptors; bounded registry and explicit registration errors. Three-OS and Windows installer checks passed for source `9b600d0`. See [plugin contract](docs/PLUGIN_SECURITY.md). |
