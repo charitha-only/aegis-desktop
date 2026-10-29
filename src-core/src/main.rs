@@ -145,7 +145,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2b. Initialize Plugin Registry
     let plugin_registry = PluginRegistry::new();
-    register_builtin_plugins(&plugin_registry);
+    register_builtin_plugins(&plugin_registry)?;
 
     // 2c. Initialize Auto-Updater
     let auto_updater = Arc::new(AutoUpdater::new(env!("CARGO_PKG_VERSION"), &base_dir));

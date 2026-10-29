@@ -39,6 +39,25 @@ pub struct PluginDescriptor {
     pub capabilities: Vec<String>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum RegistrationError {
+    InvalidDescriptor,
+    RegistryFull,
+    DuplicateName,
+    RegistryUnavailable,
+}
+impl std::fmt::Display for RegistrationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::InvalidDescriptor => "Invalid or unsupported plugin descriptor",
+            Self::RegistryFull => "Plugin registry limit reached (128 registrations)",
+            Self::DuplicateName => "Plugin name is already registered",
+            Self::RegistryUnavailable => "Plugin registry is unavailable",
+        })
+    }
+}
+impl std::error::Error for RegistrationError {}
+
 #[derive(Debug)]
 pub enum PluginError {
     Rejected(String),
@@ -76,11 +95,50 @@ impl PluginRegistry {
     }
 
     /// Register a plugin with a name, descriptor, and handler function.
-    pub fn register<F>(&self, descriptor: PluginDescriptor, handler: F)
+    pub fn register<F>(
+        &self,
+        descriptor: PluginDescriptor,
+        handler: F,
+    ) -> Result<(), RegistrationError>
     where
         F: Fn(&Value, &SecurityEngine) -> Result<Value, String> + Send + Sync + 'static,
     {
-        let mut map = self.plugins.write().unwrap();
+        let name = descriptor.name.as_bytes();
+        let version = descriptor.version.as_bytes();
+        let valid_text =
+            |value: &str, limit| value.len() <= limit && !value.chars().any(char::is_control);
+        let mut capabilities = std::collections::HashSet::new();
+        if name.is_empty()
+            || name.len() > 64
+            || !name[0].is_ascii_lowercase()
+            || !name
+                .iter()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"_-".contains(b))
+            || version.is_empty()
+            || version.len() > 64
+            || !version[0].is_ascii_digit()
+            || !version
+                .iter()
+                .all(|b| b.is_ascii_alphanumeric() || b".+-".contains(b))
+            || !valid_text(&descriptor.description, 1024)
+            || !valid_text(&descriptor.author, 256)
+            || descriptor.capabilities.iter().any(|grant| {
+                !matches!(grant.as_str(), "system_info" | "crypto" | "fs_read")
+                    || !capabilities.insert(grant)
+            })
+        {
+            return Err(RegistrationError::InvalidDescriptor);
+        }
+        let mut map = self
+            .plugins
+            .write()
+            .map_err(|_| RegistrationError::RegistryUnavailable)?;
+        if map.contains_key(&descriptor.name) {
+            return Err(RegistrationError::DuplicateName);
+        }
+        if map.len() >= 128 {
+            return Err(RegistrationError::RegistryFull);
+        }
         map.insert(
             descriptor.name.clone(),
             Arc::new(PluginEntry {
@@ -90,6 +148,7 @@ impl PluginRegistry {
             }),
         );
         println!("[PluginEngine] ✅  Plugin registered: '{}'", map.len());
+        Ok(())
     }
 
     /// Dispatch a call to a registered plugin by name.
@@ -166,7 +225,7 @@ impl PluginRegistry {
 /// Register Aegis built-in demonstration plugins into the registry.
 /// These illustrate how third-party developers can expose custom Rust
 /// functionality through the Aegis plugin capability manifest.
-pub fn register_builtin_plugins(registry: &Arc<PluginRegistry>) {
+pub fn register_builtin_plugins(registry: &Arc<PluginRegistry>) -> Result<(), RegistrationError> {
     // Plugin 1: System Memory Info
     registry.register(
         PluginDescriptor {
@@ -180,7 +239,7 @@ pub fn register_builtin_plugins(registry: &Arc<PluginRegistry>) {
         |_payload, _security| {
             Err("UNAVAILABLE: Native memory statistics provider is not configured".into())
         },
-    );
+    )?;
 
     // Plugin 2: File Checksum Verifier
     registry.register(
@@ -237,7 +296,7 @@ pub fn register_builtin_plugins(registry: &Arc<PluginRegistry>) {
                 "sizeBytes": size
             }))
         },
-    );
+    )?;
 
     // Plugin 3: elapsed time since built-in registration, using a monotonic clock.
     let started = std::time::Instant::now();
@@ -256,7 +315,8 @@ pub fn register_builtin_plugins(registry: &Arc<PluginRegistry>) {
                 "measurementScope": "sinceBuiltinPluginRegistration"
             }))
         },
-    );
+    )?;
 
     println!("[PluginEngine] 🔌  Built-in plugins registered (system_memory, file_checksum, process_uptime)");
+    Ok(())
 }

@@ -1269,7 +1269,7 @@ fn ipc_plugin_dispatch_enforces_declared_capabilities() {
     let security = Arc::new(SecurityEngine::new(manifest, d.path()));
     let handshake = Arc::new(HandshakeSession::new());
     let plugins = crate::plugin::PluginRegistry::new();
-    crate::plugin::register_builtin_plugins(&plugins);
+    crate::plugin::register_builtin_plugins(&plugins).unwrap();
     let router = crate::ipc::IpcRouter::new(
         security,
         handshake.clone(),
@@ -1305,7 +1305,7 @@ fn checksum_plugin_rejects_outside_files_and_uses_active_profile() {
     let d = tempfile::tempdir().unwrap();
     let security = SecurityEngine::new(CapabilityManifest::default(), d.path());
     let registry = crate::plugin::PluginRegistry::new();
-    crate::plugin::register_builtin_plugins(&registry);
+    crate::plugin::register_builtin_plugins(&registry).unwrap();
     let outside = d.path().join("outside.txt");
     std::fs::write(&outside, "private outside data").unwrap();
     assert!(
@@ -1351,7 +1351,7 @@ fn plugins_do_not_report_fabricated_memory_statistics() {
     let d = tempfile::tempdir().unwrap();
     let security = SecurityEngine::new(CapabilityManifest::default(), d.path());
     let registry = crate::plugin::PluginRegistry::new();
-    crate::plugin::register_builtin_plugins(&registry);
+    crate::plugin::register_builtin_plugins(&registry).unwrap();
     assert!(
         registry
             .dispatch("system_memory", &serde_json::json!({}), &security)
@@ -1364,7 +1364,7 @@ fn plugins_do_not_report_fabricated_memory_statistics() {
 fn checksum_plugin_requires_read_and_hashing_grants() {
     let d = tempfile::tempdir().unwrap();
     let registry = crate::plugin::PluginRegistry::new();
-    crate::plugin::register_builtin_plugins(&registry);
+    crate::plugin::register_builtin_plugins(&registry).unwrap();
     for deny_read in [true, false] {
         let mut manifest = CapabilityManifest::default();
         if deny_read {
@@ -1389,7 +1389,7 @@ fn uptime_plugin_reports_elapsed_time_instead_of_wall_clock() {
     let d = tempfile::tempdir().unwrap();
     let security = SecurityEngine::new(CapabilityManifest::default(), d.path());
     let registry = crate::plugin::PluginRegistry::new();
-    crate::plugin::register_builtin_plugins(&registry);
+    crate::plugin::register_builtin_plugins(&registry).unwrap();
     let value = registry
         .dispatch("process_uptime", &serde_json::json!({}), &security)
         .unwrap();
@@ -1409,21 +1409,23 @@ fn ipc_plugin_panic_revokes_sessions_and_preserves_other_commands() {
     let secrets = Arc::new(crate::secrets::SecretManager::new());
     let plugins = crate::plugin::PluginRegistry::new();
     let first = std::sync::atomic::AtomicBool::new(true);
-    plugins.register(
-        crate::plugin::PluginDescriptor {
-            name: "fault_fixture".into(),
-            version: "1".into(),
-            description: "Test only".into(),
-            author: "Test".into(),
-            capabilities: vec![],
-        },
-        move |_, _| {
-            if first.swap(false, std::sync::atomic::Ordering::SeqCst) {
-                panic!("TEST_ONLY panic payload");
-            }
-            Ok(serde_json::json!({"unexpectedRetry":true}))
-        },
-    );
+    plugins
+        .register(
+            crate::plugin::PluginDescriptor {
+                name: "fault_fixture".into(),
+                version: "1".into(),
+                description: "Test only".into(),
+                author: "Test".into(),
+                capabilities: vec![],
+            },
+            move |_, _| {
+                if first.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                    panic!("TEST_ONLY panic payload");
+                }
+                Ok(serde_json::json!({"unexpectedRetry":true}))
+            },
+        )
+        .unwrap();
     let router = crate::ipc::IpcRouter::new(
         security,
         handshake.clone(),
@@ -1523,12 +1525,15 @@ fn plugin_handler_can_register_another_plugin_without_deadlock() {
         author: "Test".into(),
         capabilities: vec![],
     };
-    registry.register(descriptor("registering"), move |_, _| {
-        weak.upgrade()
-            .unwrap()
-            .register(descriptor("new_fixture"), |_, _| Ok(serde_json::json!(42)));
-        Ok(serde_json::json!("registered"))
-    });
+    registry
+        .register(descriptor("registering"), move |_, _| {
+            weak.upgrade()
+                .unwrap()
+                .register(descriptor("new_fixture"), |_, _| Ok(serde_json::json!(42)))
+                .unwrap();
+            Ok(serde_json::json!("registered"))
+        })
+        .unwrap();
     let (tx, rx) = std::sync::mpsc::channel();
     let worker_registry = registry.clone();
     let worker_security = security.clone();
@@ -1544,6 +1549,121 @@ fn plugin_handler_can_register_another_plugin_without_deadlock() {
     assert_eq!(
         registry
             .dispatch("new_fixture", &serde_json::json!({}), &security)
+            .unwrap(),
+        42
+    );
+}
+
+#[test]
+fn plugin_registration_preserves_existing_handler_on_duplicate_name() {
+    let directory = tempfile::tempdir().unwrap();
+    let security = SecurityEngine::new(CapabilityManifest::default(), directory.path());
+    let registry = crate::plugin::PluginRegistry::new();
+    let descriptor = crate::plugin::PluginDescriptor {
+        name: "existing_plugin".into(),
+        version: "1.0.0".into(),
+        description: "Fixture".into(),
+        author: "Test".into(),
+        capabilities: vec![],
+    };
+    registry
+        .register(descriptor.clone(), |_, _| Ok(serde_json::json!("original")))
+        .unwrap();
+    assert_eq!(
+        registry.register(descriptor, |_, _| Ok(serde_json::json!("replacement"))),
+        Err(crate::plugin::RegistrationError::DuplicateName)
+    );
+    assert_eq!(
+        registry
+            .dispatch("existing_plugin", &serde_json::json!({}), &security)
+            .unwrap(),
+        "original"
+    );
+    assert_eq!(registry.list_plugins().len(), 1);
+}
+
+#[test]
+fn plugin_registration_rejects_invalid_descriptors_without_publishing_them() {
+    let registry = crate::plugin::PluginRegistry::new();
+    let valid = crate::plugin::PluginDescriptor {
+        name: "valid_plugin".into(),
+        version: "1.0.0".into(),
+        description: "Fixture".into(),
+        author: "Test".into(),
+        capabilities: vec![],
+    };
+    let mut invalid = vec![];
+    for name in ["", "../escape", "with space", "Uppercase", &"a".repeat(65)] {
+        let mut descriptor = valid.clone();
+        descriptor.name = name.into();
+        invalid.push(descriptor);
+    }
+    for version in ["", "release\n1", &"1".repeat(65)] {
+        let mut descriptor = valid.clone();
+        descriptor.version = version.into();
+        invalid.push(descriptor);
+    }
+    for capabilities in [
+        vec!["unknown".into()],
+        vec!["crypto".into(), "crypto".into()],
+    ] {
+        let mut descriptor = valid.clone();
+        descriptor.capabilities = capabilities;
+        invalid.push(descriptor);
+    }
+    let mut oversized = valid.clone();
+    oversized.description = "a".repeat(1025);
+    invalid.push(oversized);
+    let mut control = valid.clone();
+    control.author = "author\nspoof".into();
+    invalid.push(control);
+    for descriptor in invalid {
+        assert!(registry
+            .register(descriptor, |_, _| Ok(serde_json::Value::Null))
+            .is_err());
+        assert!(registry.list_plugins().is_empty());
+    }
+    registry
+        .register(valid, |_, _| Ok(serde_json::Value::Null))
+        .unwrap();
+    assert!(registry.has_plugin("valid_plugin"));
+}
+
+#[test]
+fn plugin_registration_limits_registry_without_disabling_existing_handlers() {
+    let registry = crate::plugin::PluginRegistry::new();
+    let directory = tempfile::tempdir().unwrap();
+    let security = SecurityEngine::new(CapabilityManifest::default(), directory.path());
+    for index in 0..128 {
+        registry
+            .register(
+                crate::plugin::PluginDescriptor {
+                    name: format!("plugin_{index}"),
+                    version: "1".into(),
+                    description: "Fixture".into(),
+                    author: "Test".into(),
+                    capabilities: vec![],
+                },
+                |_, _| Ok(serde_json::json!(42)),
+            )
+            .unwrap();
+    }
+    let rejected = registry.register(
+        crate::plugin::PluginDescriptor {
+            name: "overflow".into(),
+            version: "1".into(),
+            description: "Fixture".into(),
+            author: "Test".into(),
+            capabilities: vec![],
+        },
+        |_, _| Ok(serde_json::Value::Null),
+    );
+    assert!(rejected.is_err());
+    assert_eq!(registry.list_plugins().len(), 128);
+    assert!(!registry.has_plugin("overflow"));
+    assert_eq!(
+        registry
+            .dispatch("plugin_0", &serde_json::json!({}), &security)
             .unwrap(),
         42
     );
