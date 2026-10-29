@@ -32,6 +32,9 @@ jobs:
         run: cargo build --release --locked --manifest-path src-core/Cargo.toml
       - name: Verify signed offline metadata and staged native artifact bytes
         run: node aegis-cli/bin/update-verification-smoke.js
+      - name: Verify real bounded filesystem exhaustion and update staging recovery
+        if: matrix.os == 'ubuntu-latest'
+        run: node aegis-cli/bin/update-filesystem-fault-smoke.js
       - name: Verify real native platform IPC and storage
         run: node aegis-cli/bin/portable-smoke.js
       - name: Verify packaged identity survives rename and invalid IDs fail closed

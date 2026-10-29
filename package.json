@@ -1,6 +1,6 @@
 {
   "name": "aegis-desktop",
-  "version": "0.28.4",
+  "version": "0.28.5",
   "description": "High-Security Cross-Platform Desktop Application Framework built with Rust and React",
   "license": "MIT",
   "scripts": {
