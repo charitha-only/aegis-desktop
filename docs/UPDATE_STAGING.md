@@ -24,3 +24,5 @@ File sync and marker ordering are not a universal power-loss guarantee. Director
 Exact-source hosted evidence: `af77854`, portable workflow `40793593926`, passed actual native artifact staging/inspection on Windows/Linux/macOS. Native workflow `40793593939` and Windows installer/upgrade/backup/real-lock workflow `40793593945` also passed. These results do not cover physical power failure or disk-full recovery.
 
 Bounded hosted-Linux ENOSPC cleanup and capacity-restoration retry now have [real filesystem fault acceptance](UPDATE_FILESYSTEM_FAULTS.md). This evidence does not extend to NTFS/APFS, physical media or power loss.
+
+[Tracked verification](UPDATE_STATE.md) can additionally record release observations. Stateless staging/inspection do not consult that record automatically; runtime/installer integration must explicitly enforce the tracked result.

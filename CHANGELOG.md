@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Add `init-update-state` and `verify-tracked-update` developer commands. Persist an authenticated release observation under an explicitly provisioned state directory; reverify every attempt and permit matching-release retries across processes.
 - Reject sequence/version rollback, changed same-sequence release fields and target changes. Bound and validate state; missing/corrupt state, occupied locks and pending writes fail closed rather than reset. Serialize cooperating writers and publish synced replacement state via rename.
-- Add seven public API/CLI regressions, real native-artifact tracked retries on all OS runners and Linux ENOSPC checks for preservation/retry of the committed observation. Exact-source CI pending.
+- Add seven public API/CLI regressions, real native-artifact tracked retries on all OS runners and Linux ENOSPC checks for preservation/retry of the committed observation. Exact-source three-OS checks, Linux ENOSPC state preservation/advancement and Windows installer acceptance passed; see the verification ledger.
 - This records verification, not installation. Runtime integration, stale-lock/pending-write operator recovery, directory/power-loss guarantees, OS signing and resistance to same-account/disk-snapshot state rollback remain open.
 
 ## [v0.28.5] - 2026-10-29

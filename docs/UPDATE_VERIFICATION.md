@@ -37,3 +37,5 @@ Remaining gates: securely provisioned/rotated owner keys, threshold/revocation p
 Hosted evidence: source `bcff691` passed actual Windows/Linux/macOS native-artifact CLI verification and byte-tamper rejection in portable workflow `40781168778`. Test publishers are ephemeral and distinct from any deployed trust root. Exact full-source workflow results are recorded in IMPLEMENTATION_STATUS.md.
 
 For a separately copied, reverified artifact and explicit readiness inspection, use [offline staging](UPDATE_STAGING.md). Staging does not advance policy or complete the runtime installation/recovery gates.
+
+For opt-in persistent observations and matching-release retries, use [tracked verification](UPDATE_STATE.md). This stateless command remains unchanged; tracking is not installation or a tamper-proof rollback counter.
