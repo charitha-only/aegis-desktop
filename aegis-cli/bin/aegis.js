@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {spawn} from 'node:child_process';
 import {createProject} from '../lib/create.js';
+import {inspectProject} from '../lib/doctor.js';
 import {writePackageIntegrity,verifyPackageIntegrity} from '../lib/package-integrity.js';
 import {initializeUpdateState,verifyTrackedUpdate,inspectUpdateState} from '../lib/update-state.js';
 import {stageUpdate,inspectStagedUpdate} from '../lib/update-staging.js';
@@ -41,6 +42,34 @@ try{const command=process.argv[2]||'dev';
      catch(error) {if(!controller.signal.aborted || error.message !== 'Development startup cancelled') throw error;}
      finally {process.off('SIGINT',cancel);process.off('SIGTERM',cancel);}
    }
+ }
+ else if(command==='package') {
+   if(process.argv.length>4 || (process.argv[3] && process.argv[3]!=='--print-plan')) throw new Error('Usage: aegis package [--print-plan]');
+   const config=JSON.parse(fs.readFileSync(path.join(root,'aegis.config.json'),'utf8'));
+   const name=typeof config.name==='string'?config.name.replaceAll(' ',''):'';
+   if(!/^[A-Za-z0-9_-][A-Za-z0-9_.-]*$/.test(name)||name.includes('..')) throw new Error('Invalid package name');
+   const bundleDirectory=path.join(root,'dist-bundle',name);
+   const plan={steps:['check-prerequisites','build-locked-core','build-ui','bundle','write-integrity','verify-integrity'],bundleDirectory,overwrite:false,publisherAuthenticated:false};
+   if(process.argv[3]==='--print-plan') console.log(JSON.stringify(plan));
+   else {
+     if(fs.existsSync(bundleDirectory)) throw new Error('Bundle output already exists; preserve or move it before packaging');
+     const report=await inspectProject(root);
+     if(!report.ok) throw new Error('Prerequisites failed: '+report.checks.filter(check=>!check.ok).map(check=>`${check.id}: ${check.detail}`).join('; '));
+     // Pin target-dir explicitly so Cargo configuration cannot select a stale project-local binary.
+     await run(cargo,['build','--locked','--release','--manifest-path','src-core/Cargo.toml','--target-dir',path.join(root,'src-core/target')]);
+     await run(npm,['run','build'],path.join(root,'src-ui'));
+     await run(path.join(root,'src-core/target/release',process.platform==='win32'?'aegis-core.exe':'aegis-core'),['--bundle']);
+     const manifest=await writePackageIntegrity(bundleDirectory);
+     const verification=await verifyPackageIntegrity(bundleDirectory,manifest.manifestSha256);
+     console.log(JSON.stringify({bundleDirectory,...verification}));
+   }
+ }
+ else if(command==='doctor') {
+   if(process.argv.length>4 || (process.argv[3] && process.argv[3]!=='--json')) throw new Error('Usage: aegis doctor [--json]');
+   const report=await inspectProject(root);
+   if(process.argv[3]==='--json') console.log(JSON.stringify(report));
+   else {for(const check of report.checks) console.log(`${check.ok?'PASS':'FAIL'} ${check.id}: ${check.detail}`);console.log('Portable-build prerequisites only; native SDKs, signing and security acceptance require separate checks.');}
+   if(!report.ok) process.exitCode=1;
  }
  else if(command==='package-manifest') {
    if(process.argv.length!==4 || !process.argv[3]) throw new Error('Usage: aegis package-manifest <bundle-directory>');
@@ -83,7 +112,7 @@ try{const command=process.argv[2]||'dev';
    console.log(JSON.stringify(await buildDebianPackage({bundleDirectory:process.argv[3],outputFile:process.argv[4],expectedManifestSha256:process.argv[5],maintainer:process.argv[6]})));
  }
  else if(command==='create')console.log('Project created: '+await createProject(root,process.argv[3]));
- else if(command==='--help'||command==='help')console.log('Aegis commands:\n  create <new-directory>\n  dev [--no-open] [--ui-port=<port>] [--core-binary=<path>] [--print-plan]\n  build\n  build-release\n  bundle\n  test-security\n  package-manifest <bundle-directory>\n  verify-package <bundle-directory> <trusted-manifest-sha256>\n  inspect-update-state <trusted-state-directory>\n  init-update-state <new-trusted-state-directory>\n  verify-tracked-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <trusted-state-directory>\n  stage-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <new-stage-directory>\n  inspect-update <stage-directory> <trusted-public-key.pem> <trusted-policy.json>\n  verify-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json>\n  package-macos <bundle-directory> <output.pkg> <trusted-manifest-sha256>\n  package-deb <bundle-directory> <output.deb> <trusted-manifest-sha256> <maintainer>\n  --version');
+ else if(command==='--help'||command==='help')console.log('Aegis commands:\n  doctor [--json]\n  package [--print-plan]\n  create <new-directory>\n  dev [--no-open] [--ui-port=<port>] [--core-binary=<path>] [--print-plan]\n  build\n  build-release\n  bundle\n  test-security\n  package-manifest <bundle-directory>\n  verify-package <bundle-directory> <trusted-manifest-sha256>\n  inspect-update-state <trusted-state-directory>\n  init-update-state <new-trusted-state-directory>\n  verify-tracked-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <trusted-state-directory>\n  stage-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <new-stage-directory>\n  inspect-update <stage-directory> <trusted-public-key.pem> <trusted-policy.json>\n  verify-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json>\n  package-macos <bundle-directory> <output.pkg> <trusted-manifest-sha256>\n  package-deb <bundle-directory> <output.deb> <trusted-manifest-sha256> <maintainer>\n  --version');
  else if(command==='--version')console.log(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version);
  else if(command==='build'||command==='build-release')await build();
  else if(command==='bundle'){await build();await run(cargo,['run','--release','--manifest-path','src-core/Cargo.toml','--','--bundle']);}

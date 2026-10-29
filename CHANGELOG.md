@@ -1,3 +1,10 @@
+# v0.29.0 — Developer workflow preview (2026-10-29)
+
+- Add read-only `doctor [--json]` prerequisite diagnostics with actionable failures.
+- Add `package [--print-plan]`: locked Rust build, UI build, portable bundling, bounded integrity inventory and immediate verification. Pin the Cargo target directory to avoid packaging a stale binary when Cargo configuration redirects output. Refuse existing bundle output before compilation.
+- Extend clean generated-project acceptance from UI-only compilation to actual Rust/UI release builds and verified portable packages on Windows, Linux and macOS.
+- Source checks pending. This is not signing, an installer or a security certification; stable API/plugin contracts and physical-device/audit gates remain open.
+
 # 📜 Aegis Desktop Changelog & Release Notes
 
 All notable changes, new features, security updates, and bug fixes for **Aegis Desktop** will be documented in this file.

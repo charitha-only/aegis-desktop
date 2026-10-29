@@ -1,6 +1,6 @@
 {
   "name": "aegis-desktop",
-  "version": "0.28.7",
+  "version": "0.29.0",
   "description": "High-Security Cross-Platform Desktop Application Framework built with Rust and React",
   "license": "MIT",
   "scripts": {
@@ -13,7 +13,9 @@
     "bundle": "node aegis-cli/bin/aegis.js bundle",
     "test:security": "node aegis-cli/bin/aegis.js test-security",
     "test:sensitive": "node aegis-cli/bin/sensitive-smoke.js",
-    "test:sessions": "node aegis-cli/bin/session-smoke.js"
+    "test:sessions": "node aegis-cli/bin/session-smoke.js",
+    "doctor": "node aegis-cli/bin/aegis.js doctor",
+    "package": "node aegis-cli/bin/aegis.js package"
   },
   "keywords": [
     "desktop",

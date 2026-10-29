@@ -41,9 +41,11 @@ This is the release ledger for the roadmap. A source version does not certify pr
 | 0.26 acceptance | In progress | Embedded windows, native messages, single-file selection, text clipboard writes and notification helpers have preview interfaces. Full multi-window/native-service behavior, Linux/macOS lifecycle integration and physical/accessibility acceptance remain. See NATIVE_DESKTOP.md and the service contracts. |
 | 0.27 acceptance | Tooling preview | Core raw samples/provenance and explicit-budget tooling added. Full UI/process-tree workloads, representative repeated measurements, actual low-resource device results and evidence-based budgets remain. |
 | 0.28 acceptance | Distribution tooling preview | Native portable bundles and explicit pinned-descriptor file verification implemented. Linux Debian and macOS package lifecycle previews now have hosted acceptance. Full distribution/architecture support, authenticated update recovery, owner signing/notarization and physical recovery evidence remain. |
+| 0.29.0 | Source verification pending | Read-only developer diagnostics and one-command locked portable packaging; clean generated-project Rust/UI release and integrity acceptance added for all three OSes. No signing or stable API certification. |
 | 0.29 | Tooling in progress | Source-only create command, help/version, typed platform APIs and clean UI-template build checks added. Plugin restrictions/API stabilization and complete three-OS developer acceptance remain. |
 | 1.0 | External gates remain | Stable API evidence, physical device validation and independent reviewer report/retest required. |
 
 Independent review cannot be self-certified. Missing physical hardware or signing credentials must not be replaced by fabricated passing results. Keep implementing independent work while recording these gates.
 
 Detailed remaining criteria are in RELEASE_GATES.md. Published tags identify validated source milestones; they are not publisher-signed installer releases or completion of every roadmap row.
+
