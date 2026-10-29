@@ -96,7 +96,7 @@ The **v0.27** performance tooling still requires whole-app/low-resource measurem
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.29.2`** | **SDK transport contract** | Validated handshake/envelopes, request deadlines and typed local transport errors. See [SDK contract](docs/SDK_TRANSPORT.md). |
+| **`v0.29.2`** | **SDK transport contract** | Validated handshake/envelopes, request deadlines and typed local transport errors. Three-OS and Windows installer checks passed for source `c79ed9f`. See [SDK contract](docs/SDK_TRANSPORT.md). |
 | **`v0.29.1`** | **Plugin registration contract** | Reject duplicate names and invalid descriptors; bounded registry and explicit registration errors. Three-OS and Windows installer checks passed for source `9b600d0`. See [plugin contract](docs/PLUGIN_SECURITY.md). |
 | **`v0.29.0`** | **Developer tooling preview** | Read-only setup diagnostics and one-command locked portable packaging; generated Rust/UI package acceptance passed on three OSes for source `8cee05a`. See [developer workflow](docs/DEVELOPER_WORKFLOW.md). |
 | **`v0.28.7`** | **State diagnostics preview** | Read-only cached-observation and lock/pending inspection; no stale-lock inference, clearing or authentication claim. Three-OS and Windows installer checks passed for source `9ce44ed`. See [state diagnostics](docs/UPDATE_STATE.md#read-only-operator-diagnostics). |
