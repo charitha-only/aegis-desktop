@@ -9,7 +9,14 @@ export interface IpcResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
-  errorCode?: 'HTTP_ERROR' | 'INVALID_RESPONSE' | 'NETWORK_ERROR' | 'TIMEOUT';
+  errorCode?: 'HTTP_ERROR' | 'INVALID_RESPONSE' | 'NETWORK_ERROR' | 'TIMEOUT' | 'RESPONSE_TOO_LARGE';
+}
+
+export interface HandshakeResult {
+  success: boolean;
+  token?: string;
+  error?: string;
+  errorCode?: IpcResponse['errorCode'];
 }
 
 export interface PlatformInfo {
@@ -149,21 +156,64 @@ export interface AttestationVerification {
   audit_log: string[];
 }
 
+class ResponseLimitError extends Error {}
+
+/** Count actual decoded HTTP body bytes; Content-Length is not a trusted bound. */
+async function boundedJson(response: Response, limit: number): Promise<any> {
+  if (!response.body) throw new SyntaxError('Missing JSON response body');
+  const reader = response.body.getReader();
+  let bytes = new Uint8Array(Math.min(limit, 8192));
+  let total = 0;
+  try {
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      if (value.byteLength > limit - total) throw new ResponseLimitError('IPC response exceeds byte limit');
+      if (total + value.byteLength > bytes.byteLength) {
+        const grown = new Uint8Array(Math.min(limit, Math.max(bytes.byteLength * 2, total + value.byteLength)));
+        grown.set(bytes.subarray(0, total));
+        bytes = grown;
+      }
+      bytes.set(value, total);
+      total += value.byteLength;
+    }
+    return JSON.parse(new TextDecoder().decode(bytes.subarray(0, total)));
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
+
 export class AegisBridge {
   private readonly requestTimeoutMs: number;
-  constructor({requestTimeoutMs = 15000}: {requestTimeoutMs?: number} = {}) {
+  private readonly maxResponseBytes: number;
+  constructor({requestTimeoutMs = 15000, maxResponseBytes = 16 * 1024 * 1024}: {requestTimeoutMs?: number; maxResponseBytes?: number} = {}) {
     if (!Number.isInteger(requestTimeoutMs) || requestTimeoutMs < 1 || requestTimeoutMs > 120000) {
       throw new Error('requestTimeoutMs must be an integer between 1 and 120000');
     }
+    if (!Number.isInteger(maxResponseBytes) || maxResponseBytes < 1024 || maxResponseBytes > 64 * 1024 * 1024) {
+      throw new Error('maxResponseBytes must be an integer between 1024 and 67108864');
+    }
     this.requestTimeoutMs = requestTimeoutMs;
+    this.maxResponseBytes = maxResponseBytes;
   }
   private bridgeOrigin(): string {
     return resolveBridgeOrigin({production: import.meta.env.PROD, appOrigin: import.meta.env.PROD ? window.location.origin : undefined, configuredOrigin: import.meta.env.VITE_AEGIS_BRIDGE_URL});
   }
   private sessionNonce: string | null = null;
   private isInitialized = false;
+  private pendingInitialization: Promise<HandshakeResult> | null = null;
 
-  public async init(): Promise<{ success: boolean; token?: string; error?: string; errorCode?: IpcResponse['errorCode'] }> {
+  public init(): Promise<HandshakeResult> {
+    if (!this.pendingInitialization) {
+      this.isInitialized = false;
+      this.sessionNonce = null;
+      this.pendingInitialization = this.initialize().finally(() => {this.pendingInitialization = null;});
+    }
+    return this.pendingInitialization;
+  }
+
+  private async initialize(): Promise<HandshakeResult> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.requestTimeoutMs);
     let errorCode: IpcResponse['errorCode'] = 'NETWORK_ERROR';
@@ -182,7 +232,7 @@ export class AegisBridge {
       }
 
       errorCode = 'INVALID_RESPONSE';
-      const data = await res.json();
+      const data = await boundedJson(res, 4096);
       if (!data || typeof data.token !== 'string' || !/^[a-f0-9]{64}$/.test(data.token)) {
         throw new Error('Invalid handshake response');
       }
@@ -192,7 +242,7 @@ export class AegisBridge {
     } catch (err: any) {
       this.sessionNonce = null;
       this.isInitialized = false;
-      return { success: false, error: controller.signal.aborted ? 'IPC handshake timed out' : (err.message || 'Cannot connect to Aegis Core backend'), errorCode: controller.signal.aborted ? 'TIMEOUT' : errorCode };
+      return { success: false, error: controller.signal.aborted ? 'IPC handshake timed out' : (err.message || 'Cannot connect to Aegis Core backend'), errorCode: controller.signal.aborted ? 'TIMEOUT' : err instanceof ResponseLimitError ? 'RESPONSE_TOO_LARGE' : errorCode };
     } finally {clearTimeout(timer);controller.abort();}
   }
 
@@ -234,7 +284,10 @@ export class AegisBridge {
       });
 
       if (res.status === 429) {
-        const errData = await res.json().catch(() => ({}));
+        const errData = await boundedJson(res, 4096).catch(error => {
+          if (error instanceof SyntaxError) return {};
+          throw error;
+        });
         if (controller.signal.aborted) throw new Error('IPC response timed out');
         return {
           id: reqId,
@@ -244,7 +297,7 @@ export class AegisBridge {
         };
       }
       if (!res.ok) return {id:reqId,success:false,error:`IPC HTTP error: ${res.status}`,errorCode:'HTTP_ERROR'};
-      const json = await res.json();
+      const json = await boundedJson(res, this.maxResponseBytes);
       if (!json || json.id !== reqId || typeof json.success !== 'boolean'
           || (json.success === false && typeof json.error !== 'string')) {
         return {id:reqId,success:false,error:'Invalid IPC response envelope',errorCode:'INVALID_RESPONSE'};
@@ -254,8 +307,8 @@ export class AegisBridge {
       return {
         id: reqId,
         success: false,
-        error: controller.signal.aborted ? 'IPC request timed out; completion is unknown' : `IPC Network Error: ${err.message}`,
-        errorCode: controller.signal.aborted ? 'TIMEOUT' : err instanceof SyntaxError ? 'INVALID_RESPONSE' : 'NETWORK_ERROR',
+        error: controller.signal.aborted ? 'IPC request timed out; completion is unknown' : err instanceof ResponseLimitError ? 'IPC response exceeds byte limit; completion is unknown' : `IPC Network Error: ${err.message}`,
+        errorCode: controller.signal.aborted ? 'TIMEOUT' : err instanceof ResponseLimitError ? 'RESPONSE_TOO_LARGE' : err instanceof SyntaxError ? 'INVALID_RESPONSE' : 'NETWORK_ERROR',
       };
     } finally {clearTimeout(timer);controller.abort();}
   }
