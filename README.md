@@ -96,7 +96,7 @@ The **v0.27** performance tooling still requires whole-app/low-resource measurem
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.29.5`** | **Vault SDK data contracts** | Validate session tokens/timeouts, confirmed lock, verified-plaintext shape and write receipts. See [SDK contract](docs/SDK_TRANSPORT.md). |
+| **`v0.29.5`** | **Vault SDK data contracts** | Validate session tokens/timeouts, confirmed lock, verified-plaintext shape and write receipts. Three-OS and Windows installer checks passed for source `c814b99`. See [SDK contract](docs/SDK_TRANSPORT.md). |
 | **`v0.29.4`** | **Runtime SDK data contracts** | Validate platform, directory and nested security response data before exposing typed success. Three-OS and Windows installer checks passed for source `244655a`. See [SDK contract](docs/SDK_TRANSPORT.md). |
 | **`v0.29.3`** | **Bounded SDK responses** | Actual response-byte budgets and shared concurrent initialization with fail-closed retry. Three-OS and Windows installer checks passed for source `076504a`. See [SDK contract](docs/SDK_TRANSPORT.md). |
 | **`v0.29.2`** | **SDK transport contract** | Validated handshake/envelopes, request deadlines and typed local transport errors. Three-OS and Windows installer checks passed for source `c79ed9f`. See [SDK contract](docs/SDK_TRANSPORT.md). |

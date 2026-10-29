@@ -3,7 +3,7 @@
 - Validate vault write receipts, session credentials and ordered positive integer timeouts before exposing typed success. Keep process-handshake credentials distinct from returned vault-session tokens.
 - Require locked:true on successful lock acknowledgements and integrityVerified:true plus string content on successful decrypt/session reads. Reject malformed data without including its plaintext in returned failures. Empty plaintext remains valid.
 - Four public SDK regression cases reproduced false/malformed success paths before fixes. The suite now has sixteen cases; actual-core SDK acceptance includes vault write/decrypt/lock plus retained-session success or rejection according to platform lifecycle availability.
-- Exact-source CI pending. These are response-contract checks, not cryptographic verification by the client, server-operation rollback, browser-memory zeroization or production certification.
+- Exact-source three-OS portable/native and Windows installer checks passed; see the verification ledger. These are response-contract checks, not cryptographic verification by the client, server-operation rollback, browser-memory zeroization or production certification.
 
 # v0.29.4 — Runtime SDK data contracts (2026-10-29)
 
