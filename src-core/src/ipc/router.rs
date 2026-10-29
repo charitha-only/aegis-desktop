@@ -17,7 +17,6 @@ use crate::updater::{AutoUpdater, UpdateManifest};
 use crate::wasm::{ExecutionTier, WasmSandbox};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::fs;
 use std::sync::Arc;
 
 pub struct IpcRouter {
@@ -719,26 +718,10 @@ impl IpcRouter {
             }
 
             "fs_list_sandbox" => match self.security.check_fs_read(".") {
-                Ok(sandbox_dir) => {
-                    let mut entries = Vec::new();
-                    if let Ok(read_dir) = fs::read_dir(sandbox_dir) {
-                        for entry in read_dir.flatten() {
-                            if let Ok(name) = entry.file_name().into_string() {
-                                if name.starts_with(".aegis-") {
-                                    continue;
-                                }
-                                let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
-                                let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
-                                entries.push(json!({
-                                    "name": name,
-                                    "isDir": is_dir,
-                                    "sizeBytes": size
-                                }));
-                            }
-                        }
-                    }
-                    IpcResponse::ok(&req.id, json!({ "entries": entries }))
-                }
+                Ok(sandbox_dir) => match crate::storage::list_directory(&sandbox_dir) {
+                    Ok(entries) => IpcResponse::ok(&req.id, json!({"entries": entries})),
+                    Err(error) => IpcResponse::err(&req.id, &error),
+                },
                 Err(err) => IpcResponse::err(&req.id, &err),
             },
 

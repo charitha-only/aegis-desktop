@@ -1847,3 +1847,91 @@ fn ipc_crash_history_is_bounded() {
         );
     }
 }
+
+fn filesystem_listing_fixture(
+    root: &std::path::Path,
+) -> (
+    crate::ipc::IpcRouter,
+    std::sync::Arc<HandshakeSession>,
+    std::sync::Arc<SecurityEngine>,
+) {
+    use std::sync::Arc;
+    let security = Arc::new(SecurityEngine::new(CapabilityManifest::default(), root));
+    let handshake = Arc::new(HandshakeSession::new());
+    let router = crate::ipc::IpcRouter::new(
+        security.clone(),
+        handshake.clone(),
+        crate::plugin::PluginRegistry::new(),
+        Arc::new(crate::updater::AutoUpdater::new("test", root)),
+        Arc::new(HardwareKeyEngine::new()),
+        Arc::new(crate::profile::ProfileManager::new(root)),
+        Arc::new(crate::wasm::WasmSandbox::new()),
+        Arc::new(BiometricEnclave::new()),
+        Arc::new(crate::crash::CrashReporter::new(root)),
+        Arc::new(crate::secrets::SecretManager::new()),
+        Arc::new(crate::network::NetworkPolicyEngine::new()),
+        Arc::new(SignatureVerifier::new()),
+        Arc::new(TpmAttestationEngine::new()),
+        Arc::new(crate::package_pipeline::MultiOsPipeline),
+        Arc::new(crate::p2p_market::P2PPluginMarketplace::new()),
+        Arc::new(HsmPkcs11Engine::new()),
+    );
+    (router, handshake, security)
+}
+
+#[test]
+fn ipc_filesystem_listing_reports_directory_failure_instead_of_empty_success() {
+    let directory = tempfile::tempdir().unwrap();
+    let (router, handshake, security) = filesystem_listing_fixture(directory.path());
+    let root = security.get_sandbox_root();
+    std::fs::remove_dir(&root).unwrap();
+    std::fs::write(&root, b"TEST_ONLY_not_a_directory").unwrap();
+    let response = router.handle_request(crate::ipc::protocol::IpcRequest {
+        id: "list-failure".into(),
+        command: "fs_list_sandbox".into(),
+        nonce: handshake.get_token(),
+        payload: serde_json::json!({}),
+    });
+    assert!(
+        !response.success,
+        "A failed directory read must not look like an empty directory"
+    );
+    assert!(response.data.is_none());
+}
+
+#[test]
+fn ipc_filesystem_listing_enforces_scan_limit_and_returns_sorted_complete_results() {
+    let directory = tempfile::tempdir().unwrap();
+    let (router, handshake, security) = filesystem_listing_fixture(directory.path());
+    let root = security.get_sandbox_root();
+    for index in (0..4096).rev() {
+        std::fs::write(root.join(format!("entry-{index:04}.txt")), b"").unwrap();
+    }
+    let list = || {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "list-limit".into(),
+            command: "fs_list_sandbox".into(),
+            nonce: handshake.get_token(),
+            payload: serde_json::json!({}),
+        })
+    };
+    let accepted = list();
+    assert!(accepted.success);
+    let data = accepted.data.as_ref().unwrap();
+    let entries = data["entries"].as_array().unwrap();
+    assert_eq!(entries.len(), 4096);
+    assert_eq!(entries[0]["name"], "entry-0000.txt");
+    assert_eq!(entries[4095]["name"], "entry-4095.txt");
+    std::fs::write(root.join("overflow.txt"), b"").unwrap();
+    let rejected = list();
+    assert!(
+        !rejected.success,
+        "Over-limit listings must fail without partial success"
+    );
+    assert!(rejected.data.is_none());
+    std::fs::remove_file(root.join("overflow.txt")).unwrap();
+    assert!(
+        list().success,
+        "Restoring the scan budget must permit a complete retry"
+    );
+}

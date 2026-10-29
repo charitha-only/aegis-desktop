@@ -311,3 +311,66 @@ test('SDK validates vault write receipts and leaves backend errors unchanged',as
     assert.equal(result.errorCode,undefined);
   });
 });
+test('SDK validates filesystem read data without exposing malformed content',async()=>{
+  let data;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake') return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request) body+=chunk;
+    json(response,{id:JSON.parse(body).id,success:true,data});
+  },async({aegis})=>{
+    for(const invalid of [null,{}, {path:'note.txt',content:42}, {path:42,content:'TEST_ONLY_content'}]) {
+      data=invalid;
+      const result=await aegis.readSandboxFile('note.txt');
+      assert.equal(result.success,false);
+      assert.equal(result.errorCode,'INVALID_RESPONSE');
+      assert.equal(result.data,undefined);
+    }
+    data={path:'note.txt',content:''};
+    const empty=await aegis.readSandboxFile('note.txt');
+    assert.equal(empty.success,true);
+    assert.equal(empty.data.content,'');
+  });
+});
+test('SDK validates file write byte receipts including valid zero-byte writes',async()=>{
+  let data;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake') return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request) body+=chunk;
+    json(response,{id:JSON.parse(body).id,success:true,data});
+  },async({aegis})=>{
+    for(const invalid of [null,{}, {path:'note.txt',bytesWritten:-1}, {path:'note.txt',bytesWritten:1.5}, {path:'note.txt',bytesWritten:'0'}, {path:'',bytesWritten:0}]) {
+      data=invalid;
+      const result=await aegis.writeSandboxFile('note.txt','');
+      assert.equal(result.success,false);
+      assert.equal(result.errorCode,'INVALID_RESPONSE');
+    }
+    data={path:'note.txt',bytesWritten:0};
+    const empty=await aegis.writeSandboxFile('note.txt','');
+    assert.equal(empty.success,true);
+    assert.equal(empty.data.bytesWritten,0);
+  });
+});
+test('SDK validates bounded directory entry data and preserves empty and Unicode listings',async()=>{
+  let data;
+  const entry={name:'note.txt',isDir:false,sizeBytes:0};
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake') return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request) body+=chunk;
+    json(response,{id:JSON.parse(body).id,success:true,data});
+  },async({aegis})=>{
+    for(const invalid of [null,{}, {entries:null}, {entries:[{...entry,isDir:'false'}]}, {entries:[{...entry,sizeBytes:-1}]}, {entries:[{...entry,sizeBytes:9007199254740992}]}, {entries:Array(4097).fill(entry)}]) {
+      data=invalid;
+      const result=await aegis.listSandbox();
+      assert.equal(result.success,false);
+      assert.equal(result.errorCode,'INVALID_RESPONSE');
+      assert.equal(result.data,undefined);
+    }
+    data={entries:[]};
+    assert.deepEqual((await aegis.listSandbox()).data.entries,[]);
+    data={entries:[{name:'දත්ත',isDir:true,sizeBytes:0,futureField:'preserved'}]};
+    const accepted=await aegis.listSandbox();
+    assert.equal(accepted.success,true);
+    assert.equal(accepted.data.entries[0].name,'දත්ත');
+    assert.equal(accepted.data.entries[0].futureField,'preserved');
+  });
+});

@@ -6,8 +6,15 @@ const booleans = (value: Record<string, unknown>, keys: string[]) => keys.every(
 const optionalBooleans = (value: Record<string, unknown>, keys: string[]) =>
   keys.every(key => !(key in value) || typeof value[key] === 'boolean');
 const positiveInteger = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+const nonnegativeInteger = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 
 export function validCommandData(command: string, data: unknown): boolean {
+  if (command === 'fs_read_file') return record(data) && text(data.path) && typeof data.content === 'string';
+  if (command === 'fs_write_file') return record(data) && text(data.path) && nonnegativeInteger(data.bytesWritten);
+  if (command === 'fs_list_sandbox') {
+    return record(data) && Array.isArray(data.entries) && data.entries.length <= 4096
+      && data.entries.every(entry => record(entry) && text(entry.name) && typeof entry.isDir === 'boolean' && nonnegativeInteger(entry.sizeBytes));
+  }
   if (command === 'vault_session_lock') return record(data) && data.locked === true;
   if (command === 'vault_session_unlock') {
     return record(data) && typeof data.sessionToken === 'string' && /^[a-f0-9]{64}$/.test(data.sessionToken)

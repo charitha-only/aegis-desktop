@@ -5,6 +5,44 @@ use std::{
     path::{Path, PathBuf},
 };
 pub const MAX_FILE_BYTES: usize = 2 * 1024 * 1024 + 256;
+pub const MAX_DIRECTORY_ENTRIES: usize = 4096;
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectoryEntry {
+    name: String,
+    is_dir: bool,
+    size_bytes: u64,
+}
+
+/// The caller must authorize this directory against the active profile.
+pub fn list_directory(path: &Path) -> Result<Vec<DirectoryEntry>, String> {
+    let directory = fs::read_dir(path).map_err(|_| "Cannot list application directory")?;
+    let mut entries = Vec::new();
+    for (index, entry) in directory.enumerate() {
+        if index >= MAX_DIRECTORY_ENTRIES {
+            return Err("Application directory exceeds 4096-entry scan limit".into());
+        }
+        let entry = entry.map_err(|_| "Cannot enumerate application directory")?;
+        let Ok(name) = entry.file_name().into_string() else {
+            continue;
+        };
+        if name.starts_with(".aegis-") {
+            continue;
+        }
+        let metadata = entry
+            .metadata()
+            .map_err(|_| "Cannot inspect application directory entry")?;
+        entries.push(DirectoryEntry {
+            name,
+            is_dir: metadata.is_dir(),
+            size_bytes: metadata.len(),
+        });
+    }
+    entries.sort_unstable_by(|left, right| left.name.cmp(&right.name));
+    Ok(entries)
+}
+
 pub fn read_bounded(path: &Path) -> Result<String, String> {
     let f = File::open(path).map_err(|_| "Cannot open stored file")?;
     if f.metadata().map_err(|_| "Cannot inspect file")?.len() > MAX_FILE_BYTES as u64 {

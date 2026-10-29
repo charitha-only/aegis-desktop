@@ -1,3 +1,10 @@
+# v0.29.8 — Bounded filesystem listings and SDK contracts (2026-10-30)
+
+- Fix fs_list_sandbox reporting directory read failures as successful empty lists. Enumeration/entry metadata errors now propagate without partial successful data.
+- Limit a listing to 4096 scanned directory entries, counting filtered names too; fail explicitly on overflow and sort successful public entries by name. No silent truncation or pagination is introduced.
+- Validate filesystem read/write/list data through the shared SDK path, including nonnegative safe byte counts, valid empty content/list results and a 4096-entry array limit.
+- Add two public Rust regressions for real directory failure and scan-limit/retry/order, three SDK response-fault cases (nineteen total), and actual-core UTF-8 file roundtrip/receipt/sorted-list checks. Exact-source CI pending.
+
 # v0.29.7 — Consistent developer toolchain (2026-10-30)
 
 - Add read-only `--print-plan` to build/build-release/bundle. Release commands share locked Cargo builds, an explicit local target directory and the exact compiled core for bundling. Package uses the same plan.

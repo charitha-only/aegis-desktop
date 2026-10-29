@@ -46,6 +46,19 @@ try {
   assert.equal(security.success, true, security.error);
   assert.equal(security.data.nonceVerified, true);
   assert.equal(typeof security.data.activeCapabilities.crypto, 'boolean');
+  const fileContent='TEST_ONLY_සිංහල';
+  for(const filename of ['zeta.txt','alpha.txt']) {
+    const written=await sdk.writeSandboxFile(filename,fileContent);
+    assert.equal(written.success,true,written.error);
+    assert.equal(written.data.bytesWritten,Buffer.byteLength(fileContent,'utf8'));
+  }
+  const file=await sdk.readSandboxFile('alpha.txt');
+  assert.equal(file.success,true,file.error);
+  assert.equal(file.data.content,fileContent);
+  const listing=await sdk.listSandbox();
+  assert.equal(listing.success,true,listing.error);
+  assert.deepEqual(listing.data.entries.map(entry=>entry.name),['alpha.txt','zeta.txt']);
+  assert.equal((await sdk.readSandboxFile('../outside')).success,false);
   const password='TEST_ONLY_password_123';
   const stored=await sdk.vaultEncryptStore('sdk-contract','TEST_ONLY_hello',password);
   assert.equal(stored.success,true,stored.error);
@@ -71,7 +84,7 @@ try {
   const invoke = await denied.invoke('platform_info', {}, 'TEST_ONLY_invalid-nonce');
   assert.equal(invoke.success, false);
   assert.match(invoke.error, /Invalid IPC bridge origin/);
-  console.log('PASS: real TypeScript SDK validates platform/security/vault contracts, retained-session lifecycle gates and invalid endpoints');
+  console.log('PASS: real TypeScript SDK validates platform/security/filesystem/vault contracts, sorted UTF-8 file roundtrips and lifecycle gates');
 } finally {
   await Promise.all(servers.map(server => server.close()));
   if (child.exitCode === null) child.kill();
