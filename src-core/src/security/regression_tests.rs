@@ -1935,3 +1935,39 @@ fn ipc_filesystem_listing_enforces_scan_limit_and_returns_sorted_complete_result
         "Restoring the scan budget must permit a complete retry"
     );
 }
+
+#[test]
+fn ipc_filesystem_rejects_case_variants_of_internal_names() {
+    let directory = tempfile::tempdir().unwrap();
+    let (router, handshake, security) = filesystem_listing_fixture(directory.path());
+    std::fs::create_dir(security.get_sandbox_root().join("nested")).unwrap();
+    let call = |command: &str, path: &str| {
+        router.handle_request(crate::ipc::protocol::IpcRequest {
+            id: "reserved-case".into(),
+            command: command.into(),
+            nonce: handshake.get_token(),
+            payload: serde_json::json!({"path":path,"content":"TEST_ONLY"}),
+        })
+    };
+    assert!(call("fs_write_file", "ordinary.txt").success);
+    for path in [
+        ".AEGIS-write.lock",
+        ".AeGiS-tmp-test",
+        "nested/.AEGIS-private",
+    ] {
+        std::fs::write(security.get_sandbox_root().join(path), b"TEST_ONLY_INTERNAL").unwrap();
+        let response = call("fs_write_file", path);
+        assert!(
+            !response.success,
+            "Internal-name write must be rejected: {path}"
+        );
+        assert!(response.error.as_deref().unwrap().contains("reserved storage name"));
+        let response = call("fs_read_file", path);
+        assert!(
+            !response.success,
+            "Internal-name read must be rejected: {path}"
+        );
+        assert!(response.error.as_deref().unwrap().contains("reserved storage name"));
+    }
+    assert!(call("fs_read_file", "ordinary.txt").success);
+}

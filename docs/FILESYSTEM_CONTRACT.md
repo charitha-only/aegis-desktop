@@ -31,3 +31,8 @@ Successful public entries are sorted lexicographically by UTF-8 name bytes, not 
 The SDK validates successful fs_read_file data (nonempty path and string content, including empty), fs_write_file receipts (nonempty path and nonnegative safe-integer bytesWritten), and fs_list_sandbox data (at most 4096 entries with nonempty name, boolean isDir and nonnegative safe-integer sizeBytes). Malformed data returns INVALID_RESPONSE without including invalid data. Zero-byte files, empty lists, Unicode and additional fields are allowed. Backend denials still pass through unchanged. These shape checks do not independently verify file contents, actual byte counts on disk, path authority or authenticity of a compromised backend. A rejected write receipt may follow an already completed write; reread before retrying.
 
 Repeat `cargo test --locked --manifest-path src-core/Cargo.toml ipc_filesystem_listing` for real non-directory failure, exact scan boundary, overflow rejection and recovery, and sorted output through public IPC. The SDK loopback suite tests malformed file/list receipts; actual-core acceptance writes/reads TEST_ONLY Unicode content under temporary roots, verifies UTF-8 byte receipts, sorted listings, internal-name filtering and traversal denial on each OS.
+
+
+## Reserved internal names — v0.29.9
+
+Every sandbox path component rejects the ASCII .aegis- prefix without regard to ASCII letter case on all OSes. This prevents case aliases of framework lock/temporary filenames on case-insensitive volumes and keeps the portable policy consistent on case-sensitive volumes. It does not establish protection from an external same-account filesystem actor. Existing filtered listing behavior is unchanged.

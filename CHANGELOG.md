@@ -1,3 +1,10 @@
+# v0.29.9 — Reserved storage name protection (2026-10-30)
+
+- Reject ASCII case variants of the internal .aegis- prefix in every sandbox path component on all platforms. On case-insensitive filesystems, the former case-sensitive check let generic file writes address the internal write-lock filename through a casing alias.
+- Confirmed the reserved-name write bypass through public IPC on an owned Windows temporary profile before patching. Concurrent data corruption/lock-serialization exploitation was not demonstrated.
+- Add a public IPC regression covering mixed-case internal read/write denials, nested paths and continued access to ordinary files. Local Windows Rust suite: 98 passed, one ignored. Exact-source CI pending.
+- Record the bounded project AI review; this does not complete the external independent audit, publisher signing or physical-device gates.
+
 # v0.29.8 — Bounded filesystem listings and SDK contracts (2026-10-30)
 
 - Fix fs_list_sandbox reporting directory read failures as successful empty lists. Enumeration/entry metadata errors now propagate without partial successful data.

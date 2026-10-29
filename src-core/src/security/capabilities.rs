@@ -228,7 +228,7 @@ impl SecurityEngine {
             if let Component::Normal(part) = component {
                 let text = part.to_string_lossy();
                 let device = text.split('.').next().unwrap_or("").to_ascii_uppercase();
-                if text.starts_with(".aegis-")
+                if text.to_ascii_lowercase().starts_with(".aegis-")
                     || matches!(
                         device.as_str(),
                         "CON"

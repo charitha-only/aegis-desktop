@@ -67,3 +67,8 @@ Review source tag `v0.29.8` (`b3fb1fff33061c544adf686d67e63d44dd9b2e6b`); the lo
 Include the directory-listing change and TypeScript response contracts in scope: 4096 scanned-entry overflow/error behavior, filtered internal/non-Unicode names, metadata errors and sorting, read/write/list runtime shapes, response-size/deadline interaction and retry ambiguity after a completed write. Reproduce public IPC regressions with `cargo test --locked --manifest-path src-core/Cargo.toml ipc_filesystem_listing` and the nineteen-case SDK suite with `node aegis-cli/bin/sdk-contract-smoke.js`.
 
 The owner currently has no separate reviewer or signing/test-device services provisioned. No external reviewer was contacted or commissioned. A future reviewer must record their identity and independence, exact revision, scope/exclusions, evidence-backed findings, remediation commits and retest outcome before this gate can be changed to complete.
+
+
+## v0.29.9 project AI review
+
+See [the scoped AI review](docs/AI_SECURITY_REVIEW_V0299.md) for the reproduced mixed-case internal-name bypass and regression-first remediation. A separate AI agent identified the candidate; this remains project-authored evidence and does not complete independent review. External reviewers should verify reserved-name handling and cooperating-writer lock identity on representative case-insensitive volumes, including concurrent requests.
