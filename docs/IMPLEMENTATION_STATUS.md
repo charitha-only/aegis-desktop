@@ -57,3 +57,6 @@ Independent review cannot be self-certified. Missing physical hardware or signin
 
 Detailed remaining criteria are in RELEASE_GATES.md. Published tags identify validated source milestones; they are not publisher-signed installer releases or completion of every roadmap row.
 
+
+
+Partial physical Windows evidence for v0.29.8 is recorded in [the local device record](evidence/windows-physical-v0.29.8/README.md), including raw headless performance samples and isolated real-core SDK/IPC checks. Interactive UI, real lock/suspend/resume, whole-app/low-resource measurements, physical Linux/macOS, publisher signing and independent review remain open.

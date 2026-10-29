@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 2,
+  "measuredAt": "2026-10-29T21:22:57.037Z",
+  "environment": {
+    "os": "win32",
+    "osRelease": "10.0.19045",
+    "architecture": "x64",
+    "cpu": "AMD Ryzen 5 3500 6-Core Processor              ",
+    "logicalCpus": 6,
+    "ramBytes": 17102303232
+  },
+  "provenance": {
+    "gitRevision": "cdfa231b8677e0e9302b56db0f5b3a68c1b5c1ea",
+    "trackedWorkingTreeDirty": false,
+    "binarySha256": "8bf44b69a8462a11b48a807a089f0405e6cce4a0c89f2043077df2754eed08d3"
+  },
+  "binaryBytes": 8369091,
+  "startup": {
+    "count": 5,
+    "minMs": 26.954700000000003,
+    "p50Ms": 28.01389999999998,
+    "p95Ms": 286.2345,
+    "maxMs": 286.2345
+  },
+  "ipc": {
+    "count": 20,
+    "minMs": 1.2253999999999223,
+    "p50Ms": 2.1899000000000797,
+    "p95Ms": 3.4770999999999503,
+    "maxMs": 7.852600000000052
+  },
+  "idle": {
+    "durationMs": 2298.6677,
+    "rssBytes": 9121792,
+    "peakRssBytes": 9125888,
+    "cpuPercentOfOneLogicalCore": 0
+  },
+  "rawSamples": {
+    "startupMs": [
+      286.2345,
+      28.01389999999998,
+      28.050400000000025,
+      27.750999999999976,
+      26.954700000000003
+    ],
+    "ipcMs": [
+      7.852600000000052,
+      2.66579999999999,
+      2.348500000000058,
+      2.407600000000002,
+      3.177099999999996,
+      3.102899999999977,
+      2.1899000000000797,
+      3.4770999999999503,
+      2.969000000000051,
+      1.7007999999999583,
+      2.86220000000003,
+      2.3203999999999496,
+      1.685200000000009,
+      1.3713000000000193,
+      1.4518000000000484,
+      1.274499999999989,
+      1.3662999999999101,
+      1.2253999999999223,
+      1.344699999999989,
+      1.308400000000006
+    ]
+  },
+  "limitations": [
+    "Core process only; no UI rendering or webview cost measured",
+    "OS filesystem caches are uncontrolled; not a cold-boot benchmark",
+    "CPU sampling is coarse and excludes child processes; explicit core budgets do not establish whole-app performance",
+    "Five startup and twenty IPC samples are a small exploratory sample, not a statistical release guarantee",
+    "Physical constrained-device acceptance remains required"
+  ],
+  "budget": null
+}

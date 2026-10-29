@@ -1,0 +1,1 @@
+PASS: real TypeScript SDK validates platform/security/filesystem/vault contracts, sorted UTF-8 file roundtrips and lifecycle gates

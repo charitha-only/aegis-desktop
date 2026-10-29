@@ -58,3 +58,12 @@ filesystem-race, power-loss and physical-resource testing remains required. The
 public IPC regression covers retention/restart, unique IDs, rejected kinds,
 persistence failure and corrupt history; portable CI exercises the actual native
 binary's aligned UI/backend response contract on all three OS runners.
+
+
+## v0.29.8 review baseline and local device evidence
+
+Review source tag `v0.29.8` (`b3fb1fff33061c544adf686d67e63d44dd9b2e6b`); the local evidence checkout `cdfa231` adds only verification documentation to that source. [Physical Windows evidence](docs/evidence/windows-physical-v0.29.8/README.md) records the binary hash, raw headless measurements and isolated SDK/IPC acceptance. It does not close interactive, lifecycle, low-resource, Linux/macOS, signing or independent-review gates.
+
+Include the directory-listing change and TypeScript response contracts in scope: 4096 scanned-entry overflow/error behavior, filtered internal/non-Unicode names, metadata errors and sorting, read/write/list runtime shapes, response-size/deadline interaction and retry ambiguity after a completed write. Reproduce public IPC regressions with `cargo test --locked --manifest-path src-core/Cargo.toml ipc_filesystem_listing` and the nineteen-case SDK suite with `node aegis-cli/bin/sdk-contract-smoke.js`.
+
+The owner currently has no separate reviewer or signing/test-device services provisioned. No external reviewer was contacted or commissioned. A future reviewer must record their identity and independence, exact revision, scope/exclusions, evidence-backed findings, remediation commits and retest outcome before this gate can be changed to complete.

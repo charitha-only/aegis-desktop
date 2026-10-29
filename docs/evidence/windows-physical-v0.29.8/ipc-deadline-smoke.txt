@@ -1,0 +1,6 @@
+PASS: bounded IPC transport: incomplete body with a slow trickle
+PASS: bounded IPC transport: incomplete headers
+PASS: bounded IPC transport: incomplete small buffered body
+PASS: bounded IPC transport: oversized rejected body
+PASS: oversized header rejected before further input
+PASS: bounded connection admission and slot recovery
