@@ -96,7 +96,7 @@ The **v0.27** performance tooling still requires whole-app/low-resource measurem
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.29.8`** | **Bounded filesystem listings** | Directory I/O failures propagate, sorted bounded listings and runtime filesystem SDK data validation. See [filesystem contract](docs/FILESYSTEM_CONTRACT.md). |
+| **`v0.29.8`** | **Bounded filesystem listings** | Directory I/O failures propagate, sorted bounded listings and runtime filesystem SDK data validation. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md) and [filesystem contract](docs/FILESYSTEM_CONTRACT.md). |
 | **`v0.29.7`** | **Consistent developer toolchain** | Inspectable release plans, shared Cargo/npm selection, locked/pinned builds and Rust compiler diagnostics. Three-OS and Windows installer checks passed for source `7aa8c7d`. See [developer workflow](docs/DEVELOPER_WORKFLOW.md). |
 | **`v0.29.6`** | **Vanilla TypeScript starter** | React or DOM-based TypeScript creation, two-template build/package acceptance and a 64 KiB vanilla starter JS budget (13644 raw bytes measured). Three-OS and Windows installer checks passed for source `85a0cc7`. See [developer workflow](docs/DEVELOPER_WORKFLOW.md). |
 | **`v0.29.5`** | **Vault SDK data contracts** | Validate session tokens/timeouts, confirmed lock, verified-plaintext shape and write receipts. Three-OS and Windows installer checks passed for source `c814b99`. See [SDK contract](docs/SDK_TRANSPORT.md). |
