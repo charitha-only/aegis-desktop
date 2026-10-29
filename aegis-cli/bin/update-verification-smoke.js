@@ -20,6 +20,12 @@ try {
  const args=[path.resolve('aegis-cli/bin/aegis.js'),'verify-update',artifact,envelopeFile,keyFile,policyFile];
  const invoke=()=>spawnSync(process.execPath,args,{encoding:'utf8',windowsHide:true,timeout:30000});
  const valid=invoke();assert.equal(valid.status,0,valid.stderr);assert.equal(JSON.parse(valid.stdout).publisherAuthenticated,true);
+ const state=path.join(root,'trusted-state'),cli=path.resolve('aegis-cli/bin/aegis.js');
+ const initialized=spawnSync(process.execPath,[cli,'init-update-state',state],{encoding:'utf8',windowsHide:true,timeout:30000});assert.equal(initialized.status,0,initialized.stderr);
+ const tracked=()=>spawnSync(process.execPath,[cli,'verify-tracked-update',artifact,envelopeFile,keyFile,policyFile,state],{encoding:'utf8',windowsHide:true,timeout:30000});
+ const observed=tracked();assert.equal(observed.status,0,observed.stderr);assert.equal(JSON.parse(observed.stdout).retry,false);
+ const repeated=tracked();assert.equal(repeated.status,0,repeated.stderr);assert.equal(JSON.parse(repeated.stdout).retry,true);
+ console.log('PASS: persisted native-artifact observation permits authenticated retry across CLI processes without installation');
  const stage=path.join(root,'quarantine');
  const staged=spawnSync(process.execPath,[path.resolve('aegis-cli/bin/aegis.js'),'stage-update',artifact,envelopeFile,keyFile,policyFile,stage],{encoding:'utf8',windowsHide:true,timeout:30000});
  assert.equal(staged.status,0,staged.stderr);assert.equal(JSON.parse(staged.stdout).staged,true);

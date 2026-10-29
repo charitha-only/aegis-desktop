@@ -25,10 +25,13 @@ try {
  const content=Buffer.alloc(8*1024*1024,0x41),keys=generateKeyPairSync('ed25519');
  const policy={appId:'org.aegis.ci.fault',platform:'linux',architecture:process.arch,currentVersion:'1.0.0',maxSeenSequence:1};
  const manifest={schemaVersion:1,appId:policy.appId,platform:policy.platform,architecture:policy.architecture,version:'2.0.0',sequence:2,expiresAt:Date.now()+3600000,artifact:{size:content.length,sha256:createHash('sha256').update(content).digest('hex')}};
- const payload=Buffer.from(JSON.stringify(manifest));
  await writeFile(artifact,content);await writeFile(keyFile,keys.publicKey.export({format:'pem',type:'spki'}));
  const policyBytes=JSON.stringify(policy);await writeFile(policyFile,policyBytes);
- await writeFile(envelopeFile,JSON.stringify({schemaVersion:1,payload:payload.toString('base64'),signature:sign(null,Buffer.concat([Buffer.from('AEGIS_UPDATE_V1\0'),payload]),keys.privateKey).toString('base64')}));
+ async function publish(value) {
+  const bytes=Buffer.from(JSON.stringify(value));
+  await writeFile(envelopeFile,JSON.stringify({schemaVersion:1,payload:bytes.toString('base64'),signature:sign(null,Buffer.concat([Buffer.from('AEGIS_UPDATE_V1\0'),bytes]),keys.privateKey).toString('base64')}));
+ }
+ await publish(manifest);
  const cli=path.resolve('aegis-cli/bin/aegis.js');
  const invoke=args=>spawnSync(process.execPath,[cli,...args],{encoding:'utf8',timeout:30000});
  const stage=destination=>invoke(['stage-update',artifact,envelopeFile,keyFile,policyFile,destination]);
@@ -44,6 +47,10 @@ try {
  owned();run('sudo',['mount','-o','remount,size=32m',mountPoint]);
  const retried=stage(destination);assert.equal(retried.status,0,retried.stderr);assert.equal(inspect(destination).status,0);
  console.log('PASS: kernel ENOSPC during an 8 MiB staging copy leaves no ready/partial destination; increasing tmpfs capacity permits retry at the same path');
+ const state=path.join(mountPoint,'trusted-state');
+ const initialized=invoke(['init-update-state',state]);assert.equal(initialized.status,0,initialized.stderr);
+ const track=()=>invoke(['verify-tracked-update',artifact,envelopeFile,keyFile,policyFile,state]);
+ const firstObservation=track();assert.equal(firstObservation.status,0,firstObservation.stderr);assert.equal(JSON.parse(firstObservation.stdout).retry,false);
  // Fill only the bounded private filesystem, then protect an already-ready stage.
  const filler=path.join(mountPoint,'filler.bin'),file=await open(filler,'wx');let exhausted=false;
  try {
@@ -57,8 +64,16 @@ try {
  const second=path.join(mountPoint,'second');const rejected=stage(second);assert.equal(rejected.status,1,rejected.stderr);assert.match(rejected.stderr,/ENOSPC/);
  await assert.rejects(access(second),{code:'ENOENT'});
  const retained=inspect(destination);assert.equal(retained.status,0,retained.stderr);
+ await publish({...manifest,version:'3.0.0',sequence:3});
+ const failedObservation=track();assert.equal(failedObservation.status,1,failedObservation.stderr);assert.match(failedObservation.stderr,/ENOSPC/);
+ await publish(manifest);const oldObservation=track();assert.equal(oldObservation.status,0,oldObservation.stderr);assert.equal(JSON.parse(oldObservation.stdout).retry,true);
  await rm(filler);const recovered=stage(second);assert.equal(recovered.status,0,recovered.stderr);assert.equal(inspect(second).status,0);
  assert.equal(await readFile(policyFile,'utf8'),policyBytes);
+ await publish({...manifest,version:'3.0.0',sequence:3});
+ const advanced=track();assert.equal(advanced.status,0,advanced.stderr);assert.equal(JSON.parse(advanced.stdout).retry,false);
+ const older=invoke(['verify-tracked-update',path.join(destination,'artifact.bin'),path.join(destination,'envelope.json'),keyFile,policyFile,state]);
+ assert.equal(older.status,1);assert.match(older.stderr,/rollback/);
+ console.log('PASS: ENOSPC preserves the committed update observation; freeing space allows advancement and older staged metadata is rejected');
  console.log('PASS: a full private filesystem preserves an existing verified stage and trusted policy; freeing space permits a second clean retry');
 } finally {
  owned();
