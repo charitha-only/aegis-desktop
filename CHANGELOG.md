@@ -1,3 +1,10 @@
+# v0.29.2 — SDK transport contract (2026-10-29)
+
+- Validate the core handshake token before retaining it; failed explicit reinitialization clears cached state. Reject HTTP failure statuses, mismatched request IDs and malformed IPC envelopes/JSON instead of accepting them as success.
+- Export configurable `AegisBridge` instances with 15-second default per-request deadlines covering response bodies, plus additive local `errorCode` values. No automatic replay after timeout; server completion may be unknown.
+- Preserve string-valued rate-limit errors even with malformed error fields. Correct the legacy header that advertised unavailable providers as implemented.
+- Add four real-loopback TypeScript SDK fixtures for invalid handshake/envelopes/status/JSON, stalled bodies/retry and rate-limit errors, alongside the actual-core fixture on all OS runners. Exact-source CI pending. Nested command data schemas, response-byte limits and concurrent init ordering remain open.
+
 # v0.29.1 — Plugin registration contract (2026-10-29)
 
 - Replace silent native-handler overwrites with `RegistrationError::DuplicateName`, preserving the original registration and its disabled state.

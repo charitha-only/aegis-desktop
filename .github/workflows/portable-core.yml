@@ -55,6 +55,8 @@ jobs:
           name: core-performance-${{ matrix.os }}
           path: core-benchmark.json
       - run: npm ci --prefix src-ui
+      - name: Verify SDK malformed responses and stalled body deadlines
+        run: node aegis-cli/bin/sdk-contract-smoke.js
       - name: Verify the TypeScript SDK against its configured native core
         run: node aegis-cli/bin/sdk-smoke.js
       - name: Verify owned development startup, restart, failure and shutdown

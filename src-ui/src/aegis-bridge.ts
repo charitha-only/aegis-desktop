@@ -1,11 +1,5 @@
-/**
- * Aegis Desktop IPC Bridge Client v0.18
- * Secure typed communication with Rust Backend Core
- *
- * v0.18 additions:
- *  - MultiOsPipeline     — automated macOS DMG, Linux AppImage/Debian packaging pipeline
- *  - P2PPluginMarketplace — content-addressed IPFS/BitTorrent plugin registry with multi-sig consensus
- *  - HsmPkcs11Engine     — native PKCS#11 hardware token integration (YubiHSM & SmartCards)
+/** Typed local IPC client. Runtime capability checks remain authoritative.
+ * Legacy helpers for unavailable providers return backend errors, not implementations.
  */
 
 import {resolveBridgeOrigin} from './bridge-origin.mjs';
@@ -15,6 +9,7 @@ export interface IpcResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
+  errorCode?: 'HTTP_ERROR' | 'INVALID_RESPONSE' | 'NETWORK_ERROR' | 'TIMEOUT';
 }
 
 export interface PlatformInfo {
@@ -154,33 +149,51 @@ export interface AttestationVerification {
   audit_log: string[];
 }
 
-class AegisBridge {
+export class AegisBridge {
+  private readonly requestTimeoutMs: number;
+  constructor({requestTimeoutMs = 15000}: {requestTimeoutMs?: number} = {}) {
+    if (!Number.isInteger(requestTimeoutMs) || requestTimeoutMs < 1 || requestTimeoutMs > 120000) {
+      throw new Error('requestTimeoutMs must be an integer between 1 and 120000');
+    }
+    this.requestTimeoutMs = requestTimeoutMs;
+  }
   private bridgeOrigin(): string {
     return resolveBridgeOrigin({production: import.meta.env.PROD, appOrigin: import.meta.env.PROD ? window.location.origin : undefined, configuredOrigin: import.meta.env.VITE_AEGIS_BRIDGE_URL});
   }
   private sessionNonce: string | null = null;
   private isInitialized = false;
 
-  public async init(): Promise<{ success: boolean; token?: string; error?: string }> {
+  public async init(): Promise<{ success: boolean; token?: string; error?: string; errorCode?: IpcResponse['errorCode'] }> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+    let errorCode: IpcResponse['errorCode'] = 'NETWORK_ERROR';
     try {
       const res = await fetch(`${this.bridgeOrigin()}/handshake`, {
         method: 'GET',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
       if (!res.ok) {
+        errorCode = 'HTTP_ERROR';
         throw new Error(`Handshake failed with status ${res.status}`);
       }
 
+      errorCode = 'INVALID_RESPONSE';
       const data = await res.json();
+      if (!data || typeof data.token !== 'string' || !/^[a-f0-9]{64}$/.test(data.token)) {
+        throw new Error('Invalid handshake response');
+      }
       this.sessionNonce = data.token;
       this.isInitialized = true;
       return { success: true, token: data.token };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Cannot connect to Aegis Core backend' };
-    }
+      this.sessionNonce = null;
+      this.isInitialized = false;
+      return { success: false, error: controller.signal.aborted ? 'IPC handshake timed out' : (err.message || 'Cannot connect to Aegis Core backend'), errorCode: controller.signal.aborted ? 'TIMEOUT' : errorCode };
+    } finally {clearTimeout(timer);controller.abort();}
   }
 
   public getNonce(): string | null {
@@ -195,6 +208,7 @@ class AegisBridge {
           id: '0',
           success: false,
           error: `IPC Handshake Error: ${initRes.error}. Is Aegis Core running?`,
+          errorCode: initRes.errorCode,
         };
       }
     }
@@ -207,9 +221,12 @@ class AegisBridge {
       payload,
     };
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.requestTimeoutMs);
     try {
       const res = await fetch(`${this.bridgeOrigin()}/ipc`, {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -218,22 +235,29 @@ class AegisBridge {
 
       if (res.status === 429) {
         const errData = await res.json().catch(() => ({}));
+        if (controller.signal.aborted) throw new Error('IPC response timed out');
         return {
           id: reqId,
           success: false,
-          error: errData.error || 'HTTP 429: Too Many Requests - Blocked by Aegis Anti-DoS Rate Limiter!',
+          error: typeof errData?.error === 'string' ? errData.error : 'HTTP 429: Too Many Requests - Blocked by Aegis Anti-DoS Rate Limiter!',
+          errorCode: 'HTTP_ERROR',
         };
       }
-
-      const json: IpcResponse<T> = await res.json();
+      if (!res.ok) return {id:reqId,success:false,error:`IPC HTTP error: ${res.status}`,errorCode:'HTTP_ERROR'};
+      const json = await res.json();
+      if (!json || json.id !== reqId || typeof json.success !== 'boolean'
+          || (json.success === false && typeof json.error !== 'string')) {
+        return {id:reqId,success:false,error:'Invalid IPC response envelope',errorCode:'INVALID_RESPONSE'};
+      }
       return json;
     } catch (err: any) {
       return {
         id: reqId,
         success: false,
-        error: `IPC Network Error: ${err.message}`,
+        error: controller.signal.aborted ? 'IPC request timed out; completion is unknown' : `IPC Network Error: ${err.message}`,
+        errorCode: controller.signal.aborted ? 'TIMEOUT' : err instanceof SyntaxError ? 'INVALID_RESPONSE' : 'NETWORK_ERROR',
       };
-    }
+    } finally {clearTimeout(timer);controller.abort();}
   }
 
   // High-Level Helper APIs
