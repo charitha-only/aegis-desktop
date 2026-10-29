@@ -2,6 +2,7 @@ import {spawn, spawnSync} from 'node:child_process';
 import {access, stat, realpath} from 'node:fs/promises';
 import path from 'node:path';
 import {resolveBridgeOrigin} from '../../src-ui/src/bridge-origin.mjs';
+import {resolveDeveloperTools} from './developer-tools.js';
 
 /** Inspect development launch settings without compiling, binding or launching. */
 export function developmentPlan({uiPort = 5173, openBrowser = true} = {}) {
@@ -55,9 +56,7 @@ async function stopOwned(child, closed) {
   }
 }
 async function buildCore(projectRoot, signal, log) {
-  const candidate = path.join(process.env.USERPROFILE || process.env.HOME || '', '.cargo/bin', process.platform === 'win32' ? 'cargo.exe' : 'cargo');
-  let cargo = 'cargo';
-  try {await access(candidate); cargo=candidate;} catch {}
+  const {cargo}=await resolveDeveloperTools(projectRoot);
   const child = spawn(cargo, ['build','--locked','--manifest-path','src-core/Cargo.toml','--message-format=json-render-diagnostics'],
     {cwd:projectRoot, windowsHide:true, detached:process.platform !== 'win32', stdio:['ignore','pipe','pipe']});
   const closed=completion(child);

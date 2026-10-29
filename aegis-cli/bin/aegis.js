@@ -2,6 +2,7 @@
 import {spawn} from 'node:child_process';
 import {createProject} from '../lib/create.js';
 import {inspectProject} from '../lib/doctor.js';
+import {releaseBuildPlan} from '../lib/developer-tools.js';
 import {writePackageIntegrity,verifyPackageIntegrity} from '../lib/package-integrity.js';
 import {initializeUpdateState,verifyTrackedUpdate,inspectUpdateState} from '../lib/update-state.js';
 import {stageUpdate,inspectStagedUpdate} from '../lib/update-staging.js';
@@ -11,12 +12,10 @@ import {buildDebianPackage} from '../lib/debian-package.js';
 import {developmentPlan, parseDevelopmentArgs, startDevelopment} from '../lib/development.js';
 import path from 'node:path';import fs from 'node:fs';import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
-const cargoPath=path.join(process.env.USERPROFILE||process.env.HOME||'','.cargo','bin',process.platform==='win32'?'cargo.exe':'cargo');
-const cargo=fs.existsSync(cargoPath)?cargoPath:'cargo';
-function start(cmd,args,cwd=root){return spawn(cmd,args,{cwd,stdio:'inherit',shell:process.platform==='win32'&&cmd==='npm.cmd'});}
+function start(cmd,args,cwd=root){return spawn(cmd,args,{cwd,stdio:'inherit',shell:false,windowsHide:true});}
 function run(cmd,args,cwd=root){return new Promise((resolve,reject)=>{const p=start(cmd,args,cwd);p.on('error',reject);p.on('exit',code=>code===0?resolve():reject(new Error(cmd+' failed with exit '+code)));});}
-const npm=process.platform==='win32'?'npm.cmd':'npm';
-async function build(){await run(cargo,['build','--release','--manifest-path','src-core/Cargo.toml']);await run(npm,['run','build'],path.join(root,'src-ui'));}
+async function executePlan(plan){for(const command of plan.commands) await run(command.executable,command.args,command.cwd);return plan;}
+async function build(){return executePlan(await releaseBuildPlan(root));}
 async function securityTest(){const base=process.env.AEGIS_BRIDGE_URL||'http://127.0.0.1:48291';const handshake=await fetch(base+'/handshake');if(!handshake.ok)throw new Error('Handshake failed');const {token}=await handshake.json();let seq=0;
  const call=async(command,payload={},nonce=token)=>{const r=await fetch(base+'/ipc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:String(++seq),command,payload,nonce})});return {status:r.status,...await r.json()};};
  const assert=(ok,name)=>{if(!ok)throw new Error('FAIL: '+name);console.log('PASS: '+name);};
@@ -55,10 +54,7 @@ try{const command=process.argv[2]||'dev';
      if(fs.existsSync(bundleDirectory)) throw new Error('Bundle output already exists; preserve or move it before packaging');
      const report=await inspectProject(root);
      if(!report.ok) throw new Error('Prerequisites failed: '+report.checks.filter(check=>!check.ok).map(check=>`${check.id}: ${check.detail}`).join('; '));
-     // Pin target-dir explicitly so Cargo configuration cannot select a stale project-local binary.
-     await run(cargo,['build','--locked','--release','--manifest-path','src-core/Cargo.toml','--target-dir',path.join(root,'src-core/target')]);
-     await run(npm,['run','build'],path.join(root,'src-ui'));
-     await run(path.join(root,'src-core/target/release',process.platform==='win32'?'aegis-core.exe':'aegis-core'),['--bundle']);
+     await executePlan(await releaseBuildPlan(root,{bundle:true}));
      const manifest=await writePackageIntegrity(bundleDirectory);
      const verification=await verifyPackageIntegrity(bundleDirectory,manifest.manifestSha256);
      console.log(JSON.stringify({bundleDirectory,...verification}));
@@ -116,9 +112,17 @@ try{const command=process.argv[2]||'dev';
    if(args.length<1 || args.length>2 || (args[1] && !/^--template=(react|vanilla)$/.test(args[1]))) throw new Error('Usage: aegis create <new-directory> [--template=react|vanilla]');
    console.log('Project created: '+await createProject(root,args[0],{template:args[1]?.slice(11)||'react'}));
  }
- else if(command==='--help'||command==='help')console.log('Aegis commands:\n  doctor [--json]\n  package [--print-plan]\n  create <new-directory> [--template=react|vanilla]\n  dev [--no-open] [--ui-port=<port>] [--core-binary=<path>] [--print-plan]\n  build\n  build-release\n  bundle\n  test-security\n  package-manifest <bundle-directory>\n  verify-package <bundle-directory> <trusted-manifest-sha256>\n  inspect-update-state <trusted-state-directory>\n  init-update-state <new-trusted-state-directory>\n  verify-tracked-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <trusted-state-directory>\n  stage-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <new-stage-directory>\n  inspect-update <stage-directory> <trusted-public-key.pem> <trusted-policy.json>\n  verify-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json>\n  package-macos <bundle-directory> <output.pkg> <trusted-manifest-sha256>\n  package-deb <bundle-directory> <output.deb> <trusted-manifest-sha256> <maintainer>\n  --version');
+ else if(command==='--help'||command==='help')console.log('Aegis commands:\n  doctor [--json]\n  package [--print-plan]\n  create <new-directory> [--template=react|vanilla]\n  dev [--no-open] [--ui-port=<port>] [--core-binary=<path>] [--print-plan]\n  build [--print-plan]\n  build-release [--print-plan]\n  bundle [--print-plan]\n  test-security\n  package-manifest <bundle-directory>\n  verify-package <bundle-directory> <trusted-manifest-sha256>\n  inspect-update-state <trusted-state-directory>\n  init-update-state <new-trusted-state-directory>\n  verify-tracked-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <trusted-state-directory>\n  stage-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <new-stage-directory>\n  inspect-update <stage-directory> <trusted-public-key.pem> <trusted-policy.json>\n  verify-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json>\n  package-macos <bundle-directory> <output.pkg> <trusted-manifest-sha256>\n  package-deb <bundle-directory> <output.deb> <trusted-manifest-sha256> <maintainer>\n  --version');
  else if(command==='--version')console.log(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version);
- else if(command==='build'||command==='build-release')await build();
- else if(command==='bundle'){await build();await run(cargo,['run','--release','--manifest-path','src-core/Cargo.toml','--','--bundle']);}
+ else if(command==='build'||command==='build-release') {
+   if(process.argv.length>4 || (process.argv[3] && process.argv[3]!=='--print-plan')) throw new Error('Usage: aegis build [--print-plan]');
+   if(process.argv[3]==='--print-plan') console.log(JSON.stringify(await releaseBuildPlan(root)));
+   else await build();
+ }
+ else if(command==='bundle') {
+   if(process.argv.length>4 || (process.argv[3] && process.argv[3]!=='--print-plan')) throw new Error('Usage: aegis bundle [--print-plan]');
+   const plan=await releaseBuildPlan(root,{bundle:true});
+   if(process.argv[3]==='--print-plan') console.log(JSON.stringify(plan));else await executePlan(plan);
+ }
  else if(command==='test-security')await securityTest();else throw new Error('Unknown command: '+command);
 }catch(e){console.error(e.message);process.exitCode=1;}

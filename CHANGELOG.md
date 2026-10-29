@@ -1,3 +1,11 @@
+# v0.29.7 — Consistent developer toolchain (2026-10-30)
+
+- Add read-only `--print-plan` to build/build-release/bundle. Release commands share locked Cargo builds, an explicit local target directory and the exact compiled core for bundling. Package uses the same plan.
+- Resolve npm-cli.js beside the active Node runtime and execute it directly with Node rather than selecting PATH npm/npm.cmd through a Windows shell. Doctor reports those same tool choices; debug development shares Cargo selection and honors CARGO_HOME.
+- Doctor also checks the core Rust 1.92+ compiler floor and runs version diagnostics in project context. Missing tools remain structured diagnostic failures with installation hints. Plans do not execute tools or establish compiler/linker usability.
+- Prevent diagnostic version queries from implicitly installing a missing Rustup toolchain using RUSTUP_AUTO_INSTALL=0; a real Rustup proxy/owned-loopback regression reproduced distribution requests before the fix.
+- Add five public plan/diagnostic regressions. Existing both-template build/package and development lifecycle acceptance cover execution. Exact-source CI pending.
+
 # v0.29.6 — Vanilla TypeScript starter (2026-10-29)
 
 - Add `create <new-directory> --template=vanilla` alongside the existing React default/explicit option. The DOM-based starter uses the same typed SDK/security defaults without a React renderer in its frontend bundle. Shared development dependencies remain locked and include React tooling.
