@@ -157,3 +157,72 @@ test('SDK rejects invalid byte budgets without creating network requests',async(
     assert.equal(requests,0);
   });
 });
+test('SDK validates platform data before exposing typed success and allows additive fields',async()=>{
+  const valid={os:'linux',architecture:'x86_64',embeddedWebview:false,lifecycleAdapterCompiled:false,installerAdapterCompiled:false,osKeyStore:false,encryptedFileStorage:true};
+  let data;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake') return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request) body+=chunk;
+    json(response,{id:JSON.parse(body).id,success:true,data});
+  },async({aegis})=>{
+    for(const invalid of [null,[],{}, {...valid,os:'unknown'}, {...valid,architecture:42}, {...valid,embeddedWebview:'false'}]) {
+      data=invalid;
+      const result=await aegis.platformInfo();
+      assert.equal(result.success,false);
+      assert.equal(result.errorCode,'INVALID_RESPONSE');
+      assert.equal(result.data,undefined);
+    }
+    data={...valid,futureFeature:'preserved'};
+    const accepted=await aegis.platformInfo();
+    assert.equal(accepted.success,true);
+    assert.equal(accepted.data.os,'linux');
+    assert.equal(accepted.data.futureFeature,'preserved');
+  });
+});
+test('SDK rejects malformed directory results while preserving Unicode paths and backend denials',async()=>{
+  let data,denied=false;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake') return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request) body+=chunk;
+    const {id}=JSON.parse(body);
+    json(response,denied?{id,success:false,error:'Fixture permission denied'}:{id,success:true,data});
+  },async({aegis})=>{
+    for(const invalid of [null,[],{data:'/data',config:'/config'}, {data:'/data',config:42,cache:'/cache'}, {data:'',config:'/config',cache:'/cache'}]) {
+      data=invalid;
+      const result=await aegis.platformDirectories('fixture');
+      assert.equal(result.success,false);
+      assert.equal(result.errorCode,'INVALID_RESPONSE');
+    }
+    data={data:'/දත්ත',config:'/config',cache:'/cache'};
+    assert.equal((await aegis.platformDirectories('fixture')).data.data,'/දත්ත');
+    denied=true;
+    const result=await aegis.platformDirectories('fixture');
+    assert.equal(result.success,false);
+    assert.equal(result.error,'Fixture permission denied');
+    assert.equal(result.errorCode,undefined);
+  });
+});
+test('SDK validates nested security flags without treating false as a missing value',async()=>{
+  const caps={fsRead:false,fsWrite:false,shellExecution:false,systemInfo:false,crypto:false};
+  const valid={engine:'Fixture Core',nonceVerified:false,sandboxEnforced:false,activeCapabilities:caps};
+  let data;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake') return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request) body+=chunk;
+    json(response,{id:JSON.parse(body).id,success:true,data});
+  },async({aegis})=>{
+    for(const invalid of [null,{}, {...valid,engine:42}, {...valid,nonceVerified:'true'}, {...valid,activeCapabilities:[]}, {...valid,activeCapabilities:{...caps,crypto:1}}, {...valid,windowsSessionAvailable:'yes'}, {...valid,activeCapabilities:{...caps,encryptedVault:'enabled'}}]) {
+      data=invalid;
+      const result=await aegis.getSecurityStatus();
+      assert.equal(result.success,false);
+      assert.equal(result.errorCode,'INVALID_RESPONSE');
+      assert.equal(result.data,undefined);
+    }
+    data={...valid,windowsSessionAvailable:false,activeCapabilities:{...caps,encryptedVault:false,futureGrant:'kept'}};
+    const accepted=await aegis.getSecurityStatus();
+    assert.equal(accepted.success,true);
+    assert.equal(accepted.data.sandboxEnforced,false);
+    assert.equal(accepted.data.activeCapabilities.crypto,false);
+    assert.equal(accepted.data.activeCapabilities.futureGrant,'kept');
+  });
+});

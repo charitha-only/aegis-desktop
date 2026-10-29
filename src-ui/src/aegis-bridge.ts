@@ -3,6 +3,7 @@
  */
 
 import {resolveBridgeOrigin} from './bridge-origin.mjs';
+import {validCommandData} from './ipc-contract';
 
 export interface IpcResponse<T = any> {
   id: string;
@@ -301,6 +302,9 @@ export class AegisBridge {
       if (!json || json.id !== reqId || typeof json.success !== 'boolean'
           || (json.success === false && typeof json.error !== 'string')) {
         return {id:reqId,success:false,error:'Invalid IPC response envelope',errorCode:'INVALID_RESPONSE'};
+      }
+      if (json.success && !validCommandData(command, json.data)) {
+        return {id:reqId,success:false,error:`Invalid response data for ${command}`,errorCode:'INVALID_RESPONSE'};
       }
       return json;
     } catch (err: any) {

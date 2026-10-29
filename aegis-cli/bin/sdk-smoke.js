@@ -39,6 +39,13 @@ try {
   const platform = await sdk.platformInfo();
   assert.equal(platform.success, true, platform.error);
   assert.equal(platform.data.os, {win32:'windows',linux:'linux',darwin:'macos'}[process.platform]);
+  const directories = await sdk.platformDirectories('sdkfixture');
+  assert.equal(directories.success, true, directories.error);
+  for (const name of ['data','config','cache']) assert.equal(path.isAbsolute(directories.data[name]), true);
+  const security = await sdk.getSecurityStatus();
+  assert.equal(security.success, true, security.error);
+  assert.equal(security.data.nonceVerified, true);
+  assert.equal(typeof security.data.activeCapabilities.crypto, 'boolean');
   const denied = await client('file:///not-an-ipc-origin');
   const init = await denied.init();
   assert.equal(init.success, false);
@@ -46,7 +53,7 @@ try {
   const invoke = await denied.invoke('platform_info', {}, 'TEST_ONLY_invalid-nonce');
   assert.equal(invoke.success, false);
   assert.match(invoke.error, /Invalid IPC bridge origin/);
-  console.log('PASS: real TypeScript SDK selects its configured native core and rejects invalid endpoints before fetching');
+  console.log('PASS: real TypeScript SDK validates native platform/directories/security contracts and rejects invalid endpoints before fetching');
 } finally {
   await Promise.all(servers.map(server => server.close()));
   if (child.exitCode === null) child.kill();

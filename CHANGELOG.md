@@ -1,3 +1,10 @@
+# v0.29.4 — Runtime SDK data contracts (2026-10-29)
+
+- Validate successful platform_info, platform_directories and get_security_status response data before returning success through typed helpers or raw invoke. Invalid payloads become INVALID_RESPONSE without returning invalid data.
+- Require the documented core fields and boolean capability flags without coercion. Preserve false values, Unicode directory strings and additive unknown fields. Optional known flags must have the correct type when present; existing backend denials remain unchanged.
+- Add three real-loopback malformed-data regressions (twelve SDK cases total) and extend actual-core acceptance to all three covered commands. This validates runtime shapes, not the truth of security declarations or authority/safety of paths.
+- Exact-source CI pending. Other command data schemas, browser/device acceptance, signing and independent audit remain open.
+
 # v0.29.3 — Bounded SDK responses and shared initialization (2026-10-29)
 
 - Bound actual received JSON body bytes before decoding/parsing: 4 KiB handshake/rate-limit bodies and configurable IPC success bodies (16 MiB default, 1 KiB–64 MiB allowed). Oversized responses return RESPONSE_TOO_LARGE and abort the owned fetch.

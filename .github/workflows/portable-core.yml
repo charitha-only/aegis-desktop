@@ -55,7 +55,7 @@ jobs:
           name: core-performance-${{ matrix.os }}
           path: core-benchmark.json
       - run: npm ci --prefix src-ui
-      - name: Verify SDK response bounds deadlines and shared initialization
+      - name: Verify SDK data contracts response bounds deadlines and shared initialization
         run: node aegis-cli/bin/sdk-contract-smoke.js
       - name: Verify the TypeScript SDK against its configured native core
         run: node aegis-cli/bin/sdk-smoke.js
