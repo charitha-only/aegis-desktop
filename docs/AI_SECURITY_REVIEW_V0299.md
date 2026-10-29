@@ -23,3 +23,8 @@ Impact limits: no concurrent-writer data-loss reproduction, no proof about malic
 ## Other observations and open gates
 
 No additional confirmed defect was found in the bounded scope. This is not a claim of absence of vulnerabilities. Signing requires a real publisher identity; workflow checks cannot establish an unavailable Aegis signature. Physical Linux/macOS, interactive Windows lifecycle/UI, constrained-device performance and power-loss acceptance remain incomplete. A separate qualified reviewer must supply an identity, scope, report and retest evidence to complete the independent-audit gate.
+
+
+## Patch review and exact-source follow-up
+
+The separate AI agent reviewed the minimal patch and public regression read-only and found no blocking issue within the stated ASCII alias scope. All exact-source workflows for ae3bab5 passed: portable 40962752635, native 40962752716, Windows installer 40962752568. The annotated v0.29.9 source tag points to that revision. These results do not change the external gates above.
