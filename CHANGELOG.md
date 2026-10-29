@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Add a guarded hosted-Linux acceptance fixture using a bounded private tmpfs to provoke real kernel `ENOSPC` during an 8 MiB signed-update staging copy. Verify partial destination cleanup/rejection and retry after increasing capacity.
 - Fill the private filesystem again with a completed stage present, verify that stage and trusted policy survive a failed second attempt, then free space and retry. Mount ownership is checked before cleanup; failed unmounts never trigger recursive mount deletion.
-- This validates existing public CLI behavior; no speculative production patch is included. Exact-source CI pending. No mount/fault operations run on local Windows/macOS or self-hosted runners.
+- This validates existing public CLI behavior; no speculative production patch is included. Exact-source three-OS checks, both Linux filesystem fault scenarios and Windows installer acceptance passed; see the verification ledger. No mount/fault operations run on local Windows/macOS or self-hosted runners.
 - Physical storage/power-loss, Windows/macOS filesystem faults, persisted rollback state and transactional installation remain open; runtime auto-apply stays disabled.
 
 ## [v0.28.4] - 2026-10-29
