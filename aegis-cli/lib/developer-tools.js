@@ -26,9 +26,9 @@ export async function releaseBuildPlan(projectRoot, {bundle=false} = {}) {
   if(!tools.npmCli) throw new Error('Cannot locate npm-cli.js beside Node; install a Node distribution with npm and run aegis doctor');
   const coreExecutable=path.join(root,'src-core/target/release',process.platform==='win32'?'aegis-core.exe':'aegis-core');
   const commands=[
-    {executable:tools.cargo,args:['build','--locked','--release','--manifest-path','src-core/Cargo.toml','--target-dir',path.join(root,'src-core/target')],cwd:root,shell:false},
+    {executable:tools.cargo,args:['build','--locked','--release','--message-format=json-render-diagnostics','--manifest-path','src-core/Cargo.toml','--target-dir',path.join(root,'src-core/target')],cwd:root,shell:false,captureCoreArtifact:true},
     {executable:tools.node,args:[tools.npmCli,'run','build'],cwd:path.join(root,'src-ui'),shell:false},
   ];
-  if(bundle) commands.push({executable:coreExecutable,args:['--bundle'],cwd:root,shell:false});
-  return {coreExecutable,commands};
+  if(bundle) commands.push({executable:coreExecutable,args:['--bundle'],cwd:root,shell:false,useCoreArtifact:true});
+  return {coreExecutable,artifactSelection:"cargo-compiler-artifact",commands};
 }

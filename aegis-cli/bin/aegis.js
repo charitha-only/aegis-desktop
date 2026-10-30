@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import {spawn} from 'node:child_process';
 import {createProject} from '../lib/create.js';
 import {inspectProject} from '../lib/doctor.js';
 import {releaseBuildPlan} from '../lib/developer-tools.js';
+import {executeReleasePlan} from '../lib/release-build.js';
 import {writePackageIntegrity,verifyPackageIntegrity} from '../lib/package-integrity.js';
 import {initializeUpdateState,verifyTrackedUpdate,inspectUpdateState} from '../lib/update-state.js';
 import {stageUpdate,inspectStagedUpdate} from '../lib/update-staging.js';
@@ -12,9 +12,7 @@ import {buildDebianPackage} from '../lib/debian-package.js';
 import {developmentPlan, parseDevelopmentArgs, startDevelopment} from '../lib/development.js';
 import path from 'node:path';import fs from 'node:fs';import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
-function start(cmd,args,cwd=root){return spawn(cmd,args,{cwd,stdio:'inherit',shell:false,windowsHide:true});}
-function run(cmd,args,cwd=root){return new Promise((resolve,reject)=>{const p=start(cmd,args,cwd);p.on('error',reject);p.on('exit',code=>code===0?resolve():reject(new Error(cmd+' failed with exit '+code)));});}
-async function executePlan(plan){for(const command of plan.commands) await run(command.executable,command.args,command.cwd);return plan;}
+async function executePlan(plan){return executeReleasePlan(plan);}
 async function build(){return executePlan(await releaseBuildPlan(root));}
 async function securityTest(){const base=process.env.AEGIS_BRIDGE_URL||'http://127.0.0.1:48291';const handshake=await fetch(base+'/handshake');if(!handshake.ok)throw new Error('Handshake failed');const {token}=await handshake.json();let seq=0;
  const call=async(command,payload={},nonce=token)=>{const r=await fetch(base+'/ipc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:String(++seq),command,payload,nonce})});return {status:r.status,...await r.json()};};

@@ -1,3 +1,11 @@
+# v0.29.11 — Cargo-reported release artifact (2026-10-31)
+
+- Fix release bundling selecting a stale src-core/target/release executable when a Cargo build target places the new artifact under a target-triple directory. Explicit target-dir alone did not prevent this.
+- Parse the current successful Cargo build's compiler-artifact output and use its reported aegis-core binary for bundle/package execution. Fail closed if no core artifact is reported; do not fall back to an old path. Render compiler diagnostics and bound pending diagnostic lines.
+- Reproduce the stale bundle through the real public CLI with a dependency-free Cargo fixture, a preexisting stale release binary and CARGO_BUILD_TARGET. Also cover project build.target configuration and space-containing paths.
+- Read-only plans retain the default predicted path but mark artifactSelection and the build/bundle command flags describing dynamic selection. Cross-compilation is not new supported packaging: a non-runnable selected binary must fail execution rather than run a stale host binary.
+- Local CLI tests: 62 passed. Exact-source CI pending. Publisher-signing, physical-device and independent-audit gates remain open.
+
 # v0.29.10 — Consistent internal-name listings (2026-10-31)
 
 - Apply the same ASCII case-insensitive .aegis- prefix policy to sandbox directory listings as to file access. Previously externally seeded mixed-case internal files/directories could appear in a listing even though v0.29.9 correctly rejected their read/write paths.
