@@ -27,7 +27,7 @@ pub fn list_directory(path: &Path) -> Result<Vec<DirectoryEntry>, String> {
         let Ok(name) = entry.file_name().into_string() else {
             continue;
         };
-        if name.starts_with(".aegis-") {
+        if name.to_ascii_lowercase().starts_with(".aegis-") {
             continue;
         }
         let metadata = entry

@@ -36,3 +36,8 @@ Repeat `cargo test --locked --manifest-path src-core/Cargo.toml ipc_filesystem_l
 ## Reserved internal names — v0.29.9
 
 Every sandbox path component rejects the ASCII .aegis- prefix without regard to ASCII letter case on all OSes. This prevents case aliases of framework lock/temporary filenames on case-insensitive volumes and keeps the portable policy consistent on case-sensitive volumes. It does not establish protection from an external same-account filesystem actor. Existing filtered listing behavior is unchanged.
+
+
+## Listing policy alignment — v0.29.10
+
+Listings now filter .aegis- prefixes without regard to ASCII case for both files and directories, matching the v0.29.9 read/write reservation. An externally seeded mixed-case internal-looking name no longer appears as an available application entry. Ordinary names such as aegis-public.txt remain visible. Filtered entries still consume the existing 4096 scan budget. No file is renamed/deleted and no new privilege or filesystem-race guarantee is implied. The public IPC regression ipc_filesystem_listing_filters_internal_name_case_variants reproduces the previous mismatch on a real temporary filesystem.

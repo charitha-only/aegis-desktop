@@ -1955,19 +1955,62 @@ fn ipc_filesystem_rejects_case_variants_of_internal_names() {
         ".AeGiS-tmp-test",
         "nested/.AEGIS-private",
     ] {
-        std::fs::write(security.get_sandbox_root().join(path), b"TEST_ONLY_INTERNAL").unwrap();
+        std::fs::write(
+            security.get_sandbox_root().join(path),
+            b"TEST_ONLY_INTERNAL",
+        )
+        .unwrap();
         let response = call("fs_write_file", path);
         assert!(
             !response.success,
             "Internal-name write must be rejected: {path}"
         );
-        assert!(response.error.as_deref().unwrap().contains("reserved storage name"));
+        assert!(response
+            .error
+            .as_deref()
+            .unwrap()
+            .contains("reserved storage name"));
         let response = call("fs_read_file", path);
         assert!(
             !response.success,
             "Internal-name read must be rejected: {path}"
         );
-        assert!(response.error.as_deref().unwrap().contains("reserved storage name"));
+        assert!(response
+            .error
+            .as_deref()
+            .unwrap()
+            .contains("reserved storage name"));
     }
     assert!(call("fs_read_file", "ordinary.txt").success);
+}
+
+#[test]
+fn ipc_filesystem_listing_filters_internal_name_case_variants() {
+    let directory = tempfile::tempdir().unwrap();
+    let (router, handshake, security) = filesystem_listing_fixture(directory.path());
+    let root = security.get_sandbox_root();
+    for name in [
+        ".aegis-private",
+        ".AEGIS-upper",
+        ".AeGiS-temp",
+        "visible.txt",
+        "aegis-public.txt",
+    ] {
+        std::fs::write(root.join(name), b"TEST_ONLY").unwrap();
+    }
+    std::fs::create_dir(root.join(".AEGIS-directory")).unwrap();
+    let response = router.handle_request(crate::ipc::protocol::IpcRequest {
+        id: "list-reserved-case".into(),
+        command: "fs_list_sandbox".into(),
+        nonce: handshake.get_token(),
+        payload: serde_json::json!({}),
+    });
+    assert!(response.success);
+    let names: Vec<_> = response.data.as_ref().unwrap()["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| entry["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["aegis-public.txt", "visible.txt"]);
 }
