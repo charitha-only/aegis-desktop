@@ -11,8 +11,13 @@ export async function executeReleasePlan(plan,{log=text=>process.stdout.write(te
       const child=spawn(executable,command.args,{cwd:command.cwd,shell:false,windowsHide:true,
         stdio:command.captureCoreArtifact?['ignore','pipe','pipe']:['ignore','inherit','inherit']});
       let pending='',failure;
+      const oversized=()=>{
+        failure ||= new Error('Cargo diagnostic line exceeds 1 MiB');
+        pending='';child.kill();
+      };
       const record=line=>{
-        if(!line) return;
+        if(failure || !line) return;
+        if(Buffer.byteLength(line,'utf8')>1024*1024) {oversized();return;}
         let item;
         try {item=JSON.parse(line);} catch {log(line+'\n');return;}
         if(item.reason==='compiler-artifact' && item.target?.name==='aegis-core'
@@ -25,12 +30,14 @@ export async function executeReleasePlan(plan,{log=text=>process.stdout.write(te
       if(command.captureCoreArtifact) {
         child.stdout.setEncoding('utf8');
         child.stdout.on('data',data=>{
+          if(failure) return;
           pending+=data;
           let end;
-          while((end=pending.indexOf('\n'))!==-1) {record(pending.slice(0,end));pending=pending.slice(end+1);}
-          if(pending.length>1024*1024) {
-            failure=new Error('Cargo diagnostic line exceeds 1 MiB');pending='';child.kill();
+          while((end=pending.indexOf('\n'))!==-1) {
+            const line=pending.slice(0,end);pending=pending.slice(end+1);record(line);
+            if(failure) return;
           }
+          if(Buffer.byteLength(pending,'utf8')>1024*1024) oversized();
         });
         child.stderr.setEncoding('utf8');child.stderr.on('data',log);
       }

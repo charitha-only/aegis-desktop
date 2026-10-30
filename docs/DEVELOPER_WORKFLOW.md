@@ -46,3 +46,10 @@ Diagnostic version queries explicitly set `RUSTUP_AUTO_INSTALL=0`, using the [of
 Build/build-release/bundle/package capture Cargo JSON compiler-artifact events and require an absolute executable for the aegis-core binary target from that successful build. Bundle execution uses this artifact rather than a predicted default path. Compiler errors or a missing core artifact stop the flow; there is no stale-path fallback. Normal Cargo freshness checks may reuse an unchanged artifact and still report it.
 
 Read-only plans remain tool-execution-free. coreExecutable is the default predicted path; artifactSelection=cargo-compiler-artifact and captureCoreArtifact/useCoreArtifact command flags describe how execution resolves the actual path. It cannot know custom target outputs without building. A host-target environment/configuration override is covered by a real dependency-free Cargo fixture with a deliberately stale default binary. This does not add foreign-target packaging: foreign binaries can fail to execute, while trusted compiler/build-script side effects and process-tree cancellation remain outside this guarantee.
+
+
+## Release diagnostic limits — v0.29.12
+
+The release executor checks each Cargo stdout line against a 1 MiB UTF-8 byte limit before JSON parsing/log forwarding, including complete newline-terminated lines and pending input without a newline. The previous character-based pending-only check could accept an oversized Unicode line. A limit violation stops the owned tool and fails the build before UI/bundle steps; a missing core artifact or nonzero compiler exit also prevents downstream execution.
+
+The limit applies per line; multiple individually valid lines can exceed 1 MiB in aggregate. Exact-limit ASCII lines remain accepted. Child-tool fixtures exercise the public execution API using owned temporary directories and Node processes; real Cargo/CLI target-override and generated application packaging are separate integration evidence. This is not a time/output-total/process-tree/resource sandbox. Tool stderr is streamed separately; developer tools/build scripts remain trusted local programs.

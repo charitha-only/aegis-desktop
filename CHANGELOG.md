@@ -1,3 +1,10 @@
+# v0.29.12 — Bounded release diagnostics (2026-10-31)
+
+- Correct the release executor's claimed 1 MiB diagnostic-line limit: measure UTF-8 bytes rather than JavaScript character count, and enforce before parsing complete lines as well as on pending unterminated input.
+- Reproduce acceptance of an oversized Unicode diagnostic through the public release execution boundary before patching. On overflow stop the owned tool and refuse downstream UI/bundle work.
+- Add five real child-tool boundary tests: complete/unterminated Unicode overflow, exact-limit lines with aggregate output above the per-line limit, missing core artifact and compiler failure after an artifact event. Existing real Cargo/CLI target-override acceptance remains.
+- Local CLI suite: 67 passed. Exact-source CI pending. This bounds individual retained diagnostic lines, not total tool output, whole-process memory or arbitrary trusted compiler/build-script side effects.
+
 # v0.29.11 — Cargo-reported release artifact (2026-10-31)
 
 - Fix release bundling selecting a stale src-core/target/release executable when a Cargo build target places the new artifact under a target-triple directory. Explicit target-dir alone did not prevent this.
