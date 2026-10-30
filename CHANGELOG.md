@@ -3,7 +3,7 @@
 - Apply the same ASCII case-insensitive .aegis- prefix policy to sandbox directory listings as to file access. Previously externally seeded mixed-case internal files/directories could appear in a listing even though v0.29.9 correctly rejected their read/write paths.
 - Reproduce through public IPC before the patch; add a real temporary-filesystem regression for lower/upper/mixed-case files, an internal directory and ordinary visible names.
 - Preserve sorted output, the 4096 scanned-entry cap (including filtered entries), and error propagation. This is response consistency hardening, not a newly demonstrated vault-access bypass or a filesystem-race fix.
-- Local Windows Rust suite: 99 passed, one ignored. Exact-source CI pending. Physical-device, publisher-signing and independent-audit gates remain open.
+- Local Windows Rust suite: 99 passed, one ignored. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed; see the verification ledger. Physical-device, publisher-signing and independent-audit gates remain open.
 
 # v0.29.9 — Reserved storage name protection (2026-10-30)
 

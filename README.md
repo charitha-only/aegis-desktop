@@ -96,7 +96,7 @@ The **v0.27** performance tooling still requires whole-app/low-resource measurem
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.29.10`** | **Consistent internal-name listings** | Hide ASCII case variants of reserved internal files/directories; ordinary names stay visible. Exact-source CI pending. |
+| **`v0.29.10`** | **Consistent internal-name listings** | Hide ASCII case variants of reserved internal files/directories; ordinary names stay visible. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |
 | **`v0.29.9`** | **Reserved storage names** | Reject case variants of internal storage names on every OS; public IPC regression and scoped AI review. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |
 | **`v0.29.8`** | **Bounded filesystem listings** | Directory I/O failures propagate, sorted bounded listings and runtime filesystem SDK data validation. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md) and [filesystem contract](docs/FILESYSTEM_CONTRACT.md). |
 | **`v0.29.7`** | **Consistent developer toolchain** | Inspectable release plans, shared Cargo/npm selection, locked/pinned builds and Rust compiler diagnostics. Three-OS and Windows installer checks passed for source `7aa8c7d`. See [developer workflow](docs/DEVELOPER_WORKFLOW.md). |
