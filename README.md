@@ -96,7 +96,7 @@ The **v0.27** performance tooling still requires whole-app/low-resource measurem
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.29.11`** | **Cargo artifact selection** | Bundle the executable reported by the current Cargo build; prevent stale default binaries after target overrides. Exact-source CI pending. |
+| **`v0.29.11`** | **Cargo artifact selection** | Bundle the executable reported by the current Cargo build; prevent stale default binaries after target overrides. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |
 | **`v0.29.10`** | **Consistent internal-name listings** | Hide ASCII case variants of reserved internal files/directories; ordinary names stay visible. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |
 | **`v0.29.9`** | **Reserved storage names** | Reject case variants of internal storage names on every OS; public IPC regression and scoped AI review. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |
 | **`v0.29.8`** | **Bounded filesystem listings** | Directory I/O failures propagate, sorted bounded listings and runtime filesystem SDK data validation. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md) and [filesystem contract](docs/FILESYSTEM_CONTRACT.md). |

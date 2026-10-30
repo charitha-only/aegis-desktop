@@ -4,7 +4,7 @@
 - Parse the current successful Cargo build's compiler-artifact output and use its reported aegis-core binary for bundle/package execution. Fail closed if no core artifact is reported; do not fall back to an old path. Render compiler diagnostics and bound pending diagnostic lines.
 - Reproduce the stale bundle through the real public CLI with a dependency-free Cargo fixture, a preexisting stale release binary and CARGO_BUILD_TARGET. Also cover project build.target configuration and space-containing paths.
 - Read-only plans retain the default predicted path but mark artifactSelection and the build/bundle command flags describing dynamic selection. Cross-compilation is not new supported packaging: a non-runnable selected binary must fail execution rather than run a stale host binary.
-- Local CLI tests: 62 passed. Exact-source CI pending. Publisher-signing, physical-device and independent-audit gates remain open.
+- Local CLI tests: 62 passed. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed; see the verification ledger. Publisher-signing, physical-device and independent-audit gates remain open.
 
 # v0.29.10 — Consistent internal-name listings (2026-10-31)
 
