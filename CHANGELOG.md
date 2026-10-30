@@ -4,7 +4,7 @@
 - Reproduce acceptance of an oversized Unicode diagnostic through the public release execution boundary before patching. On overflow stop the owned tool and refuse downstream UI/bundle work.
 - Add five real child-tool boundary tests: complete/unterminated Unicode overflow, exact-limit lines with aggregate output above the per-line limit, missing core artifact and compiler failure after an artifact event. Existing real Cargo/CLI target-override acceptance remains.
 - Make portable CI discover all CLI *.test.js files rather than maintaining a fixed filename list, so new regression files are included.
-- Local CLI suite: 67 passed. Exact-source CI pending. This bounds individual retained diagnostic lines, not total tool output, whole-process memory or arbitrary trusted compiler/build-script side effects.
+- Local CLI suite: 67 passed. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed, including all five new release tests; see the verification ledger. This bounds individual retained diagnostic lines, not total tool output, whole-process memory or arbitrary trusted compiler/build-script side effects.
 
 # v0.29.11 — Cargo-reported release artifact (2026-10-31)
 
