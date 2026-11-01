@@ -3,7 +3,7 @@
 - Align doctor application-ID checks with the existing Rust portable identity rules: bounded ASCII names, traversal/separator/device-name rejection and no trailing dot/space. Previously any string, including an empty ID, could pass configuration diagnostics despite runtime rejection.
 - Require Cargo/UI lockfiles and the installed Vite entry to resolve to regular files, not merely existing paths. Directory-shaped prerequisites previously passed diagnostic checks.
 - Package already gates compilation on doctor, so these errors now fail earlier with setup guidance. Read-only diagnostics do not create project files or install tools.
-- Add two public diagnostic regressions covering invalid and valid IDs, boundary lengths, directory-shaped prerequisites and recovery after restoring files. Local CLI suite: 69 passed. Exact-source CI pending.
+- Add two public diagnostic regressions covering invalid and valid IDs, boundary lengths, directory-shaped prerequisites and recovery after restoring files. Local CLI suite: 69 passed. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed; see the verification ledger.
 - These checks do not validate lockfile contents, every configuration field, linker usability, signing or production readiness. stat follows symlinks; no new malicious-filesystem-race guarantee is introduced.
 
 # v0.29.12 — Bounded release diagnostics (2026-10-31)
