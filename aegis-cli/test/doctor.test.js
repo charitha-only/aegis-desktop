@@ -89,12 +89,12 @@ test('doctor rejects nonportable application identities before packaging',async(
   const fixture=await mkdtemp(path.join(tmpdir(),'aegis-doctor-identity-'));
   try {
     for(const appId of ['', '.', '..', '../outside', 'folder/name', 'app:', 'CON', 'nul.txt', 'COM1.project', 'LPT9', 'trailing.', 'trailing ', 'a'.repeat(129)]) {
-      await writeFile(path.join(fixture,'aegis.config.json'),JSON.stringify({name:'Valid App',appId}));
+      await writeFile(path.join(fixture,'aegis.config.json'),JSON.stringify({name:'Valid App',appId,version:'0.1.0'}));
       const report=await inspectProject(fixture);
       assert.equal(report.checks.find(check=>check.id==='configuration').ok,false,`Invalid portable ID: ${appId}`);
     }
     for(const appId of ['app.example','Valid App','COM10','a'.repeat(128)]) {
-      await writeFile(path.join(fixture,'aegis.config.json'),JSON.stringify({name:'Valid App',appId}));
+      await writeFile(path.join(fixture,'aegis.config.json'),JSON.stringify({name:'Valid App',appId,version:'0.1.0'}));
       const report=await inspectProject(fixture);
       assert.equal(report.checks.find(check=>check.id==='configuration').ok,true,`Valid portable ID: ${appId}`);
     }
@@ -116,5 +116,20 @@ test('doctor rejects directories in place of prerequisite files and accepts rest
     }
     report=await inspectProject(fixture);
     for(const [id] of inputs) assert.equal(report.checks.find(check=>check.id===id).ok,true,`${id} should recover after restoring a file`);
+  } finally {await rm(fixture,{recursive:true,force:true});}
+});
+
+
+test('doctor rejects missing or invalid package versions instead of accepting a defaultable identity',async()=>{
+  const fixture=await mkdtemp(path.join(tmpdir(),'aegis-doctor-version-'));
+  try {
+    for(const version of [undefined,null,123,'','.', '..','1..0','1/0','1.0+meta']) {
+      await writeFile(path.join(fixture,'aegis.config.json'),JSON.stringify({name:'Valid App',appId:'app.example',version}));
+      const report=await inspectProject(fixture);
+      assert.equal(report.checks.find(check=>check.id==='configuration').ok,false,`Invalid package version: ${version}`);
+    }
+    await writeFile(path.join(fixture,'aegis.config.json'),JSON.stringify({name:'Valid App',appId:'app.example',version:'1.2.3-preview'}));
+    const report=await inspectProject(fixture);
+    assert.equal(report.checks.find(check=>check.id==='configuration').ok,true);
   } finally {await rm(fixture,{recursive:true,force:true});}
 });

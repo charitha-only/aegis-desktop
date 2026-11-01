@@ -69,3 +69,14 @@ The v0.29.11 executor fix selected the Cargo-reported executable for invocation,
 The actual optimized-core fixture bundle-artifact-smoke.js checks SHA-256 equality of selected and bundled executable bytes with a stale default slot and with no default slot. Full generated Vanilla acceptance deliberately seeds a stale default binary, sets CARGO_BUILD_TARGET to the installed host triple, executes the real CLI/Cargo/UI/package journey and compares the packaged core to that target's artifact. The normal React fixture retains default-target acceptance.
 
 The direct BundleEngine::bundle API and legacy package-pipeline preview still deliberately select the project's default release path; they do not build or resolve Cargo target overrides. No IPC caller-supplied executable path is added. Explicit executable selection is for trusted host code, not publisher verification, foreign-target validation, arbitrary filesystem-race prevention or process isolation.
+
+
+## Explicit bundle metadata — v0.29.15
+
+The CLI manifest loader requires object JSON with explicit string name and version. It no longer guesses AegisApp/1.0.0 when those fields are missing or wrong-type. Author/description default only when absent, while explicit values must be strings. Icon may be absent, null or a string. Existing name/version token and installer-metadata escaping restrictions remain. Fix legacy minimal CLI configuration by adding the actual application name/version; this is an intentional preview compatibility change.
+
+load_bundle_manifest now returns Result<BundleManifest, String>; host callers must handle an error. The CLI fails before creating package output. Direct typed BundleEngine APIs still use caller-supplied manifests; this change does not reinterpret their metadata arguments.
+
+Doctor requires an explicit nonempty version using ASCII letters/digits/dots/underscores/hyphens, excluding a lone dot or repeated dots, matching the current Rust bundler token rules. Package therefore rejects missing/numeric/unsupported version settings before compilation. This is not complete SemVer validation, every native package format's version contract or complete configuration checking; native format-specific restrictions still apply later.
+
+The actual-core bundle fixture checks missing/wrong-type fields and non-object roots produce configuration errors with no new dist-bundle output, while valid name/version, absent optional defaults and null icon are preserved exactly. The existing stale/missing-default binary provenance checks and full React/Vanilla build/package acceptance remain enabled on all three hosted OSes.

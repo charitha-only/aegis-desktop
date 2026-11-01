@@ -1,3 +1,12 @@
+# v0.29.15 — Explicit bundle metadata (2026-11-02)
+
+- Stop the CLI manifest loader silently replacing explicit wrong-type fields with defaults. A numeric version previously produced a successful package labeled 1.0.0 instead of rejecting configuration.
+- Require object configuration with explicit string name/version. Absent author/description retain defaults; explicit values must be strings. Icon remains absent/null or string. Existing BundleEngine name/version token and installer metadata checks still apply.
+- The public load_bundle_manifest preview API now returns Result; the --bundle handler propagates errors before creating package output. Direct typed BundleEngine APIs remain available with caller-supplied manifests.
+- Doctor requires an explicit package-version token aligned with the existing Rust bundler rules, rejecting missing, wrong-type or unsupported tokens before package compilation. This is not full SemVer or every native installer format's version policy.
+- Reproduce through the actual optimized --bundle CLI; extend byte-provenance acceptance with invalid metadata/no-output cases and exact valid metadata/default preservation. Add a public doctor version regression. Local CLI: 70 passed. Exact-source CI pending.
+- Publisher authenticity, physical-device/signing and independent-audit gates remain open.
+
 # v0.29.14 — Packaged executable provenance (2026-11-01)
 
 - Complete the v0.29.11 artifact-selection fix: the JS executor selected the new binary, but the Rust --bundle handler still copied src-core/target/release. A stale default slot could therefore enter the package despite correct CLI execution.

@@ -11,6 +11,12 @@ function portableAppId(value) {
     && !/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(value.split('.')[0]);
 }
 
+// Mirrors the existing BundleEngine package-version token rules, not full SemVer.
+function packageVersion(value) {
+  return typeof value==='string' && value.length>0 && value!=='.'
+    && !value.includes('..') && !/[^A-Za-z0-9._-]/.test(value);
+}
+
 /** Read-only portable-build diagnostics; native SDKs/signing are separate gates. */
 export async function inspectProject(projectRoot) {
   const checks=[];
@@ -29,7 +35,7 @@ export async function inspectProject(projectRoot) {
   record('npm',npm?.status===0,npm?.status===0?npm.stdout.trim():'Install a Node distribution that includes npm');
   try {
     const config=JSON.parse(await readFile(path.join(projectRoot,'aegis.config.json'),'utf8'));
-    record('configuration',typeof config.name==='string'&&portableAppId(config.appId),'aegis.config.json requires name and a portable stable appId (1-128 ASCII characters; no paths, reserved device names or trailing dot/space)');
+    record('configuration',typeof config.name==='string'&&portableAppId(config.appId)&&packageVersion(config.version),'aegis.config.json requires name, portable stable appId (1-128 ASCII characters; no paths/device names/trailing dot or space) and explicit package version (letters/digits/dot/underscore/hyphen; no repeated dots)');
   } catch {record('configuration',false,'Missing or invalid aegis.config.json');}
   for(const [id,file,detail] of [
     ['rust-lockfile','src-core/Cargo.lock','Restore the committed Cargo.lock'],

@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("[Bundler] 📦  Aegis Bundle Engine v0.12.0 — Packaging application...");
         let project_root = std::env::current_dir()?;
         let config_path = project_root.join("aegis.config.json");
-        let bundle_manifest = bundler::load_bundle_manifest(&config_path);
+        let bundle_manifest = bundler::load_bundle_manifest(&config_path)?;
         match bundler::BundleEngine::bundle_with_executable(
             &project_root,
             &bundle_manifest,

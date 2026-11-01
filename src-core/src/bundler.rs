@@ -299,33 +299,35 @@ pub struct BundleReport {
     pub message: String,
 }
 
-/// Read bundle manifest from aegis.config.json or return defaults
-pub fn load_bundle_manifest(config_path: &Path) -> BundleManifest {
-    if let Ok(content) = fs::read_to_string(config_path) {
-        if let Ok(parsed) = serde_json::from_str::<Value>(&content) {
-            return BundleManifest {
-                name: parsed["name"]
-                    .as_str()
-                    .unwrap_or("AegisApp")
-                    .replace(' ', "")
-                    .to_string(),
-                version: parsed["version"].as_str().unwrap_or("1.0.0").to_string(),
-                author: parsed["author"]
-                    .as_str()
-                    .unwrap_or("Aegis Developer")
-                    .to_string(),
-                description: parsed["description"]
-                    .as_str()
-                    .unwrap_or("Secure Aegis Desktop Application")
-                    .to_string(),
-                icon: parsed["icon"].as_str().map(|s| s.to_string()),
-                target_platforms: vec![
-                    "windows".to_string(),
-                    "linux".to_string(),
-                    "macos".to_string(),
-                ],
-            };
+/// Read explicit bundle identity; optional absent presentation fields retain defaults.
+pub fn load_bundle_manifest(config_path: &Path) -> Result<BundleManifest, String> {
+    let content = fs::read_to_string(config_path)
+        .map_err(|e| format!("Cannot read bundle configuration: {e}"))?;
+    let parsed: Value =
+        serde_json::from_str(&content).map_err(|e| format!("Invalid bundle configuration: {e}"))?;
+    let object = parsed
+        .as_object()
+        .ok_or("Bundle configuration must be an object")?;
+    let string_field = |key: &str, default: Option<&str>| -> Result<String, String> {
+        match object.get(key) {
+            Some(Value::String(value)) => Ok(value.clone()),
+            Some(_) => Err(format!("Bundle configuration {key} must be a string")),
+            None => default
+                .map(str::to_string)
+                .ok_or_else(|| format!("Bundle configuration requires {key}")),
         }
-    }
-    BundleManifest::default()
+    };
+    let icon = match object.get("icon") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(value)) => Some(value.clone()),
+        Some(_) => return Err("Bundle configuration icon must be a string or null".into()),
+    };
+    Ok(BundleManifest {
+        name: string_field("name", None)?.replace(' ', ""),
+        version: string_field("version", None)?,
+        author: string_field("author", Some("Aegis Developer"))?,
+        description: string_field("description", Some("Secure Aegis Desktop Application"))?,
+        icon,
+        target_platforms: vec!["windows".into(), "linux".into(), "macos".into()],
+    })
 }

@@ -30,7 +30,7 @@ jobs:
         run: cargo test --locked --manifest-path src-core/Cargo.toml
       - name: Build optimized core
         run: cargo build --release --locked --manifest-path src-core/Cargo.toml
-      - name: Verify actual bundled executable matches the selected core artifact
+      - name: Verify selected bundle artifact bytes and strict metadata
         run: node aegis-cli/bin/bundle-artifact-smoke.js
       - name: Verify signed offline metadata and staged native artifact bytes
         run: node aegis-cli/bin/update-verification-smoke.js
