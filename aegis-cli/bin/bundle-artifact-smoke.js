@@ -28,6 +28,7 @@ try {
     assert.equal(hash(await readFile(path.join(bundle,name))),expected,`Actual packaged executable must match the running selected artifact: ${scenario}`);
     console.log(`PASS: actual core bundle copies selected executable bytes with ${scenario}`);
     await rm(bundle,{recursive:true});
+    if(process.platform==='win32') await rm(path.join(root,'dist-bundle/ArtifactApp-installer.iss'));
     if(scenario==='stale-default') await rm(stale);
   }
   await rm(path.join(root,'dist-bundle'),{recursive:true,force:true});

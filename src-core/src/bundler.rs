@@ -7,7 +7,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
-use std::path::Path;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 // ─── Bundle Manifest ───────────────────────────────────────────────────────
 
@@ -35,6 +36,64 @@ impl Default for BundleManifest {
 }
 
 // ─── Bundle Engine ─────────────────────────────────────────────────────────
+
+// Owned build scratch space. Cooperating builders serialize by application name.
+struct BundleTransaction {
+    stage: Option<PathBuf>,
+    lock_path: PathBuf,
+    lock: Option<fs::File>,
+    published_sidecar: Option<PathBuf>,
+}
+impl BundleTransaction {
+    fn acquire(parent: &Path, name: &str) -> Result<Self, String> {
+        match fs::create_dir(parent) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(e) => return Err(format!("Cannot create bundle output parent: {e}")),
+        }
+        BundleEngine::require_asset_directory(parent)
+            .map_err(|e| format!("Invalid bundle output parent: {e}"))?;
+        let lock_path = parent.join(format!(".aegis-bundle-{name}.lock"));
+        let lock = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&lock_path)
+            .map_err(|e| {
+                format!("Bundle build lock unavailable; inspect existing lock before retrying: {e}")
+            })?;
+        let mut transaction = Self {
+            stage: None,
+            lock_path,
+            lock: Some(lock),
+            published_sidecar: None,
+        };
+        let mut random = [0u8; 16];
+        getrandom::getrandom(&mut random)
+            .map_err(|e| format!("Cannot allocate bundle staging name: {e}"))?;
+        let stage = parent.join(format!(".aegis-stage-{name}-{}", hex::encode(random)));
+        fs::create_dir(&stage).map_err(|e| format!("Cannot create private bundle stage: {e}"))?;
+        transaction.stage = Some(stage);
+        Ok(transaction)
+    }
+}
+impl Drop for BundleTransaction {
+    fn drop(&mut self) {
+        if let Some(path) = self.published_sidecar.take() {
+            if let Err(e) = fs::remove_file(path) {
+                eprintln!("Cannot remove owned installer sidecar after failure: {e}");
+            }
+        }
+        if let Some(path) = self.stage.take() {
+            if let Err(e) = fs::remove_dir_all(path) {
+                eprintln!("Cannot remove owned bundle stage: {e}");
+            }
+        }
+        drop(self.lock.take());
+        if let Err(e) = fs::remove_file(&self.lock_path) {
+            eprintln!("Cannot remove owned bundle lock: {e}");
+        }
+    }
+}
 
 pub struct BundleEngine;
 
@@ -110,19 +169,29 @@ impl BundleEngine {
         if let Some(app_id) = config.get("appId") {
             crate::platform::packaged_app_id(Some(app_id), project_root)?;
         }
-        let bundle_root = project_root.join("dist-bundle").join(&manifest.name);
-        if bundle_root.exists() {
-            return Err("Bundle output already exists; choose a new package name to avoid mixing old assets".into());
+        let output_parent = project_root.join("dist-bundle");
+        let final_bundle_root = output_parent.join(&manifest.name);
+        Self::require_absent(&final_bundle_root)
+            .map_err(|e| format!("Bundle output already exists or cannot be inspected: {e}"))?;
+        let sidecar = output_parent.join(format!("{}-installer.iss", manifest.name));
+        if cfg!(windows) {
+            Self::require_absent(&sidecar).map_err(|e| {
+                format!("Installer sidecar already exists or cannot be inspected: {e}")
+            })?;
         }
-
-        // 1. Create output directory tree
-        fs::create_dir_all(&bundle_root)
-            .map_err(|e| format!("Failed to create bundle directory: {}", e))?;
+        let mut transaction = BundleTransaction::acquire(&output_parent, &manifest.name)?;
+        let stage = transaction
+            .stage
+            .as_ref()
+            .ok_or("Missing owned bundle stage")?
+            .clone();
+        let bundle_root = stage.join("payload");
+        fs::create_dir(&bundle_root).map_err(|e| format!("Failed to create staged bundle: {e}"))?;
 
         let mut report = BundleReport {
             app_name: manifest.name.clone(),
             version: manifest.version.clone(),
-            output_dir: bundle_root.to_string_lossy().to_string(),
+            output_dir: final_bundle_root.to_string_lossy().to_string(),
             files_bundled: Vec::new(),
             installer_script_path: None,
             success: false,
@@ -191,14 +260,12 @@ impl BundleEngine {
             .push(launcher_path.to_string_lossy().into_owned());
 
         // Inno Setup is Windows-only; Unix output is an unsigned portable directory.
+        let staged_sidecar = stage.join("installer.iss");
         if cfg!(windows) {
-            let iss_content = Self::generate_innosetup_script(manifest, &bundle_root);
-            let iss_path = project_root
-                .join("dist-bundle")
-                .join(format!("{}-installer.iss", manifest.name));
-            fs::write(&iss_path, iss_content)
-                .map_err(|e| format!("Failed to write InnoSetup script: {e}"))?;
-            report.installer_script_path = Some(iss_path.to_string_lossy().into_owned());
+            let iss_content = Self::generate_innosetup_script(manifest, &final_bundle_root);
+            fs::write(&staged_sidecar, iss_content)
+                .map_err(|e| format!("Failed to write staged InnoSetup script: {e}"))?;
+            report.installer_script_path = Some(sidecar.to_string_lossy().into_owned());
         }
 
         // 8. Write bundle manifest
@@ -211,6 +278,34 @@ impl BundleEngine {
             .files_bundled
             .push(manifest_path.to_string_lossy().to_string());
 
+        for file in &mut report.files_bundled {
+            let relative = Path::new(file.as_str())
+                .strip_prefix(&bundle_root)
+                .map_err(|_| "Invalid staged report path")?;
+            *file = final_bundle_root
+                .join(relative)
+                .to_string_lossy()
+                .into_owned();
+        }
+        Self::require_absent(&final_bundle_root)
+            .map_err(|e| format!("Bundle output appeared during build: {e}"))?;
+        if cfg!(windows) {
+            let mut installer = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&sidecar)
+                .map_err(|e| format!("Cannot publish installer sidecar without overwrite: {e}"))?;
+            transaction.published_sidecar = Some(sidecar);
+            let bytes = fs::read(&staged_sidecar)
+                .map_err(|e| format!("Cannot read staged installer: {e}"))?;
+            installer
+                .write_all(&bytes)
+                .map_err(|e| format!("Cannot write installer sidecar: {e}"))?;
+        }
+        fs::rename(&bundle_root, &final_bundle_root)
+            .map_err(|e| format!("Cannot publish staged bundle: {e}"))?;
+        transaction.published_sidecar = None;
+
         report.success = true;
         report.message = format!(
             "Bundle created successfully at: {}. {} files packaged.",
@@ -219,6 +314,17 @@ impl BundleEngine {
         );
 
         Ok(report)
+    }
+
+    fn require_absent(path: &Path) -> std::io::Result<()> {
+        match fs::symlink_metadata(path) {
+            Ok(_) => Err(std::io::Error::new(
+                std::io::ErrorKind::AlreadyExists,
+                "Output is occupied",
+            )),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     fn asset_metadata(path: &Path) -> std::io::Result<fs::Metadata> {

@@ -1,3 +1,11 @@
+# v0.29.17 — Staged bundle publication (2026-11-02)
+
+- Build the portable payload in an exclusive random staging directory under dist-bundle, then rename it to the final application directory only after payload writes succeed. Previously a late bundle error could leave a partially populated final directory blocking retries.
+- Serialize cooperating builders for an exact manifest name with an exclusive build lock. Preserve occupied final paths, installer sidecars and existing locks; never infer stale ownership or delete another lock.
+- Normal returns use best-effort cleanup of owned staging/lock files. Windows installer sidecars use exclusive creation and rollback on normal publication failure; generated scripts/report paths refer to the final payload.
+- Add actual-core failure/retry fixtures: an occupied Windows installer sidecar and an unreadable Unix frontend file, plus occupied-lock preservation, no final payload after failure and successful repair/retry. Extend existing byte fixtures to remove only their own installer sidecars between repeated builds.
+- This is live-process directory publication, not an atomic directory-plus-installer transaction, whole CLI integrity transaction or power-loss guarantee. Crashes can leave staging/locks/sidecars for manual inspection; malicious filesystem races and noncooperating writers remain outside the guarantee. Exact-source CI pending.
+
 # v0.29.16 — Frontend asset preflight (2026-11-02)
 
 - Fix bundling following a linked frontend root. Existing checks inspected directory entries, but src-ui/dist itself (or its src-ui parent) could be a directory link/junction and copy assets from another folder. Reproduced with an owned Windows junction and TEST_ONLY external assets.

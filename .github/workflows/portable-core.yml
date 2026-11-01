@@ -34,6 +34,8 @@ jobs:
         run: node aegis-cli/bin/bundle-artifact-smoke.js
       - name: Verify frontend asset links special files and preflight recovery
         run: node aegis-cli/bin/bundle-assets-smoke.js
+      - name: Verify bundle failure isolation lock preservation and repair retry
+        run: node aegis-cli/bin/bundle-recovery-smoke.js
       - name: Verify signed offline metadata and staged native artifact bytes
         run: node aegis-cli/bin/update-verification-smoke.js
       - name: Verify real bounded filesystem exhaustion and update staging recovery
