@@ -4,7 +4,7 @@
 - Serialize cooperating builders for an exact manifest name with an exclusive build lock. Preserve occupied final paths, installer sidecars and existing locks; never infer stale ownership or delete another lock.
 - Normal returns use best-effort cleanup of owned staging/lock files. Windows installer sidecars use exclusive creation and rollback on normal publication failure; generated scripts/report paths refer to the final payload.
 - Add actual-core failure/retry fixtures: an occupied Windows installer sidecar and an unreadable Unix frontend file, plus occupied-lock preservation, no final payload after failure and successful repair/retry. Extend existing byte fixtures to remove only their own installer sidecars between repeated builds.
-- This is live-process directory publication, not an atomic directory-plus-installer transaction, whole CLI integrity transaction or power-loss guarantee. Crashes can leave staging/locks/sidecars for manual inspection; malicious filesystem races and noncooperating writers remain outside the guarantee. Exact-source CI pending.
+- This is live-process directory publication, not an atomic directory-plus-installer transaction, whole CLI integrity transaction or power-loss guarantee. Crashes can leave staging/locks/sidecars for manual inspection; malicious filesystem races and noncooperating writers remain outside the guarantee. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed, including filesystem obstruction, lock preservation and repair/retry acceptance; see the verification ledger.
 
 # v0.29.16 — Frontend asset preflight (2026-11-02)
 
