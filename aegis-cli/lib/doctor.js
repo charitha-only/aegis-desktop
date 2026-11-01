@@ -1,7 +1,15 @@
-import {access,readFile} from 'node:fs/promises';
+import {stat,readFile} from 'node:fs/promises';
 import {spawnSync} from 'node:child_process';
 import path from 'node:path';
 import {resolveDeveloperTools} from './developer-tools.js';
+
+// Keep the portable identity policy aligned with src-core/src/platform.rs.
+function portableAppId(value) {
+  return typeof value==='string' && value.length>=1 && value.length<=128
+    && value!=='.' && value!=='..' && !/[. ]$/.test(value)
+    && !/[^A-Za-z0-9._ -]/.test(value)
+    && !/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(value.split('.')[0]);
+}
 
 /** Read-only portable-build diagnostics; native SDKs/signing are separate gates. */
 export async function inspectProject(projectRoot) {
@@ -21,14 +29,17 @@ export async function inspectProject(projectRoot) {
   record('npm',npm?.status===0,npm?.status===0?npm.stdout.trim():'Install a Node distribution that includes npm');
   try {
     const config=JSON.parse(await readFile(path.join(projectRoot,'aegis.config.json'),'utf8'));
-    record('configuration',typeof config.name==='string'&&typeof config.appId==='string','aegis.config.json requires name and stable appId');
+    record('configuration',typeof config.name==='string'&&portableAppId(config.appId),'aegis.config.json requires name and a portable stable appId (1-128 ASCII characters; no paths, reserved device names or trailing dot/space)');
   } catch {record('configuration',false,'Missing or invalid aegis.config.json');}
   for(const [id,file,detail] of [
     ['rust-lockfile','src-core/Cargo.lock','Restore the committed Cargo.lock'],
     ['ui-lockfile','src-ui/package-lock.json','Restore the committed UI package-lock.json'],
     ['ui-dependencies','src-ui/node_modules/vite/bin/vite.js','Run npm ci --prefix src-ui'],
   ]) {
-    try {await access(path.join(projectRoot,file));record(id,true,file);} catch {record(id,false,detail);}
+    try {
+      const info=await stat(path.join(projectRoot,file));
+      record(id,info.isFile(),info.isFile()?file:detail+' (expected a regular file)');
+    } catch {record(id,false,detail);}
   }
   return {schemaVersion:1,platform:process.platform,architecture:process.arch,ok:checks.every(check=>check.ok),securityCertification:false,tools,checks};
 }

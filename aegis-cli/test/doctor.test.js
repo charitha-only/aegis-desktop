@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync,spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {mkdtemp,readdir,rm,access,mkdir,copyFile,chmod} from 'node:fs/promises';
+import {mkdtemp,readdir,rm,access,mkdir,copyFile,chmod,writeFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
@@ -82,4 +82,39 @@ test('doctor does not let Rustup auto-install a missing selected toolchain',asyn
     if(server.listening) await new Promise(resolve=>server.close(resolve));
     await rm(fixture,{recursive:true,force:true});
   }
+});
+
+
+test('doctor rejects nonportable application identities before packaging',async()=>{
+  const fixture=await mkdtemp(path.join(tmpdir(),'aegis-doctor-identity-'));
+  try {
+    for(const appId of ['', '.', '..', '../outside', 'folder/name', 'app:', 'CON', 'nul.txt', 'COM1.project', 'LPT9', 'trailing.', 'trailing ', 'a'.repeat(129)]) {
+      await writeFile(path.join(fixture,'aegis.config.json'),JSON.stringify({name:'Valid App',appId}));
+      const report=await inspectProject(fixture);
+      assert.equal(report.checks.find(check=>check.id==='configuration').ok,false,`Invalid portable ID: ${appId}`);
+    }
+    for(const appId of ['app.example','Valid App','COM10','a'.repeat(128)]) {
+      await writeFile(path.join(fixture,'aegis.config.json'),JSON.stringify({name:'Valid App',appId}));
+      const report=await inspectProject(fixture);
+      assert.equal(report.checks.find(check=>check.id==='configuration').ok,true,`Valid portable ID: ${appId}`);
+    }
+    assert.deepEqual(await readdir(fixture),['aegis.config.json']);
+  } finally {await rm(fixture,{recursive:true,force:true});}
+});
+
+
+test('doctor rejects directories in place of prerequisite files and accepts restored regular files',async()=>{
+  const fixture=await mkdtemp(path.join(tmpdir(),'aegis-doctor-file-types-'));
+  const inputs=[['rust-lockfile','src-core/Cargo.lock'],['ui-lockfile','src-ui/package-lock.json'],['ui-dependencies','src-ui/node_modules/vite/bin/vite.js']];
+  try {
+    for(const [,name] of inputs) await mkdir(path.join(fixture,name),{recursive:true});
+    let report=await inspectProject(fixture);
+    for(const [id] of inputs) assert.equal(report.checks.find(check=>check.id===id).ok,false,`${id} must be a file`);
+    for(const [,name] of inputs) {
+      await rm(path.join(fixture,name),{recursive:true});
+      await writeFile(path.join(fixture,name),'TEST_ONLY');
+    }
+    report=await inspectProject(fixture);
+    for(const [id] of inputs) assert.equal(report.checks.find(check=>check.id===id).ok,true,`${id} should recover after restoring a file`);
+  } finally {await rm(fixture,{recursive:true,force:true});}
 });

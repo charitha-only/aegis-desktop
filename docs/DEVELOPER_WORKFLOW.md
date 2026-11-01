@@ -53,3 +53,10 @@ Read-only plans remain tool-execution-free. coreExecutable is the default predic
 The release executor checks each Cargo stdout line against a 1 MiB UTF-8 byte limit before JSON parsing/log forwarding, including complete newline-terminated lines and pending input without a newline. The previous character-based pending-only check could accept an oversized Unicode line. A limit violation stops the owned tool and fails the build before UI/bundle steps; a missing core artifact or nonzero compiler exit also prevents downstream execution.
 
 The limit applies per line; multiple individually valid lines can exceed 1 MiB in aggregate. Exact-limit ASCII lines remain accepted. Child-tool fixtures exercise the public execution API using owned temporary directories and Node processes; real Cargo/CLI target-override and generated application packaging are separate integration evidence. This is not a time/output-total/process-tree/resource sandbox. Tool stderr is streamed separately; developer tools/build scripts remain trusted local programs.
+
+
+## Portable diagnostic preflight — v0.29.13
+
+Doctor validates an explicit stable appId against the existing Rust portable directory-name policy: 1-128 ASCII letters/digits/dots/underscores/hyphens/spaces, excluding dot/dot-dot, trailing dot/space and Windows reserved device stems (CON/PRN/AUX/NUL/COM1-9/LPT1-9). Valid spaces and COM10 remain allowed, matching the core. Keep this policy aligned with src-core/src/platform.rs when changing identities. Doctor still requires an explicit appId for packaging even though legacy runtime identity fallback exists.
+
+Cargo.lock, UI package-lock.json and the installed Vite entry must resolve to regular files; an existing directory no longer passes. stat follows links; this is readiness checking of a trusted development tree, not link provenance, lockfile-content validation or filesystem-race protection. Package uses these existing doctor results to reject known-invalid setup before building. All other compiler/linker/platform/signing and full-configuration limitations still apply.
