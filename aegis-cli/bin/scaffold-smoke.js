@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import {mkdtemp, access, rm, readFile, readdir} from 'node:fs/promises';
+import {mkdtemp, access, rm, readFile, readdir, mkdir, writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {verifyPackageIntegrity} from '../lib/package-integrity.js';
+import {resolveDeveloperTools} from '../lib/developer-tools.js';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -11,8 +12,8 @@ const candidates = [path.join(nodeDir, 'node_modules/npm/bin/npm-cli.js'), path.
 let npmCli;
 for (const candidate of candidates) {try {await access(candidate); npmCli = candidate; break;} catch {}}
 if (!npmCli) throw new Error('Cannot locate npm-cli.js beside the Node runtime');
-function run(args) {
-  const result = spawnSync(process.execPath, args, {stdio: 'inherit', windowsHide: true, timeout: 900000});
+function run(args,env=process.env) {
+  const result = spawnSync(process.execPath, args, {stdio: 'inherit', windowsHide: true, timeout: 900000,env});
   if (result.status !== 0) throw new Error('Generated-project acceptance failed');
 }
 try {
@@ -22,7 +23,18 @@ try {
     run([npmCli, 'ci', '--prefix', path.join(project, 'src-ui')]);
     const cli=path.join(project,'aegis-cli/bin/aegis.js');
     run([cli,'doctor','--json']);
-    run([cli,'package']);
+    let host;
+    const executable=process.platform==='win32'?'aegis-core.exe':'aegis-core';
+    if(template==='vanilla') {
+      const tools=await resolveDeveloperTools(project);
+      const compiler=spawnSync(tools.rustc,['-vV'],{cwd:project,encoding:'utf8',windowsHide:true,timeout:15000});
+      assert.equal(compiler.status,0,compiler.stderr);
+      host=compiler.stdout.match(/^host: (\S+)$/m)?.[1];assert.ok(host);
+      const stale=path.join(project,'src-core/target/release',executable);
+      await mkdir(path.dirname(stale),{recursive:true});
+      await writeFile(stale,'TEST_ONLY_STALE_DEFAULT_BINARY');
+    }
+    run([cli,'package'],host?{...process.env,CARGO_BUILD_TARGET:host}:process.env);
     await access(path.join(project, 'src-ui/dist/index.html'));
     const bundle=path.join(project,'dist-bundle',name);
     const config=JSON.parse(await readFile(path.join(bundle,'aegis.config.json'),'utf8'));
@@ -30,7 +42,13 @@ try {
     const {createHash}=await import('node:crypto');
     const pin=createHash('sha256').update(await readFile(path.join(bundle,'aegis-integrity.json'))).digest('hex');
     assert.equal((await verifyPackageIntegrity(bundle,pin)).valid,true);
-    await access(path.join(bundle,process.platform==='win32'?'aegis-core.exe':'aegis-core'));
+    await access(path.join(bundle,executable));
+    if(host) {
+      const selected=path.join(project,'src-core/target',host,'release',executable);
+      const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
+      assert.equal(digest(await readFile(path.join(bundle,executable))),digest(await readFile(selected)));
+      console.log('PASS: actual CLI package bytes match the Cargo-selected host-target artifact despite a stale default binary');
+    }
     if(template==='vanilla') {
       const assets=path.join(project,'src-ui/dist/assets');
       let javascriptBytes=0;

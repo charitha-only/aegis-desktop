@@ -44,6 +44,23 @@ impl BundleEngine {
     ///  - `dist-bundle/<AppName>/` — portable distribution directory
     ///  - `dist-bundle/<AppName>-installer.iss` — InnoSetup script (Windows)
     pub fn bundle(project_root: &Path, manifest: &BundleManifest) -> Result<BundleReport, String> {
+        let executable = if cfg!(windows) {
+            "aegis-core.exe"
+        } else {
+            "aegis-core"
+        };
+        let binary = project_root
+            .join("src-core/target/release")
+            .join(executable);
+        Self::bundle_with_executable(project_root, manifest, &binary)
+    }
+
+    /// Bundle a caller-selected trusted host executable without a default-path fallback.
+    pub fn bundle_with_executable(
+        project_root: &Path,
+        manifest: &BundleManifest,
+        binary: &Path,
+    ) -> Result<BundleReport, String> {
         if !manifest
             .target_platforms
             .iter()
@@ -73,11 +90,7 @@ impl BundleEngine {
         {
             return Err("Invalid installer metadata".into());
         }
-        if !project_root
-            .join("src-core/target/release")
-            .join(executable)
-            .is_file()
-        {
+        if !binary.is_file() {
             return Err("Release binary missing: run npm run build:release first".into());
         }
         if !project_root.join("src-ui/dist/index.html").is_file() {
@@ -113,10 +126,7 @@ impl BundleEngine {
             message: String::new(),
         };
 
-        // Only copy the validated release binary for this host, never a debug/foreign fallback.
-        let binary = project_root
-            .join("src-core/target/release")
-            .join(executable);
+        // Copy only the selected executable; never substitute another build path.
         let destination = bundle_root.join(executable);
         fs::copy(&binary, &destination).map_err(|e| format!("Failed to copy binary: {e}"))?;
         report

@@ -75,7 +75,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let project_root = std::env::current_dir()?;
         let config_path = project_root.join("aegis.config.json");
         let bundle_manifest = bundler::load_bundle_manifest(&config_path);
-        match bundler::BundleEngine::bundle(&project_root, &bundle_manifest) {
+        match bundler::BundleEngine::bundle_with_executable(
+            &project_root,
+            &bundle_manifest,
+            &executable,
+        ) {
             Ok(report) => {
                 println!("[Bundler] ✅  {}", report.message);
                 if let Some(iss) = &report.installer_script_path {

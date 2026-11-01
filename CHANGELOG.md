@@ -1,3 +1,11 @@
+# v0.29.14 — Packaged executable provenance (2026-11-01)
+
+- Complete the v0.29.11 artifact-selection fix: the JS executor selected the new binary, but the Rust --bundle handler still copied src-core/target/release. A stale default slot could therefore enter the package despite correct CLI execution.
+- Pass the running executable explicitly into the Rust CLI bundler and copy only that selected file. Do not substitute a different build path. The existing direct BundleEngine::bundle API retains its explicit default-release-path semantics for the legacy package pipeline.
+- Reproduce with the actual optimized core and compare package bytes against the selected binary; verify both stale-default and missing-default cases after patching.
+- Extend both-template acceptance: the Vanilla project builds with CARGO_BUILD_TARGET set to the installed host triple, has a deliberately stale default binary, and requires packaged executable bytes to match the Cargo-selected target artifact. React retains the ordinary default build path.
+- Exact-source CI pending. This verifies byte selection, not publisher authenticity, compiler trust or cross-compilation support. Physical-device/signing/independent-audit gates remain open.
+
 # v0.29.13 — Portable package preflight (2026-11-01)
 
 - Align doctor application-ID checks with the existing Rust portable identity rules: bounded ASCII names, traversal/separator/device-name rejection and no trailing dot/space. Previously any string, including an empty ID, could pass configuration diagnostics despite runtime rejection.

@@ -60,3 +60,12 @@ The limit applies per line; multiple individually valid lines can exceed 1 MiB i
 Doctor validates an explicit stable appId against the existing Rust portable directory-name policy: 1-128 ASCII letters/digits/dots/underscores/hyphens/spaces, excluding dot/dot-dot, trailing dot/space and Windows reserved device stems (CON/PRN/AUX/NUL/COM1-9/LPT1-9). Valid spaces and COM10 remain allowed, matching the core. Keep this policy aligned with src-core/src/platform.rs when changing identities. Doctor still requires an explicit appId for packaging even though legacy runtime identity fallback exists.
 
 Cargo.lock, UI package-lock.json and the installed Vite entry must resolve to regular files; an existing directory no longer passes. stat follows links; this is readiness checking of a trusted development tree, not link provenance, lockfile-content validation or filesystem-race protection. Package uses these existing doctor results to reject known-invalid setup before building. All other compiler/linker/platform/signing and full-configuration limitations still apply.
+
+
+## Packaged binary selection — v0.29.14
+
+The v0.29.11 executor fix selected the Cargo-reported executable for invocation, but Rust --bundle still copied from the default release directory. v0.29.14 closes that separate copy-path gap: the CLI handler supplies its running executable to BundleEngine::bundle_with_executable, which checks and copies that source without a default fallback. npm bundle/package therefore preserve the selected artifact all the way into package bytes.
+
+The actual optimized-core fixture bundle-artifact-smoke.js checks SHA-256 equality of selected and bundled executable bytes with a stale default slot and with no default slot. Full generated Vanilla acceptance deliberately seeds a stale default binary, sets CARGO_BUILD_TARGET to the installed host triple, executes the real CLI/Cargo/UI/package journey and compares the packaged core to that target's artifact. The normal React fixture retains default-target acceptance.
+
+The direct BundleEngine::bundle API and legacy package-pipeline preview still deliberately select the project's default release path; they do not build or resolve Cargo target overrides. No IPC caller-supplied executable path is added. Explicit executable selection is for trusted host code, not publisher verification, foreign-target validation, arbitrary filesystem-race prevention or process isolation.
