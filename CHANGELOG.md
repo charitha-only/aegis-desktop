@@ -4,7 +4,7 @@
 - Validate ordinary frontend directories/files before creating package output. Reject observed symlinks, Windows reparse points and special file types across the distributed asset tree. Repeat type checks while copying.
 - Add actual-core fixtures for linked dist roots, nested directory links, linked src-ui parents, source preservation and successful retry after repair on all three OSes. Unix additionally exercises a file symlink and special FIFO without opening it.
 - This is build-time asset-source hardening, not remote runtime authorization or protection from a compromised build account. No malicious filesystem-race, hard-link provenance, whole-project ancestry, atomic snapshot, copy-time/disk-budget or crash-durability guarantee is added. Later I/O failure can still leave partial output for inspection.
-- Exact-source CI pending. Signing, physical-device and independent-audit gates remain open.
+- Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed, including actual-core link rejection and repair acceptance; see the verification ledger. Signing, physical-device and independent-audit gates remain open.
 
 # v0.29.15 — Explicit bundle metadata (2026-11-02)
 

@@ -96,7 +96,7 @@ The **v0.27** performance tooling still requires whole-app/low-resource measurem
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
-| **`v0.29.16`** | **Frontend asset preflight** | Reject linked frontend roots, nested links/reparse points and special files before package output. Actual-core rejection/recovery fixtures. Exact-source CI pending. |
+| **`v0.29.16`** | **Frontend asset preflight** | Reject linked frontend roots, nested links/reparse points and special files before package output. Actual-core rejection/recovery, three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |
 | **`v0.29.15`** | **Explicit bundle metadata** | Reject missing/wrong-type identity fields instead of silently substituting package names/versions; doctor validates version tokens. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |
 | **`v0.29.14`** | **Packaged executable provenance** | Rust CLI bundling copies the running selected artifact; real-core and full generated-app byte checks reject stale-default selection. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |
 | **`v0.29.13`** | **Portable package preflight** | Doctor rejects runtime-invalid app IDs and directories masquerading as prerequisite files. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |
