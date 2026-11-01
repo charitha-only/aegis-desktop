@@ -93,6 +93,9 @@ impl BundleEngine {
         if !binary.is_file() {
             return Err("Release binary missing: run npm run build:release first".into());
         }
+        Self::require_asset_directory(&project_root.join("src-ui"))
+            .and_then(|_| Self::validate_asset_tree(&project_root.join("src-ui/dist")))
+            .map_err(|e| format!("Cannot validate frontend assets: {e}"))?;
         if !project_root.join("src-ui/dist/index.html").is_file() {
             return Err("Frontend build missing: build src-ui first".into());
         }
@@ -218,15 +221,53 @@ impl BundleEngine {
         Ok(report)
     }
 
+    fn asset_metadata(path: &Path) -> std::io::Result<fs::Metadata> {
+        let metadata = fs::symlink_metadata(path)?;
+        #[cfg(windows)]
+        let reparse = {
+            use std::os::windows::fs::MetadataExt;
+            metadata.file_attributes() & 0x400 != 0
+        };
+        #[cfg(not(windows))]
+        let reparse = false;
+        if reparse
+            || metadata.file_type().is_symlink()
+            || (!metadata.is_file() && !metadata.is_dir())
+        {
+            return Err(std::io::Error::other(
+                "Linked or special frontend asset rejected",
+            ));
+        }
+        Ok(metadata)
+    }
+
+    fn require_asset_directory(path: &Path) -> std::io::Result<()> {
+        if !Self::asset_metadata(path)?.is_dir() {
+            return Err(std::io::Error::other(
+                "Frontend source must be an ordinary directory",
+            ));
+        }
+        Ok(())
+    }
+
+    fn validate_asset_tree(path: &Path) -> std::io::Result<()> {
+        Self::require_asset_directory(path)?;
+        for entry in fs::read_dir(path)? {
+            let entry = entry?;
+            if Self::asset_metadata(&entry.path())?.is_dir() {
+                Self::validate_asset_tree(&entry.path())?;
+            }
+        }
+        Ok(())
+    }
+
     /// Recursively copy a directory tree
     fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+        Self::require_asset_directory(src)?;
         fs::create_dir_all(dst)?;
         for entry in fs::read_dir(src)? {
             let entry = entry?;
-            let ty = entry.file_type()?;
-            if ty.is_symlink() {
-                return Err(std::io::Error::other("Linked assets are forbidden"));
-            }
+            let ty = Self::asset_metadata(&entry.path())?;
             let dest_path = dst.join(entry.file_name());
             if ty.is_dir() {
                 Self::copy_dir_all(&entry.path(), &dest_path)?;

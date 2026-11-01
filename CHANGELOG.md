@@ -1,3 +1,11 @@
+# v0.29.16 — Frontend asset preflight (2026-11-02)
+
+- Fix bundling following a linked frontend root. Existing checks inspected directory entries, but src-ui/dist itself (or its src-ui parent) could be a directory link/junction and copy assets from another folder. Reproduced with an owned Windows junction and TEST_ONLY external assets.
+- Validate ordinary frontend directories/files before creating package output. Reject observed symlinks, Windows reparse points and special file types across the distributed asset tree. Repeat type checks while copying.
+- Add actual-core fixtures for linked dist roots, nested directory links, linked src-ui parents, source preservation and successful retry after repair on all three OSes. Unix additionally exercises a file symlink and special FIFO without opening it.
+- This is build-time asset-source hardening, not remote runtime authorization or protection from a compromised build account. No malicious filesystem-race, hard-link provenance, whole-project ancestry, atomic snapshot, copy-time/disk-budget or crash-durability guarantee is added. Later I/O failure can still leave partial output for inspection.
+- Exact-source CI pending. Signing, physical-device and independent-audit gates remain open.
+
 # v0.29.15 — Explicit bundle metadata (2026-11-02)
 
 - Stop the CLI manifest loader silently replacing explicit wrong-type fields with defaults. A numeric version previously produced a successful package labeled 1.0.0 instead of rejecting configuration.

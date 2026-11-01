@@ -80,3 +80,12 @@ load_bundle_manifest now returns Result<BundleManifest, String>; host callers mu
 Doctor requires an explicit nonempty version using ASCII letters/digits/dots/underscores/hyphens, excluding a lone dot or repeated dots, matching the current Rust bundler token rules. Package therefore rejects missing/numeric/unsupported version settings before compilation. This is not complete SemVer validation, every native package format's version contract or complete configuration checking; native format-specific restrictions still apply later.
 
 The actual-core bundle fixture checks missing/wrong-type fields and non-object roots produce configuration errors with no new dist-bundle output, while valid name/version, absent optional defaults and null icon are preserved exactly. The existing stale/missing-default binary provenance checks and full React/Vanilla build/package acceptance remain enabled on all three hosted OSes.
+
+
+## Frontend asset preflight — v0.29.16
+
+Bundling requires ordinary src-ui and src-ui/dist directories and inspects the distributed frontend tree before creating dist-bundle output. Symlinks, Windows reparse points (including junctions) and non-file/non-directory entries are rejected. Copying rechecks observed types. A linked root formerly bypassed entry-only checks and could bring files from a different source folder into a package. Materialize generated frontend output as ordinary files/directories before packaging; linked/reparse-based output is intentionally unsupported.
+
+bundle-assets-smoke.js runs the actual optimized core against owned temporary link fixtures. Every rejected static tree must fail with a frontend-validation error, leave no new dist-bundle output and preserve the source marker. All OSes cover dist-root, nested-directory and src-ui-parent links plus successful packaging after repair. Unix additionally covers a file symlink and an mkfifo-created FIFO; the preflight rejects the FIFO without reading it.
+
+The project root remains a trusted anchor. This is observed-path checking, not descriptor-relative race prevention, hard-link provenance, arbitrary ancestor validation, whole-tree resource bounds or atomic publication. It does not protect a compromised build account or toolchain. A change during validation/copy or later I/O/disk/crash failure can still leave partial output; preserve it for inspection and do not claim a failed package is valid.

@@ -32,6 +32,8 @@ jobs:
         run: cargo build --release --locked --manifest-path src-core/Cargo.toml
       - name: Verify selected bundle artifact bytes and strict metadata
         run: node aegis-cli/bin/bundle-artifact-smoke.js
+      - name: Verify frontend asset links special files and preflight recovery
+        run: node aegis-cli/bin/bundle-assets-smoke.js
       - name: Verify signed offline metadata and staged native artifact bytes
         run: node aegis-cli/bin/update-verification-smoke.js
       - name: Verify real bounded filesystem exhaustion and update staging recovery
