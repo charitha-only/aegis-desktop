@@ -4,7 +4,7 @@
 - Pass the running executable explicitly into the Rust CLI bundler and copy only that selected file. Do not substitute a different build path. The existing direct BundleEngine::bundle API retains its explicit default-release-path semantics for the legacy package pipeline.
 - Reproduce with the actual optimized core and compare package bytes against the selected binary; verify both stale-default and missing-default cases after patching.
 - Extend both-template acceptance: the Vanilla project builds with CARGO_BUILD_TARGET set to the installed host triple, has a deliberately stale default binary, and requires packaged executable bytes to match the Cargo-selected target artifact. React retains the ordinary default build path.
-- Exact-source CI pending. This verifies byte selection, not publisher authenticity, compiler trust or cross-compilation support. Physical-device/signing/independent-audit gates remain open.
+- Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed, including actual-core and full CLI package byte equality; see the verification ledger. This verifies byte selection, not publisher authenticity, compiler trust or cross-compilation support. Physical-device/signing/independent-audit gates remain open.
 
 # v0.29.13 — Portable package preflight (2026-11-01)
 
