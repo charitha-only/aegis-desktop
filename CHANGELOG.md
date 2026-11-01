@@ -4,7 +4,7 @@
 - Require object configuration with explicit string name/version. Absent author/description retain defaults; explicit values must be strings. Icon remains absent/null or string. Existing BundleEngine name/version token and installer metadata checks still apply.
 - The public load_bundle_manifest preview API now returns Result; the --bundle handler propagates errors before creating package output. Direct typed BundleEngine APIs remain available with caller-supplied manifests.
 - Doctor requires an explicit package-version token aligned with the existing Rust bundler rules, rejecting missing, wrong-type or unsupported tokens before package compilation. This is not full SemVer or every native installer format's version policy.
-- Reproduce through the actual optimized --bundle CLI; extend byte-provenance acceptance with invalid metadata/no-output cases and exact valid metadata/default preservation. Add a public doctor version regression. Local CLI: 70 passed. Exact-source CI pending.
+- Reproduce through the actual optimized --bundle CLI; extend byte-provenance acceptance with invalid metadata/no-output cases and exact valid metadata/default preservation. Add a public doctor version regression. Local CLI: 70 passed. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed; see the verification ledger.
 - Publisher authenticity, physical-device/signing and independent-audit gates remain open.
 
 # v0.29.14 — Packaged executable provenance (2026-11-01)
