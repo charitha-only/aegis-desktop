@@ -1,3 +1,10 @@
+# Unreleased — Read-only bundle diagnostics (verified 2026-11-03)
+
+- Add `inspect-bundle <dist-bundle-directory> <package-name>` for manual recovery planning. Report observed payload/sidecar/lock types and matching random staging entries without reading contents or deleting/moving anything.
+- Reject unsafe package names and linked roots; leave missing roots absent. Bound enumeration to 4096 entries including unrelated names and reject oversized directories without a partial report.
+- Three public CLI regression cases cover owner-marker preservation, missing/invalid paths, junction/symlink rejection and enumeration bounds. Source ba9920b passed all three hosted OS portable/native workflows, generated-template/package checks and Windows installer/upgrade/data-preservation/real-lock verification. Exact counts and run IDs are in the verification ledger.
+- This is non-atomic observation of trusted paths, not active/stale lock detection, package verification, publisher authentication or automatic crash recovery. Current numbered source version remains v0.29.17; no new signed binary release is claimed.
+
 # v0.29.17 — Staged bundle publication (2026-11-02)
 
 - Build the portable payload in an exclusive random staging directory under dist-bundle, then rename it to the final application directory only after payload writes succeed. Previously a late bundle error could leave a partially populated final directory blocking retries.
