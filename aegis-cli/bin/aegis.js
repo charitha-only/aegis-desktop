@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {inspectBundle} from '../lib/bundle-inspection.js';
 import {createProject} from '../lib/create.js';
 import {inspectProject} from '../lib/doctor.js';
 import {releaseBuildPlan} from '../lib/developer-tools.js';
@@ -73,6 +74,10 @@ try{const command=process.argv[2]||'dev';
    if(process.argv.length!==5 || !process.argv[3]) throw new Error('Usage: aegis verify-package <bundle-directory> <trusted-manifest-sha256>');
    console.log(JSON.stringify(await verifyPackageIntegrity(process.argv[3],process.argv[4])));
  }
+ else if(command==='inspect-bundle') {
+   if(process.argv.length!==5) throw new Error('Usage: aegis inspect-bundle <dist-bundle-directory> <package-name>');
+   console.log(JSON.stringify(await inspectBundle({outputDirectory:process.argv[3],name:process.argv[4]})));
+ }
  else if(command==='inspect-update-state') {
    if(process.argv.length!==4) throw new Error('Usage: aegis inspect-update-state <trusted-state-directory>');
    console.log(JSON.stringify(await inspectUpdateState({stateDirectory:process.argv[3]})));
@@ -110,7 +115,7 @@ try{const command=process.argv[2]||'dev';
    if(args.length<1 || args.length>2 || (args[1] && !/^--template=(react|vanilla)$/.test(args[1]))) throw new Error('Usage: aegis create <new-directory> [--template=react|vanilla]');
    console.log('Project created: '+await createProject(root,args[0],{template:args[1]?.slice(11)||'react'}));
  }
- else if(command==='--help'||command==='help')console.log('Aegis commands:\n  doctor [--json]\n  package [--print-plan]\n  create <new-directory> [--template=react|vanilla]\n  dev [--no-open] [--ui-port=<port>] [--core-binary=<path>] [--print-plan]\n  build [--print-plan]\n  build-release [--print-plan]\n  bundle [--print-plan]\n  test-security\n  package-manifest <bundle-directory>\n  verify-package <bundle-directory> <trusted-manifest-sha256>\n  inspect-update-state <trusted-state-directory>\n  init-update-state <new-trusted-state-directory>\n  verify-tracked-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <trusted-state-directory>\n  stage-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <new-stage-directory>\n  inspect-update <stage-directory> <trusted-public-key.pem> <trusted-policy.json>\n  verify-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json>\n  package-macos <bundle-directory> <output.pkg> <trusted-manifest-sha256>\n  package-deb <bundle-directory> <output.deb> <trusted-manifest-sha256> <maintainer>\n  --version');
+ else if(command==='--help'||command==='help')console.log('Aegis commands:\n  inspect-bundle <dist-bundle-directory> <package-name>\n  doctor [--json]\n  package [--print-plan]\n  create <new-directory> [--template=react|vanilla]\n  dev [--no-open] [--ui-port=<port>] [--core-binary=<path>] [--print-plan]\n  build [--print-plan]\n  build-release [--print-plan]\n  bundle [--print-plan]\n  test-security\n  package-manifest <bundle-directory>\n  verify-package <bundle-directory> <trusted-manifest-sha256>\n  inspect-update-state <trusted-state-directory>\n  init-update-state <new-trusted-state-directory>\n  verify-tracked-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <trusted-state-directory>\n  stage-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json> <new-stage-directory>\n  inspect-update <stage-directory> <trusted-public-key.pem> <trusted-policy.json>\n  verify-update <artifact> <envelope.json> <trusted-public-key.pem> <trusted-policy.json>\n  package-macos <bundle-directory> <output.pkg> <trusted-manifest-sha256>\n  package-deb <bundle-directory> <output.deb> <trusted-manifest-sha256> <maintainer>\n  --version');
  else if(command==='--version')console.log(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version);
  else if(command==='build'||command==='build-release') {
    if(process.argv.length>4 || (process.argv[3] && process.argv[3]!=='--print-plan')) throw new Error('Usage: aegis build [--print-plan]');
