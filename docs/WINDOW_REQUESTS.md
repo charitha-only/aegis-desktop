@@ -54,3 +54,9 @@ parser cannot launch anything during the failing test. The native-binary smoke
 repeats that rejection on all three OS runners. Native-host GUI fixtures remain
 guarded for disposable hosted CI; real-device/accessibility and complete managed
 multi-window acceptance remain pending.
+
+## Managed child preparation (unreleased foundation)
+
+NativeWindowPolicy::prepare_child_request validates a proposed child against the parent application's exact validated HTTP authority. Different loopback ports/host spellings and remote URLs are rejected. An omitted URL inherits the parent's initial URL; an explicit null remains invalid. Existing strict option parsing, size/title checks and unsupported-control rejection remain in force. The first increment deliberately retains the external parser's restrictive supported-option subset, including rejecting non-resizable/undecorated requests.
+
+This preparation API creates no OS window, owns no handle, and is not connected to window_spawn. Existing window_spawn behavior remains the external launch documented above. Native event-loop dispatch, bounded handle ownership, list/close operations, close races and three-OS native multi-window fixtures are still required before advertising managed multi-window support. Two public policy tests cover origin pinning, inherited URL and malformed options without desktop actions. This is a development foundation, not a completed runtime security boundary.

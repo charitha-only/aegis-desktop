@@ -1,3 +1,8 @@
+# Unreleased — Managed child policy foundation (2026-11-03)
+
+- Add a pure NativeWindowPolicy child-request preparation API: pin child URLs to the parent's validated authority and inherit the parent URL only when omitted. Reject explicit null, malformed options and unsupported controls.
+- Add two public policy regression tests using red/green cycles without opening windows. Existing window_spawn still launches an external browser. Native event-loop creation, handle ownership/list/close and actual three-OS multi-window acceptance remain pending; this increment does not claim managed multi-window runtime support.
+
 # Unreleased — Output-parent preflight (2026-11-03)
 
 - Reject an observed linked or non-directory dist-bundle parent before prerequisite tools and compilation. A missing parent remains allowed. The Rust bundler already enforced this boundary later; this change improves early feedback.

@@ -137,6 +137,27 @@ impl NativeWindowPolicy {
         })
     }
 
+    /// Validate a future native child request without creating a window.
+    /// This does not register a handle or establish a managed lifetime.
+    pub fn prepare_child_request(
+        &self,
+        payload: &serde_json::Value,
+    ) -> Result<(String, WindowConfig), String> {
+        let mut options = payload
+            .as_object()
+            .ok_or("Invalid child window options: expected an object")?
+            .clone();
+        options
+            .entry("url")
+            .or_insert_with(|| serde_json::Value::String(self.initial.clone()));
+        let (url, config) =
+            WindowManager::prepare_spawn_request(&serde_json::Value::Object(options))?;
+        if !self.allows_navigation(&url) {
+            return Err("Native child window must use the parent application origin".into());
+        }
+        Ok((url, config))
+    }
+
     pub fn allows_navigation(&self, target: &str) -> bool {
         let origin = |url: &str| {
             url.strip_prefix("http://")
@@ -512,6 +533,48 @@ mod tests {
                 WindowManager::prepare_spawn_request(&options).is_err(),
                 "{options}"
             );
+        }
+    }
+    #[test]
+    fn native_child_requests_are_pinned_to_the_parent_origin() {
+        let parent =
+            NativeWindowPolicy::new("http://127.0.0.1:48291/", &WindowConfig::default()).unwrap();
+        let (url, config) = parent
+            .prepare_child_request(
+                &serde_json::json!({"url":"http://127.0.0.1:48291/editor", "title":"Editor"}),
+            )
+            .unwrap();
+        assert_eq!(url, "http://127.0.0.1:48291/editor");
+        assert_eq!(config.title, "Editor");
+        for url in [
+            "http://127.0.0.1:48292/",
+            "http://localhost:48291/",
+            "https://example.com/",
+        ] {
+            assert!(parent
+                .prepare_child_request(&serde_json::json!({"url":url}))
+                .is_err());
+        }
+    }
+    #[test]
+    fn native_child_default_url_uses_parent_and_invalid_options_fail_closed() {
+        let parent =
+            NativeWindowPolicy::new("http://127.0.0.1:48291/main", &WindowConfig::default())
+                .unwrap();
+        assert_eq!(
+            parent
+                .prepare_child_request(&serde_json::json!({}))
+                .unwrap()
+                .0,
+            "http://127.0.0.1:48291/main"
+        );
+        for payload in [
+            serde_json::json!({"url":null}),
+            serde_json::json!([]),
+            serde_json::json!({"width":0}),
+            serde_json::json!({"unknown":true}),
+        ] {
+            assert!(parent.prepare_child_request(&payload).is_err());
         }
     }
     #[test]
