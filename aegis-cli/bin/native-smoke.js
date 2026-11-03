@@ -17,7 +17,7 @@ try {
   config.security.capabilities.system.allowManagedWindows = true;
   await writeFile(path.join(app, 'aegis.config.json'), JSON.stringify(config));
   await writeFile(path.join(app, 'ui/child.html'), '<!doctype html><title>Owned child fixture</title><h1>Managed child</h1>');
-  await writeFile(path.join(app, 'ui/index.html'), `<!doctype html><title>Managed window verification pending</title><h1>Native fixture</h1><script>
+  await writeFile(path.join(app, 'ui/managed-fixture.js'), `
   (async()=>{
     const {token}=await fetch('/handshake').then(r=>r.json());let seq=0;
     const call=async(command,payload={})=>fetch('/ipc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:String(++seq),command,payload,nonce:token})}).then(r=>r.json());
@@ -39,7 +39,8 @@ try {
     check((await call('managed_window_close',{windowId:reopened.data.windowId})).success,'close reopened');
     document.title='Aegis Native Smoke Fixture';
   })().catch(error=>{document.title='MANAGED_WINDOW_FIXTURE_FAILED: '+error.message;});
-  </script>`);
+`);
+  await writeFile(path.join(app, 'ui/index.html'), '<!doctype html><title>Managed window verification pending</title><h1>Native fixture</h1><script src="/managed-fixture.js"></script>');
   const child = spawn(path.join(app, executable), ['--port=0', '--native-window'], {cwd: app, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: {
     ...process.env, AEGIS_NATIVE_SMOKE: '1', HOME: fixture, LOCALAPPDATA: path.join(fixture, 'local'), APPDATA: path.join(fixture, 'roaming'),
     XDG_DATA_HOME: path.join(fixture, 'data'), XDG_CONFIG_HOME: path.join(fixture, 'config'), XDG_CACHE_HOME: path.join(fixture, 'cache'),

@@ -151,6 +151,9 @@ pub fn run(
                     .with_incognito(true)
                     .with_devtools(false)
                     .with_document_title_changed_handler(move |title| {
+                        if smoke {
+                            eprintln!("NATIVE_SMOKE_TITLE: {title}");
+                        }
                         if smoke && title == "Aegis Native Smoke Fixture" {
                             let _ = proxy.send_event(true);
                         }
@@ -418,6 +421,7 @@ pub fn run(
             let title_app = app.clone();
             let title_ready = ready.clone();
             view.connect_title_notify(move |view| {
+                eprintln!("NATIVE_SMOKE_TITLE: {:?}", view.title());
                 if title_finished.get()
                     && view.title().as_deref() == Some("Aegis Native Smoke Fixture")
                 {
