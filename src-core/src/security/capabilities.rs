@@ -14,6 +14,8 @@ pub struct FsCapabilities {
 #[serde(rename_all = "camelCase")]
 pub struct SystemCapabilities {
     #[serde(default)]
+    pub allow_managed_windows: bool,
+    #[serde(default)]
     pub allow_notifications: bool,
     #[serde(default)]
     pub allow_file_dialogs: bool,
@@ -47,6 +49,7 @@ impl Default for CapabilityManifest {
                 deny_paths: vec!["../".to_string(), "C:\\Windows".to_string()],
             },
             system: SystemCapabilities {
+                allow_managed_windows: false,
                 allow_notifications: false,
                 allow_file_dialogs: false,
                 allow_clipboard_write: false,
@@ -125,6 +128,13 @@ impl SecurityEngine {
         }
     }
 
+    pub fn check_managed_windows(&self) -> Result<(), String> {
+        if self.manifest.system.allow_managed_windows {
+            Ok(())
+        } else {
+            Err("Security Violation: 'managed_windows' capability is disabled".into())
+        }
+    }
     pub fn check_dialogs(&self) -> Result<(), String> {
         if self.manifest.system.allow_dialogs {
             Ok(())

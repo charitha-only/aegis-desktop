@@ -9,14 +9,16 @@ use std::time::Duration;
 
 pub enum WindowOperation {
     Create { url: String, config: WindowConfig },
+    List,
+    Close(String),
 }
 pub struct WindowRequest {
     pub operation: WindowOperation,
-    reply: SyncSender<Result<String, String>>,
+    reply: SyncSender<Result<serde_json::Value, String>>,
     cancelled: Arc<AtomicBool>,
 }
 impl WindowRequest {
-    pub fn finish(self, result: Result<String, String>) {
+    pub fn finish(self, result: Result<serde_json::Value, String>) {
         let _ = self.reply.try_send(result);
     }
 }
@@ -29,7 +31,7 @@ pub struct WindowHost {
     receiver: Receiver<WindowRequest>,
 }
 pub struct WindowTicket {
-    receiver: Receiver<Result<String, String>>,
+    receiver: Receiver<Result<serde_json::Value, String>>,
     cancelled: Arc<AtomicBool>,
 }
 /// Owned transport only; a platform adapter must drain it on its UI event loop.
@@ -40,11 +42,27 @@ pub fn window_channel(policy: NativeWindowPolicy) -> (WindowClient, WindowHost) 
 impl WindowClient {
     pub fn create(&self, payload: &serde_json::Value) -> Result<WindowTicket, String> {
         let (url, config) = self.policy.prepare_child_request(payload)?;
+        self.submit(WindowOperation::Create { url, config })
+    }
+    pub fn list(&self) -> Result<WindowTicket, String> {
+        self.submit(WindowOperation::List)
+    }
+    pub fn close(&self, id: &str) -> Result<WindowTicket, String> {
+        if !id.starts_with("child-")
+            || id.len() > 32
+            || !id[6..].bytes().all(|b| b.is_ascii_digit())
+            || id.len() == 6
+        {
+            return Err("Invalid managed window ID".into());
+        }
+        self.submit(WindowOperation::Close(id.into()))
+    }
+    fn submit(&self, operation: WindowOperation) -> Result<WindowTicket, String> {
         let (reply, receiver) = mpsc::sync_channel(1);
         let cancelled = Arc::new(AtomicBool::new(false));
         self.sender
             .try_send(WindowRequest {
-                operation: WindowOperation::Create { url, config },
+                operation,
                 reply,
                 cancelled: cancelled.clone(),
             })
@@ -76,7 +94,7 @@ impl Drop for WindowTicket {
     }
 }
 impl WindowTicket {
-    pub fn wait(self, timeout: Duration) -> Result<String, String> {
+    pub fn wait(self, timeout: Duration) -> Result<serde_json::Value, String> {
         self.receiver.recv_timeout(timeout).map_err(|error| {
             match error {
                 mpsc::RecvTimeoutError::Timeout => {
@@ -109,6 +127,7 @@ mod tests {
                 assert_eq!(url, "http://127.0.0.1:48291/");
                 assert_eq!(config.title, "Editor");
             }
+            _ => panic!("expected create"),
         }
         request.finish(Ok("child-1".into()));
         assert_eq!(
@@ -160,5 +179,27 @@ mod tests {
         assert!(
             matches!(client.create(&serde_json::json!({})), Err(error) if error.contains("unavailable"))
         );
+    }
+    #[test]
+    fn lifecycle_transport_keeps_list_and_close_distinct_and_rejects_foreign_ids() {
+        let policy =
+            NativeWindowPolicy::new("http://127.0.0.1:48291/", &WindowConfig::default()).unwrap();
+        let (client, host) = window_channel(policy);
+        for id in ["primary", "", "child-", "child-1/..", "child-💥"] {
+            assert!(client.close(id).is_err());
+        }
+        let ticket = client.list().unwrap();
+        let request = host.next().unwrap();
+        assert!(matches!(&request.operation, WindowOperation::List));
+        request.finish(Ok(serde_json::json!({"windowIds":["child-1"]})));
+        assert_eq!(
+            ticket.wait(Duration::from_secs(1)).unwrap(),
+            serde_json::json!({"windowIds":["child-1"]})
+        );
+        let ticket = client.close("child-1").unwrap();
+        let request = host.next().unwrap();
+        assert!(matches!(&request.operation, WindowOperation::Close(id) if id=="child-1"));
+        request.finish(Err("Unknown managed window ID".into()));
+        assert!(ticket.wait(Duration::from_secs(1)).is_err());
     }
 }

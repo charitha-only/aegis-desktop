@@ -4,7 +4,7 @@ Scope confirmed 2026-11-03: improve Aegis as a general-purpose Windows/Linux/mac
 
 | Track | Current boundary | Next acceptance deliverable |
 | --- | --- | --- |
-| Native experience | Optional primary native host; secondary window_spawn is external. Child policy preparation exists without native dispatch. | Event-loop-owned child creation, bounded handles, list/close and shutdown semantics; guarded three-OS GUI fixtures. Permission checks for native services and actual keyboard/screen-reader acceptance. |
+| Native experience | Optional primary native host; secondary window_spawn is external. Opt-in child create/list/close adapters now exist with hosted exact-source validation pending. | Validate the event-loop-owned preview, bounded handles, list/close and shutdown semantics with guarded three-OS GUI fixtures; complete focus/modal/event behavior. Permission checks for native services and actual keyboard/screen-reader acceptance. |
 | Low-end performance | Existing core-process measurements do not represent the whole app. | Collect owned application process-tree RAM/CPU and rendered UI startup/response measurements, then repeat on named low-resource physical devices before setting supported budgets. |
 | Safe updates | Offline verification, staging and recorded observation exist; automatic application is disabled. | Transactional install journal, interruption/restart recovery, authenticated rollback policy and application migration failure fixtures before enabling application. |
 | Distribution | Hosted installer acceptance covers selected native formats. Production signing unavailable. | Explicit OS/CPU matrix, artifact provenance/checksums, owner-controlled certificates/notarization and clean supported-device acceptance. |

@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "aegis-core"
-version = "0.29.17"
+version = "0.29.18"
 dependencies = [
  "arboard",
  "argon2",

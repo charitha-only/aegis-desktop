@@ -874,6 +874,11 @@ fn ipc_window_capabilities_do_not_advertise_unimplemented_controls() {
             payload,
         })
     };
+    for command in ["managed_window_create", "managed_window_list", "managed_window_close"] {
+        let denied = call(command, serde_json::json!({}));
+        assert!(!denied.success);
+        assert!(denied.error.as_ref().unwrap().contains("managed_windows"));
+    }
     let response = call("window_list", serde_json::json!({}));
     assert!(response.success);
     let status = call("get_security_status", serde_json::json!({}));

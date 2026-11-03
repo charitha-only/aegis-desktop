@@ -62,6 +62,9 @@ try {
   assert.equal(windowCapabilities.data.managedWindowEnumerationAvailable, false);
   assert.equal(windowCapabilities.data.managedWindowCloseAvailable, false);
   assert.equal(windowCapabilities.data.externalBrowserLaunchAvailable, true);
+  for (const command of ['managed_window_create','managed_window_list','managed_window_close']) {
+    const denied=await call(command,{});assert.equal(denied.success,false);assert.match(denied.error,/managed_windows/);
+  }
   console.log('PASS: window discovery distinguishes external launch from unavailable managed lifecycle');
   const info = await call('platform_info');
   assert.equal(info.success, true, 'Platform capability interface must exist');

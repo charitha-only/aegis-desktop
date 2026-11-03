@@ -200,7 +200,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bridge_addr = format!("127.0.0.1:{port}");
     let server = CoreServer::bind(
         &bridge_addr,
-        router,
+        router.clone(),
         handshake_session,
         origin_validator,
         csp,
@@ -234,8 +234,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if args.iter().any(|arg| arg == "--native-window") {
             #[cfg(feature = "native-desktop")]
             {
+                let policy = window::NativeWindowPolicy::new(&ui_url, &win_cfg)?;
+                let (client, host) = window_requests::window_channel(policy);
+                let host = if security_engine.check_managed_windows().is_ok() {
+                    router.attach_window_host(client)?;
+                    Some(host)
+                } else {
+                    None
+                };
                 std::thread::spawn(move || server.run());
-                return native_window::run(&ui_url, &win_cfg, &base_dir);
+                return native_window::run(&ui_url, &win_cfg, &base_dir, host);
             }
             #[cfg(not(feature = "native-desktop"))]
             return Err("Rebuild with --features native-desktop to use --native-window".into());

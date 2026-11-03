@@ -1,46 +1,12 @@
-# Unreleased — Bounded native child transport (2026-11-03)
+# v0.29.18 — Managed native child preview (2026-11-03)
 
-- Add an owned client/host request channel with pre-enqueue child origin validation, a 16-request nonblocking capacity and individual host-confirmed result tickets. Queue acceptance is not window creation.
-- Skip abandoned/timed-out requests still observed in the queue; explicitly report unknown outcome for timeouts racing an already-dequeued operation. Host disconnection and creation errors never become success. Add three public channel tests covering confirmation, cancellation, capacity and disconnection.
-- This is transport groundwork, not connected native creation: native UI wake-up/adapters, handle tracking, list/close and three-OS actual-window acceptance remain pending. Managed capability flags stay false.
+- Connect the owned request channel to winit/Wry (Windows/macOS) and GTK4/WebKit6 (Linux) UI threads. Add managed_window_create/list/close commands behind system.allowManagedWindows, default false; unavailable hosts fail closed without browser fallback.
+- Limit live children to eight, queue to sixteen, use non-reused process-lifetime child IDs and restrict URLs to the parent app authority. Primary shutdown drops children; child close leaves the primary running. Native objects remain UI-thread owned; a successful create confirms object creation, not document readiness.
+- Add a disposable actual-GUI fixture for two-child creation, list/close, unknown-ID/cross-origin rejection and reopen without ID reuse. Keep personal-PC GUI actions blocked by the existing hosted-runner guard. Discovery is enabled only with permission and an active attached native host.
+- Managed preview uses 50 ms UI-thread queue polling only when explicitly enabled. These are app-wide handles, not per-window security principals; modal parenting, focus, per-window profile/credential isolation, full event delivery and physical acceptance remain open. Timeouts can have unknown outcomes after dequeue; list handles to reconcile.
+- Local default Rust: 106 passed, one ignored; native cargo check passed. The local GNU native test binary terminated before its harness with STATUS_ACCESS_VIOLATION; native execution validation therefore requires hosted CI and is not claimed locally. Exact-source CI pending. Signing, physical-device and independent-review gates remain open.
 
-# Unreleased — Truthful managed-window discovery (2026-11-03)
-
-- Correct window_list, security status and permission descriptions advertising multi-window availability even though no managed native handles exist. Describe external-browser launch availability separately; identify window_list as a capability response rather than handle enumeration.
-- Extend public IPC regression coverage for the false managed flags and explicit discovery fields. Existing browser launch behavior is retained. This is a compatibility correction to discovery metadata, not completed native child creation/list/close integration. Native event-loop dispatch and actual three-OS GUI acceptance remain pending.
-
-# Unreleased — Native child controls and completion tracks (2026-11-03)
-
-- Preserve supported native resizable/decorations options in child preparation while retaining external-browser restrictions. Native child preparation still rejects unsupported native controls, remote/cross-authority URLs and malformed options. Add a public policy regression that first reproduced the external-control rejection.
-- Record the eight framework completion tracks, acceptance deliverables and external dependencies in docs/FRAMEWORK_COMPLETION.md. Native child event-loop dispatch/lifecycle remains pending; this does not enable secondary native windows.
-
-# Unreleased — Managed child policy foundation (2026-11-03)
-
-- Add a pure NativeWindowPolicy child-request preparation API: pin child URLs to the parent's validated authority and inherit the parent URL only when omitted. Reject explicit null, malformed options and unsupported controls.
-- Add two public policy regression tests using red/green cycles without opening windows. Existing window_spawn still launches an external browser. Native event-loop creation, handle ownership/list/close and actual three-OS multi-window acceptance remain pending; this increment does not claim managed multi-window runtime support.
-
-# Unreleased — Output-parent preflight (2026-11-03)
-
-- Reject an observed linked or non-directory dist-bundle parent before prerequisite tools and compilation. A missing parent remains allowed. The Rust bundler already enforced this boundary later; this change improves early feedback.
-- Public CLI regression uses an owned junction/symlink and checks that external owner bytes and the directory inventory are preserved. This does not prevent hostile filesystem races or validate every ancestor. Hosted CI for this follow-up is pending.
-
-# Unreleased — Early package occupancy checks (2026-11-03)
-
-- Refuse occupied exact-name build locks before prerequisite tool checks and compilation. Windows installer-sidecar occupancy is checked at the same early point. Preserve every existing entry; no stale-lock takeover.
-- Use lstat for final output occupancy so dangling links are occupied instead of appearing absent. Propagate unexpected filesystem errors.
-- Add a public CLI regression using a copied disposable project with missing prerequisites: the owned lock is reported first and its bytes remain unchanged. This is an early diagnostic, not a reservation; the Rust bundler still enforces exclusive locking and publication checks later. Hosted verification is pending for this increment.
-
-# Unreleased — Case-variant recovery diagnostics (2026-11-03)
-
-- Report case-variant staging candidates separately as possibleAliasStages. Previously exact-case matching could omit relevant candidates on case-insensitive Windows/macOS filesystems.
-- Preserve exact matches and all filesystem entries; no claim of shared ownership, stale state or automatic recovery. Add a public CLI regression that preserves the candidate marker. Hosted CI results for this follow-up are pending; the earlier ba9920b evidence below applies only to that earlier source.
-
-# Unreleased — Read-only bundle diagnostics (verified 2026-11-03)
-
-- Add `inspect-bundle <dist-bundle-directory> <package-name>` for manual recovery planning. Report observed payload/sidecar/lock types and matching random staging entries without reading contents or deleting/moving anything.
-- Reject unsafe package names and linked roots; leave missing roots absent. Bound enumeration to 4096 entries including unrelated names and reject oversized directories without a partial report.
-- Three public CLI regression cases cover owner-marker preservation, missing/invalid paths, junction/symlink rejection and enumeration bounds. Source ba9920b passed all three hosted OS portable/native workflows, generated-template/package checks and Windows installer/upgrade/data-preservation/real-lock verification. Exact counts and run IDs are in the verification ledger.
-- This is non-atomic observation of trusted paths, not active/stale lock detection, package verification, publisher authentication or automatic crash recovery. Current numbered source version remains v0.29.17; no new signed binary release is claimed.
+- Include previously unversioned bundle diagnostics and early output/lock/sidecar/linked-parent checks, with their public CLI regressions. Inspection remains read-only, including separate case-variant staging candidates; stale ownership is never inferred.
 
 # v0.29.17 — Staged bundle publication (2026-11-02)
 

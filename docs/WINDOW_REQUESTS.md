@@ -1,5 +1,7 @@
 # Window launch requests (v0.26.1)
 
+For the v0.29.18 opt-in native child implementation and current limits see [Managed native children](MANAGED_WINDOWS.md). The foundation notes below record earlier development stages and are superseded for the new managed_window_* commands; legacy window_spawn remains external.
+
 `window_spawn` requests an external browser launch on Windows, Linux or macOS,
 including when the primary application uses the optional native host. It does
 not create a managed secondary native window. Managed enumeration, closing,
@@ -55,21 +57,8 @@ repeats that rejection on all three OS runners. Native-host GUI fixtures remain
 guarded for disposable hosted CI; real-device/accessibility and complete managed
 multi-window acceptance remain pending.
 
-## Managed child preparation (unreleased foundation)
+## Current managed API
 
-NativeWindowPolicy::prepare_child_request validates a proposed child against the parent application's exact validated HTTP authority. Different loopback ports/host spellings and remote URLs are rejected. An omitted URL inherits the parent's initial URL; an explicit null remains invalid. Existing strict option parsing, size/title checks and unsupported-control rejection remain in force. Native preparation now preserves supported resizable/decorations controls, including false, while external browser requests still reject those settings. Both paths share strict parsing; native preparation separately applies NativeWindowPolicy restrictions.
+The original policy/transport foundation is now connected to the native UI adapters for the new managed_window_* commands in v0.29.18. See [Managed native children](MANAGED_WINDOWS.md) for permissions, result contracts, limits and pending acceptance. Legacy window_spawn does not use the managed path.
 
-This preparation API creates no OS window, owns no handle, and is not connected to window_spawn. Existing window_spawn behavior remains the external launch documented above. Native event-loop dispatch, bounded handle ownership, list/close operations, close races and three-OS native multi-window fixtures are still required before advertising managed multi-window support. Two public policy tests cover origin pinning, inherited URL and malformed options without desktop actions. This is a development foundation, not a completed runtime security boundary.
-
-
-## Capability response compatibility
-
-window_list is a legacy capability-description command, not a native handle enumeration. It now explicitly returns responseKind=capabilities, multiWindowSupported=false, managedWindowEnumerationAvailable=false, managedWindowCloseAvailable=false and externalBrowserLaunchAvailable=true. Security-status and permission-description multiWindow flags likewise remain false until a managed runtime actually exists. The old true value described browser launch support misleadingly; clients should use the explicit external launch field for that feature. Primary embedded hosting does not by itself enable managed secondary windows. Existing spawnMethods remain legacy helper names, not managed native operations.
-
-## Owned child-request transport (unreleased foundation)
-
-window_requests::window_channel returns an owned WindowClient/WindowHost pair. The client validates child policy before enqueueing and uses a nonblocking queue bounded to 16 outstanding queued requests. Each request has its own single-result ticket; enqueue acceptance never means that a native window exists. The UI-thread host must drain next(), create the actual native object, and finish with its real result. Full queues, disconnected hosts and dropped requests return errors; there is no external-browser fallback or global host takeover.
-
-Dropping or timing out a ticket marks it cancelled. The host skips requests observed as cancelled while still queued. A cancellation racing after dequeue cannot undo an OS operation: a timeout explicitly means outcome unknown, not successful cancellation. Cancelled queued slots are reclaimed when the host next drains them; queue occupancy is intentionally conservative. Dropping the host disconnects queued waiters. Tests exercise actual in-process channels at this public transport boundary; they do not substitute synthetic native creation for a real OS window.
-
-This transport is not yet installed in either native event loop or IPC router. Managed create/list/close flags remain false. UI wake-up/adapters, bounded native handle ownership, shutdown ordering, list/close APIs, permissions and actual three-OS GUI fixtures remain required before enabling the feature.
+window_list remains a capability-description response (responseKind=capabilities), not a native handle list. Its managed flags reflect the opt-in permission and active attached native host, while externalBrowserLaunchAvailable describes the separate browser helper. Use managed_window_list for actual child IDs. Older true managed flags without a runtime were incorrect and have been removed. Primary embedded hosting alone does not grant managed-window permission.

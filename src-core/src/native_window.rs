@@ -1,3 +1,9 @@
+struct NativeActivity;
+impl Drop for NativeActivity {
+    fn drop(&mut self) {
+        crate::window::WindowManager::mark_native_inactive();
+    }
+}
 use crate::window::{NativeWindowPolicy, WindowConfig};
 
 fn smoke_enabled() -> bool {
@@ -11,7 +17,9 @@ pub fn run(
     url: &str,
     config: &WindowConfig,
     data_root: &std::path::Path,
+    host: Option<crate::window_requests::WindowHost>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let _activity = NativeActivity;
     use winit::{
         application::ApplicationHandler,
         event::WindowEvent,
@@ -29,6 +37,9 @@ pub fn run(
         proxy: winit::event_loop::EventLoopProxy<bool>,
         smoke: bool,
         ready: bool,
+        host: Option<crate::window_requests::WindowHost>,
+        children: std::collections::BTreeMap<String, (wry::WebView, Window)>,
+        next_child: u64,
     }
     impl ApplicationHandler<bool> for App {
         fn user_event(&mut self, event_loop: &ActiveEventLoop, ready: bool) {
@@ -39,6 +50,82 @@ pub fn run(
                 self.error = Some("Native fixture document did not load before timeout".into());
             }
             event_loop.exit();
+        }
+        fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+            use crate::window_requests::WindowOperation;
+            while let Some(request) = self.host.as_ref().and_then(|host| host.next()) {
+                let result = match &request.operation {
+                    WindowOperation::List => Ok(
+                        serde_json::json!({"windowIds":self.children.keys().collect::<Vec<_>>() }),
+                    ),
+                    WindowOperation::Close(id) => match self.children.remove(id) {
+                        Some((view, window)) => {
+                            drop(view);
+                            drop(window);
+                            Ok(serde_json::json!({"closed":true,"windowId":id}))
+                        }
+                        None => Err("Unknown managed window ID".into()),
+                    },
+                    WindowOperation::Create { url, config } => {
+                        (|| -> Result<serde_json::Value, String> {
+                            if self.children.len() >= 8 {
+                                return Err("Managed child window limit reached".into());
+                            }
+                            let next = self
+                                .next_child
+                                .checked_add(1)
+                                .ok_or("Managed window ID exhausted")?;
+                            let policy = NativeWindowPolicy::new(url, config)?;
+                            if !self.policy.allows_navigation(url) {
+                                return Err("Child origin rejected".into());
+                            }
+                            let window = event_loop
+                                .create_window(
+                                    Window::default_attributes()
+                                        .with_title(&config.title)
+                                        .with_inner_size(winit::dpi::LogicalSize::new(
+                                            config.width,
+                                            config.height,
+                                        ))
+                                        .with_resizable(config.resizable)
+                                        .with_decorations(config.decorations)
+                                        .with_visible(false),
+                                )
+                                .map_err(|e| e.to_string())?;
+                            let view =
+                                wry::WebViewBuilder::new_with_web_context(&mut self.web_context)
+                                    .with_url(url)
+                                    .with_incognito(true)
+                                    .with_devtools(false)
+                                    .with_navigation_handler(move |target| {
+                                        policy.allows_navigation(&target)
+                                    })
+                                    .with_new_window_req_handler(|_, _| {
+                                        wry::NewWindowResponse::Deny
+                                    })
+                                    .with_permission_handler(|_| wry::PermissionResponse::Deny)
+                                    .with_download_started_handler(|_, _| false)
+                                    .build(&window)
+                                    .map_err(|e| e.to_string())?;
+                            let id = format!("child-{}", self.next_child);
+                            self.next_child = next;
+                            window.set_visible(true);
+                            self.children.insert(id.clone(), (view, window));
+                            Ok(
+                                serde_json::json!({"windowId":id,"backend":"NATIVE_EMBEDDED","documentReady":false}),
+                            )
+                        })()
+                    }
+                };
+                request.finish(result);
+            }
+            event_loop.set_control_flow(if self.host.is_some() {
+                ControlFlow::WaitUntil(
+                    std::time::Instant::now() + std::time::Duration::from_millis(50),
+                )
+            } else {
+                ControlFlow::Wait
+            });
         }
         fn resumed(&mut self, event_loop: &ActiveEventLoop) {
             if self.window.is_some() {
@@ -88,7 +175,41 @@ pub fn run(
                 }
             }
         }
-        fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
+        fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
+            if self.window.as_ref().is_none_or(|window| window.id() != id) {
+                if let Some(key) = self
+                    .children
+                    .iter()
+                    .find(|(_, (_, window))| window.id() == id)
+                    .map(|(key, _)| key.clone())
+                {
+                    match event {
+                        WindowEvent::CloseRequested => {
+                            if let Some((view, window)) = self.children.remove(&key) {
+                                drop(view);
+                                drop(window);
+                            }
+                        }
+                        WindowEvent::Resized(size) => {
+                            if let Some((view, _)) = self.children.get(&key) {
+                                if let Err(error) = view.set_bounds(wry::Rect {
+                                    position: wry::dpi::PhysicalPosition::new(0, 0).into(),
+                                    size: wry::dpi::PhysicalSize::new(size.width, size.height)
+                                        .into(),
+                                }) {
+                                    eprintln!("Child resize failed: {error}");
+                                    if let Some((view, window)) = self.children.remove(&key) {
+                                        drop(view);
+                                        drop(window);
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                return;
+            }
             match event {
                 WindowEvent::CloseRequested => event_loop.exit(),
                 WindowEvent::Resized(size) => {
@@ -130,8 +251,12 @@ pub fn run(
         proxy: event_loop.create_proxy(),
         smoke,
         ready: false,
+        host,
+        children: std::collections::BTreeMap::new(),
+        next_child: 1,
     };
     event_loop.run_app(&mut app)?;
+    app.children.clear();
     drop(app.webview.take());
     drop(app.window.take());
     if let Some(error) = app.error {
@@ -148,7 +273,9 @@ pub fn run(
     url: &str,
     config: &WindowConfig,
     _data_root: &std::path::Path,
+    host: Option<crate::window_requests::WindowHost>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let _activity = NativeActivity;
     use gtk::prelude::*;
     use webkit6::{gtk, prelude::*};
     let policy = NativeWindowPolicy::new(url, config)?;
@@ -161,6 +288,118 @@ pub fn run(
         .application_id("org.aegis.desktop")
         .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
         .build();
+    let children = std::rc::Rc::new(std::cell::RefCell::new(std::collections::BTreeMap::<
+        String,
+        (gtk::ApplicationWindow, webkit6::WebView),
+    >::new()));
+    let child_map = children.clone();
+    let child_policy = policy.clone();
+    let child_app = app.downgrade();
+    let mut next_child = 1u64;
+    let source = host.map(|host| gtk::glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
+        use crate::window_requests::WindowOperation;
+        let Some(app) = child_app.upgrade() else {
+            return gtk::glib::ControlFlow::Break;
+        };
+        while let Some(request) = host.next() {
+            let result = match &request.operation {
+                WindowOperation::List => Ok(
+                    serde_json::json!({"windowIds":child_map.borrow().keys().collect::<Vec<_>>() }),
+                ),
+                WindowOperation::Close(id) => {
+                    let entry = child_map.borrow_mut().remove(id);
+                    match entry {
+                        Some((window, _)) => {
+                            window.close();
+                            Ok(serde_json::json!({"closed":true,"windowId":id}))
+                        }
+                        None => Err("Unknown managed window ID".into()),
+                    }
+                }
+                WindowOperation::Create { url, config } => {
+                    (|| -> Result<serde_json::Value, String> {
+                        if child_map.borrow().len() >= 8 {
+                            return Err("Managed child window limit reached".into());
+                        }
+                        let next = next_child
+                            .checked_add(1)
+                            .ok_or("Managed window ID exhausted")?;
+                        if !child_policy.allows_navigation(url) {
+                            return Err("Child origin rejected".into());
+                        }
+                        let policy = NativeWindowPolicy::new(url, config)?;
+                        let session = webkit6::NetworkSession::new_ephemeral();
+                        session.connect_download_started(|_, download| download.cancel());
+                        let view = webkit6::WebView::builder()
+                            .network_session(&session)
+                            .build();
+                        view.set_settings(
+                            &webkit6::Settings::builder()
+                                .enable_developer_extras(false)
+                                .build(),
+                        );
+                        view.connect_permission_request(|_, request| {
+                            request.deny();
+                            true
+                        });
+                        view.connect_create(|_, _| None);
+                        view.connect_run_file_chooser(|_, request| {
+                            request.cancel();
+                            true
+                        });
+                        view.connect_decide_policy(move |_, decision, kind| {
+                            if kind == webkit6::PolicyDecisionType::NavigationAction {
+                                let allowed = decision
+                                    .downcast_ref::<webkit6::NavigationPolicyDecision>()
+                                    .and_then(|d| d.navigation_action())
+                                    .and_then(|a| a.request())
+                                    .and_then(|r| r.uri())
+                                    .is_some_and(|uri| policy.allows_navigation(&uri));
+                                if allowed {
+                                    decision.use_();
+                                } else {
+                                    decision.ignore();
+                                }
+                                true
+                            } else if kind == webkit6::PolicyDecisionType::NewWindowAction {
+                                decision.ignore();
+                                true
+                            } else {
+                                false
+                            }
+                        });
+                        let window = gtk::ApplicationWindow::builder()
+                            .application(&app)
+                            .title(&config.title)
+                            .default_width(config.width as i32)
+                            .default_height(config.height as i32)
+                            .resizable(config.resizable)
+                            .decorated(config.decorations)
+                            .child(&view)
+                            .build();
+                        let id = format!("child-{next_child}");
+                        next_child = next;
+                        let weak = std::rc::Rc::downgrade(&child_map);
+                        let closed = id.clone();
+                        window.connect_close_request(move |_| {
+                            if let Some(map) = weak.upgrade() {
+                                map.borrow_mut().remove(&closed);
+                            }
+                            gtk::glib::Propagation::Proceed
+                        });
+                        view.load_uri(url);
+                        window.present();
+                        child_map.borrow_mut().insert(id.clone(), (window, view));
+                        Ok(
+                            serde_json::json!({"windowId":id,"backend":"NATIVE_EMBEDDED","documentReady":false}),
+                        )
+                    })()
+                }
+            };
+            request.finish(result);
+        }
+        gtk::glib::ControlFlow::Continue
+    }));
     app.connect_activate(move |app| {
         let session = webkit6::NetworkSession::new_ephemeral();
         session.connect_download_started(|_, download| download.cancel());
@@ -251,6 +490,13 @@ pub fn run(
             .child(&view)
             .build();
         view.load_uri(&url);
+        let quit_app = app.downgrade();
+        window.connect_close_request(move |_| {
+            if let Some(app) = quit_app.upgrade() {
+                app.quit();
+            }
+            gtk::glib::Propagation::Proceed
+        });
         window.present();
         crate::window::WindowManager::mark_native_active();
     });
@@ -263,6 +509,13 @@ pub fn run(
         });
     }
     let result = app.run_with_args::<&str>(&[]);
+    if let Some(source) = source {
+        source.remove();
+    }
+    let retained = std::mem::take(&mut *children.borrow_mut());
+    for (_, (window, _)) in retained {
+        window.close();
+    }
     if result != gtk::glib::ExitCode::SUCCESS {
         return Err("Native GTK application failed".into());
     }

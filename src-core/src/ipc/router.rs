@@ -20,6 +20,7 @@ use sha2::{Digest, Sha256};
 use std::sync::Arc;
 
 pub struct IpcRouter {
+    managed_windows: std::sync::Mutex<Option<crate::window_requests::WindowClient>>,
     notification_limiter: crate::security::RateLimiter,
     notifications: crate::tray::NotificationJobs,
     message_dialogs: crate::message_dialog::MessageDialogJobs,
@@ -47,6 +48,27 @@ pub struct IpcRouter {
 }
 
 impl IpcRouter {
+    fn managed_windows_available(&self) -> bool {
+        self.security.check_managed_windows().is_ok()
+            && crate::window::WindowManager::detect_runtime().backend == "NATIVE_EMBEDDED"
+            && self.managed_windows.lock().is_ok_and(|host| host.is_some())
+    }
+
+    pub fn attach_window_host(
+        &self,
+        client: crate::window_requests::WindowClient,
+    ) -> Result<(), String> {
+        let mut slot = self
+            .managed_windows
+            .lock()
+            .map_err(|_| "Window host state unavailable")?;
+        if slot.is_some() {
+            return Err("Window host already attached".into());
+        }
+        *slot = Some(client);
+        Ok(())
+    }
+
     pub fn new(
         security: Arc<SecurityEngine>,
         session: Arc<HandshakeSession>,
@@ -75,6 +97,7 @@ impl IpcRouter {
         #[cfg(all(target_os = "linux", feature = "linux-lifecycle", not(test)))]
         crate::security::linux_lifecycle::start(Arc::downgrade(&vault_sessions));
         Self {
+            managed_windows: std::sync::Mutex::new(None),
             notification_limiter: crate::security::RateLimiter::new(30, 60, 60),
             notifications: crate::tray::NotificationJobs::new(std::time::Duration::from_secs(30)),
             message_dialogs: crate::message_dialog::MessageDialogJobs::new(
@@ -304,7 +327,7 @@ impl IpcRouter {
                     "antiDosRateLimiterActive": true,
                     "airGapPolicyActive": false,
                     "bundlerEngineActive": true,
-                    "multiWindowApiActive": false,
+                    "multiWindowApiActive": self.managed_windows_available(),
                     "nativeWebKitWryActive": false,
                     "embeddedWindowActive": crate::window::WindowManager::detect_runtime().backend == "NATIVE_EMBEDDED",
                     "integrationStatus": "Hardware authentication, TPM, HSM, GPU, encrypted IPC, updater and P2P are unavailable",
@@ -327,7 +350,7 @@ impl IpcRouter {
                         "crypto": true,
                         "encryptedVault": true,
                         "bundler": true,
-                        "multiWindow": false,
+                        "multiWindow": self.managed_windows_available(),
                         "nativeWebKitWry": false,
                         "plugins": true,
                         "notifications": true,
@@ -740,6 +763,49 @@ impl IpcRouter {
                 Err(e) => IpcResponse::err(&req.id, &e),
             },
 
+            "managed_window_create" | "managed_window_list" | "managed_window_close" => {
+                if let Err(error) = self.security.check_managed_windows() {
+                    return IpcResponse::err(&req.id, &error);
+                }
+                let client = match self.managed_windows.lock() {
+                    Ok(slot) => match slot.as_ref() {
+                        Some(client) => client.clone(),
+                        None => {
+                            return IpcResponse::err(
+                                &req.id,
+                                "UNAVAILABLE: native window host is not attached",
+                            )
+                        }
+                    },
+                    Err(_) => {
+                        return IpcResponse::err(&req.id, "Native window host state unavailable")
+                    }
+                };
+                let ticket = match req.command.as_str() {
+                    "managed_window_create" => client.create(&req.payload),
+                    "managed_window_list" => {
+                        if req.payload.as_object().is_some_and(|p| p.is_empty()) {
+                            client.list()
+                        } else {
+                            Err("List options must be an empty object".into())
+                        }
+                    }
+                    _ => match req
+                        .payload
+                        .as_object()
+                        .filter(|p| p.len() == 1)
+                        .and_then(|p| p.get("windowId"))
+                        .and_then(|v| v.as_str())
+                    {
+                        Some(id) => client.close(id),
+                        None => Err("Close requires only windowId".into()),
+                    },
+                };
+                match ticket.and_then(|ticket| ticket.wait(std::time::Duration::from_secs(5))) {
+                    Ok(result) => IpcResponse::ok(&req.id, result),
+                    Err(error) => IpcResponse::err(&req.id, &error),
+                }
+            }
             "window_spawn" => {
                 let (url, cfg) =
                     match crate::window::WindowManager::prepare_spawn_request(&req.payload) {
@@ -837,9 +903,9 @@ impl IpcRouter {
                     &req.id,
                     json!({
                         "responseKind": "capabilities",
-                        "multiWindowSupported": false,
-                        "managedWindowEnumerationAvailable": false,
-                        "managedWindowCloseAvailable": false,
+                        "multiWindowSupported": self.managed_windows_available(),
+                        "managedWindowEnumerationAvailable": self.managed_windows_available(),
+                        "managedWindowCloseAvailable": self.managed_windows_available(),
                         "externalBrowserLaunchAvailable": true,
                         "apiVersion": "v0.12.0",
                         "spawnMethods": ["window_spawn", "window_dialog"],
@@ -1036,7 +1102,7 @@ impl IpcRouter {
                         "crypto": { "allowed": true },
                         "encryptedVault": { "allowed": true },
                         "bundler": { "allowed": true },
-                        "multiWindow": { "allowed": false },
+                        "multiWindow": { "allowed": self.managed_windows_available() },
                         "plugins": { "allowed": true },
                         "notifications": { "allowed": true },
                         "autoUpdater": { "allowed": false, "autoApply": false },

@@ -262,6 +262,10 @@ impl WindowManager {
         Ok(command)
     }
     #[cfg(feature = "native-desktop")]
+    pub(crate) fn mark_native_inactive() {
+        NATIVE_ACTIVE.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+    #[cfg(feature = "native-desktop")]
     pub(crate) fn mark_native_active() {
         NATIVE_ACTIVE.store(true, std::sync::atomic::Ordering::SeqCst);
     }
