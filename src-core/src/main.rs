@@ -22,6 +22,7 @@ mod tray;
 mod updater;
 mod wasm;
 mod window;
+mod window_requests;
 
 use crash::CrashReporter;
 use ipc::IpcRouter;

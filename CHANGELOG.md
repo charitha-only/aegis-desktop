@@ -1,3 +1,9 @@
+# Unreleased — Bounded native child transport (2026-11-03)
+
+- Add an owned client/host request channel with pre-enqueue child origin validation, a 16-request nonblocking capacity and individual host-confirmed result tickets. Queue acceptance is not window creation.
+- Skip abandoned/timed-out requests still observed in the queue; explicitly report unknown outcome for timeouts racing an already-dequeued operation. Host disconnection and creation errors never become success. Add three public channel tests covering confirmation, cancellation, capacity and disconnection.
+- This is transport groundwork, not connected native creation: native UI wake-up/adapters, handle tracking, list/close and three-OS actual-window acceptance remain pending. Managed capability flags stay false.
+
 # Unreleased — Truthful managed-window discovery (2026-11-03)
 
 - Correct window_list, security status and permission descriptions advertising multi-window availability even though no managed native handles exist. Describe external-browser launch availability separately; identify window_list as a capability response rather than handle enumeration.

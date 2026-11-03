@@ -65,3 +65,11 @@ This preparation API creates no OS window, owns no handle, and is not connected 
 ## Capability response compatibility
 
 window_list is a legacy capability-description command, not a native handle enumeration. It now explicitly returns responseKind=capabilities, multiWindowSupported=false, managedWindowEnumerationAvailable=false, managedWindowCloseAvailable=false and externalBrowserLaunchAvailable=true. Security-status and permission-description multiWindow flags likewise remain false until a managed runtime actually exists. The old true value described browser launch support misleadingly; clients should use the explicit external launch field for that feature. Primary embedded hosting does not by itself enable managed secondary windows. Existing spawnMethods remain legacy helper names, not managed native operations.
+
+## Owned child-request transport (unreleased foundation)
+
+window_requests::window_channel returns an owned WindowClient/WindowHost pair. The client validates child policy before enqueueing and uses a nonblocking queue bounded to 16 outstanding queued requests. Each request has its own single-result ticket; enqueue acceptance never means that a native window exists. The UI-thread host must drain next(), create the actual native object, and finish with its real result. Full queues, disconnected hosts and dropped requests return errors; there is no external-browser fallback or global host takeover.
+
+Dropping or timing out a ticket marks it cancelled. The host skips requests observed as cancelled while still queued. A cancellation racing after dequeue cannot undo an OS operation: a timeout explicitly means outcome unknown, not successful cancellation. Cancelled queued slots are reclaimed when the host next drains them; queue occupancy is intentionally conservative. Dropping the host disconnects queued waiters. Tests exercise actual in-process channels at this public transport boundary; they do not substitute synthetic native creation for a real OS window.
+
+This transport is not yet installed in either native event loop or IPC router. Managed create/list/close flags remain false. UI wake-up/adapters, bounded native handle ownership, shutdown ordering, list/close APIs, permissions and actual three-OS GUI fixtures remain required before enabling the feature.
