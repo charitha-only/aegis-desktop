@@ -38,6 +38,17 @@ export interface AppDirectories {
 
 /** Managed child IDs are app-scoped handles, not credentials. */
 export type ManagedWindowId = `child-${number}`;
+export interface WindowCapabilities {
+  responseKind: 'capabilities';
+  multiWindowSupported: boolean;
+  managedWindowEnumerationAvailable: boolean;
+  managedWindowCloseAvailable: boolean;
+  externalBrowserLaunchAvailable: boolean;
+  apiVersion: string;
+  spawnMethods: string[];
+  platformHint: string;
+  capabilities: {modal: boolean; kiosk: boolean; alwaysOnTop: boolean; customSize: boolean; customUrl: boolean};
+}
 export interface ManagedWindowOptions {
   url?: string;
   title?: string;
@@ -431,7 +442,7 @@ export class AegisBridge {
     return this.invoke('message_dialog_cancel', {requestId});
   }
 
-  public async getWindowCapabilities(): Promise<IpcResponse> {
+  public async getWindowCapabilities(): Promise<IpcResponse<WindowCapabilities>> {
     return this.invoke('window_list');
   }
 

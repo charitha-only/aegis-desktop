@@ -11,6 +11,10 @@ const nonnegativeInteger = (value: unknown): value is number => typeof value ===
 const managedWindowId = (value: unknown): value is string => typeof value === 'string' && /^child-[1-9][0-9]{0,19}$/.test(value);
 
 export function validCommandData(command: string, data: unknown): boolean {
+  if (command === 'window_list') return record(data) && data.responseKind === 'capabilities'
+    && booleans(data, ['multiWindowSupported','managedWindowEnumerationAvailable','managedWindowCloseAvailable','externalBrowserLaunchAvailable'])
+    && text(data.apiVersion) && text(data.platformHint) && Array.isArray(data.spawnMethods) && data.spawnMethods.every(text)
+    && record(data.capabilities) && booleans(data.capabilities, ['modal','kiosk','alwaysOnTop','customSize','customUrl']);
   if (command === 'managed_window_list') return record(data) && Array.isArray(data.windowIds) && data.windowIds.length <= 8
     && data.windowIds.every(managedWindowId) && new Set(data.windowIds).size === data.windowIds.length;
   if (command === 'managed_window_close') return record(data) && managedWindowId(data.windowId) && data.closed === true;

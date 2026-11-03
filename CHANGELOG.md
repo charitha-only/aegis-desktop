@@ -1,3 +1,9 @@
+# Unreleased — Typed window capability discovery (2026-11-04)
+
+- Type and validate getWindowCapabilities/window_list rather than accepting arbitrary successful data. Reject malformed availability flags, method lists and control metadata while accepting well-formed disabled support and additive fields.
+- Add a public SDK regression that reproduced successful acceptance of null/malformed discovery. Current discovery metadata requires a matching v0.29.18-era core; legacy missing fields fail closed.
+- Local SDK suite: 23 passed; UI/example build passed. Hosted exact-source verification is pending. Native behavior and existing source tags are unchanged.
+
 # Unreleased — Typed managed-window SDK (2026-11-04)
 
 - Add createManagedWindow, listManagedWindows and closeManagedWindow with public option/result/ID types and a compilable availability/owned-handle example.

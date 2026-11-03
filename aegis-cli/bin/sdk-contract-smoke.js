@@ -422,3 +422,20 @@ test('SDK managed close confirms the requested handle and preserves backend deni
     denied=true;const result=await aegis.closeManagedWindow('child-1');assert.equal(result.success,false);assert.equal(result.error,'managed_windows disabled');
   });
 });
+test('SDK window discovery validates capability types and accepts disabled native support',async()=>{
+  const receipt={responseKind:'capabilities',multiWindowSupported:false,managedWindowEnumerationAvailable:false,managedWindowCloseAvailable:false,externalBrowserLaunchAvailable:true,apiVersion:'v0.12.0',spawnMethods:['window_spawn','window_dialog'],platformHint:'linux',capabilities:{modal:false,kiosk:false,alwaysOnTop:false,customSize:false,customUrl:true}};
+  let data=receipt;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake')return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request)body+=chunk;
+    const input=JSON.parse(body);assert.equal(input.command,'window_list');
+    json(response,{id:input.id,success:true,data});
+  },async({aegis})=>{
+    assert.equal((await aegis.getWindowCapabilities()).success,true);
+    for(const invalid of [null,{}, {...receipt,multiWindowSupported:'true'}, {...receipt,responseKind:'handles'}, {...receipt,managedWindowCloseAvailable:1}, {...receipt,spawnMethods:['window_spawn',null]}, {...receipt,capabilities:{...receipt.capabilities,modal:'false'}}]){
+      data=invalid;const result=await aegis.getWindowCapabilities();assert.equal(result.success,false);assert.equal(result.errorCode,'INVALID_RESPONSE');assert.equal(result.data,undefined);
+    }
+    data={...receipt,multiWindowSupported:true,managedWindowEnumerationAvailable:true,managedWindowCloseAvailable:true,futureField:'kept'};
+    const result=await aegis.getWindowCapabilities();assert.equal(result.success,true);assert.equal(result.data.futureField,'kept');
+  });
+});
