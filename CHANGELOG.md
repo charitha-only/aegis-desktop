@@ -2,7 +2,7 @@
 
 - Extend the guarded actual-GUI fixture to fill eight child slots, reject the ninth while preserving existing handles, release/reuse capacity with a fresh ID, and leave one live child at primary-host shutdown.
 - Add smoke-only retained-child release diagnostics on both native adapters. Assert the release marker alongside fixture readiness and successful exit. This is registry/native-object teardown evidence, not complete OS process-tree cleanup or fault recovery.
-- Pace requests below the rate limiter and allow a bounded 45/60-second fixture/launcher deadline. Local native-feature compile and generated-script syntax checks passed; hosted exact-source verification is pending. No personal desktop actions were performed. Current source version remains v0.29.18; its existing tag remains unchanged.
+- Pace requests below the rate limiter and allow a bounded 45/60-second fixture/launcher deadline. Local native-feature compile and generated-script syntax checks passed. Exact source ef6d1a6 passed three-OS native (41735933346), portable/template (41735933330) and Windows installer/upgrade/data-preservation/real-lock (41735933316) workflows. The expanded actual-GUI capacity/recovery/live-child teardown assertions passed on all three hosted OSes; see docs/NATIVE_CAPACITY_ACCEPTANCE.md. No personal desktop actions were performed. Current source version remains v0.29.18; its existing tag remains unchanged.
 
 # v0.29.18 — Managed native child preview (2026-11-03)
 
