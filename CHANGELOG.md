@@ -1,3 +1,8 @@
+# Unreleased — Native child controls and completion tracks (2026-11-03)
+
+- Preserve supported native resizable/decorations options in child preparation while retaining external-browser restrictions. Native child preparation still rejects unsupported native controls, remote/cross-authority URLs and malformed options. Add a public policy regression that first reproduced the external-control rejection.
+- Record the eight framework completion tracks, acceptance deliverables and external dependencies in docs/FRAMEWORK_COMPLETION.md. Native child event-loop dispatch/lifecycle remains pending; this does not enable secondary native windows.
+
 # Unreleased — Managed child policy foundation (2026-11-03)
 
 - Add a pure NativeWindowPolicy child-request preparation API: pin child URLs to the parent's validated authority and inherit the parent URL only when omitted. Reject explicit null, malformed options and unsupported controls.

@@ -1,5 +1,7 @@
 # Remaining release acceptance
 
+The active eight-track implementation scope is recorded in [Framework completion](FRAMEWORK_COMPLETION.md).
+
 Keep one evidence record per source commit, OS, architecture, package format and physical test device. A passing API test cannot be substituted for a missing interactive/device test.
 
 ## v0.26: native application behavior

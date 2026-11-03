@@ -151,7 +151,8 @@ impl NativeWindowPolicy {
             .entry("url")
             .or_insert_with(|| serde_json::Value::String(self.initial.clone()));
         let (url, config) =
-            WindowManager::prepare_spawn_request(&serde_json::Value::Object(options))?;
+            WindowManager::parse_window_request(&serde_json::Value::Object(options))?;
+        NativeWindowPolicy::new(&url, &config)?;
         if !self.allows_navigation(&url) {
             return Err("Native child window must use the parent application origin".into());
         }
@@ -176,6 +177,11 @@ impl WindowManager {
     pub fn prepare_spawn_request(
         payload: &serde_json::Value,
     ) -> Result<(String, WindowConfig), String> {
+        let (url, config) = Self::parse_window_request(payload)?;
+        Self::validate_external_controls(&config)?;
+        Ok((url, config))
+    }
+    fn parse_window_request(payload: &serde_json::Value) -> Result<(String, WindowConfig), String> {
         let mut options = payload
             .as_object()
             .ok_or("Invalid window options: expected an object")?
@@ -217,7 +223,6 @@ impl WindowManager {
         let config: WindowConfig = serde_json::from_value(serde_json::Value::Object(options))
             .map_err(|_| "Invalid window options: incorrect type or numeric range")?;
         Self::validate_request(&url, &config)?;
-        Self::validate_external_controls(&config)?;
         Ok((url, config))
     }
     fn validate_external_controls(config: &WindowConfig) -> Result<(), String> {
@@ -573,6 +578,23 @@ mod tests {
             serde_json::json!([]),
             serde_json::json!({"width":0}),
             serde_json::json!({"unknown":true}),
+        ] {
+            assert!(parent.prepare_child_request(&payload).is_err());
+        }
+    }
+    #[test]
+    fn native_child_controls_preserve_supported_native_options_without_changing_external_rules() {
+        let parent =
+            NativeWindowPolicy::new("http://127.0.0.1:48291/", &WindowConfig::default()).unwrap();
+        let options = serde_json::json!({"url":"http://127.0.0.1:48291/editor", "resizable":false, "decorations":false});
+        let (_, config) = parent.prepare_child_request(&options).unwrap();
+        assert!(!config.resizable);
+        assert!(!config.decorations);
+        assert!(WindowManager::prepare_spawn_request(&options).is_err());
+        for payload in [
+            serde_json::json!({"modal":true}),
+            serde_json::json!({"devtools_enabled":true}),
+            serde_json::json!({"custom_protocols":["unsafe"]}),
         ] {
             assert!(parent.prepare_child_request(&payload).is_err());
         }
