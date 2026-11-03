@@ -1,3 +1,9 @@
+# Unreleased — Early package occupancy checks (2026-11-03)
+
+- Refuse occupied exact-name build locks before prerequisite tool checks and compilation. Windows installer-sidecar occupancy is checked at the same early point. Preserve every existing entry; no stale-lock takeover.
+- Use lstat for final output occupancy so dangling links are occupied instead of appearing absent. Propagate unexpected filesystem errors.
+- Add a public CLI regression using a copied disposable project with missing prerequisites: the owned lock is reported first and its bytes remain unchanged. This is an early diagnostic, not a reservation; the Rust bundler still enforces exclusive locking and publication checks later. Hosted verification is pending for this increment.
+
 # Unreleased — Case-variant recovery diagnostics (2026-11-03)
 
 - Report case-variant staging candidates separately as possibleAliasStages. Previously exact-case matching could omit relevant candidates on case-insensitive Windows/macOS filesystems.

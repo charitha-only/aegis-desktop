@@ -50,7 +50,13 @@ try{const command=process.argv[2]||'dev';
    const plan={steps:['check-prerequisites','build-locked-core','build-ui','bundle','write-integrity','verify-integrity'],bundleDirectory,overwrite:false,publisherAuthenticated:false};
    if(process.argv[3]==='--print-plan') console.log(JSON.stringify(plan));
    else {
-     if(fs.existsSync(bundleDirectory)) throw new Error('Bundle output already exists; preserve or move it before packaging');
+     const refuseOccupied=(filename,label)=>{
+       try {fs.lstatSync(filename);} catch(error) {if(error.code==='ENOENT')return;throw error;}
+       throw new Error(label+' already exists; preserve or move it only after confirming no builder is active');
+     };
+     refuseOccupied(bundleDirectory,'Bundle output');
+     refuseOccupied(path.join(root,'dist-bundle','.aegis-bundle-'+name+'.lock'),'Bundle build lock');
+     if(process.platform==='win32')refuseOccupied(path.join(root,'dist-bundle',name+'-installer.iss'),'Installer sidecar');
      const report=await inspectProject(root);
      if(!report.ok) throw new Error('Prerequisites failed: '+report.checks.filter(check=>!check.ok).map(check=>`${check.id}: ${check.detail}`).join('; '));
      await executePlan(await releaseBuildPlan(root,{bundle:true}));
