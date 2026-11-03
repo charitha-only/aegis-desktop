@@ -374,3 +374,51 @@ test('SDK validates bounded directory entry data and preserves empty and Unicode
     assert.equal(accepted.data.entries[0].futureField,'preserved');
   });
 });
+test('SDK managed creation uses the native command and rejects malformed creation receipts',async()=>{
+  const receipt={windowId:'child-1',backend:'NATIVE_EMBEDDED',documentReady:false};
+  let data=receipt;
+  const options={url:'http://127.0.0.1:48291/editor',title:'Editor',resizable:false};
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake')return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request)body+=chunk;
+    const input=JSON.parse(body);assert.equal(input.command,'managed_window_create');assert.deepEqual(input.payload,options);
+    json(response,{id:input.id,success:true,data});
+  },async({aegis})=>{
+    assert.equal((await aegis.createManagedWindow(options)).data.windowId,'child-1');
+    for(const invalid of [null,{}, {...receipt,windowId:'primary'}, {...receipt,backend:'EXTERNAL_BROWSER'}, {...receipt,documentReady:true}, {...receipt,windowId:'child-0'}]){
+      data=invalid;const result=await aegis.createManagedWindow(options);
+      assert.equal(result.success,false);assert.equal(result.errorCode,'INVALID_RESPONSE');assert.equal(result.data,undefined);
+    }
+  });
+});
+test('SDK managed listing rejects oversized duplicate and foreign handles but preserves empty lists',async()=>{
+  let data={windowIds:[]};
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake')return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request)body+=chunk;
+    const input=JSON.parse(body);assert.equal(input.command,'managed_window_list');assert.deepEqual(input.payload,{});
+    json(response,{id:input.id,success:true,data});
+  },async({aegis})=>{
+    assert.deepEqual((await aegis.listManagedWindows()).data.windowIds,[]);
+    for(const invalid of [null,{}, {windowIds:'child-1'}, {windowIds:['primary']}, {windowIds:['child-1','child-1']}, {windowIds:Array.from({length:9},(_,i)=>'child-'+(i+1))}]){
+      data=invalid;const result=await aegis.listManagedWindows();assert.equal(result.success,false);assert.equal(result.errorCode,'INVALID_RESPONSE');
+    }
+    data={windowIds:['child-1','child-8'],futureField:'kept'};
+    const result=await aegis.listManagedWindows();assert.equal(result.success,true);assert.deepEqual(result.data.windowIds,['child-1','child-8']);assert.equal(result.data.futureField,'kept');
+  });
+});
+test('SDK managed close confirms the requested handle and preserves backend denials',async()=>{
+  const receipt={windowId:'child-1',closed:true};let data=receipt;let denied=false;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake')return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request)body+=chunk;
+    const input=JSON.parse(body);assert.equal(input.command,'managed_window_close');assert.deepEqual(input.payload,{windowId:'child-1'});
+    json(response,denied?{id:input.id,success:false,error:'managed_windows disabled'}:{id:input.id,success:true,data});
+  },async({aegis})=>{
+    assert.equal((await aegis.closeManagedWindow('child-1')).success,true);
+    for(const invalid of [null,{}, {...receipt,closed:false}, {...receipt,closed:'true'}, {...receipt,windowId:'primary'}, {...receipt,windowId:'child-2'}]){
+      data=invalid;const result=await aegis.closeManagedWindow('child-1');assert.equal(result.success,false);assert.equal(result.errorCode,'INVALID_RESPONSE');assert.equal(result.data,undefined);
+    }
+    denied=true;const result=await aegis.closeManagedWindow('child-1');assert.equal(result.success,false);assert.equal(result.error,'managed_windows disabled');
+  });
+});

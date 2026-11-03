@@ -8,7 +8,13 @@ const optionalBooleans = (value: Record<string, unknown>, keys: string[]) =>
 const positiveInteger = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 const nonnegativeInteger = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 
+const managedWindowId = (value: unknown): value is string => typeof value === 'string' && /^child-[1-9][0-9]{0,19}$/.test(value);
+
 export function validCommandData(command: string, data: unknown): boolean {
+  if (command === 'managed_window_list') return record(data) && Array.isArray(data.windowIds) && data.windowIds.length <= 8
+    && data.windowIds.every(managedWindowId) && new Set(data.windowIds).size === data.windowIds.length;
+  if (command === 'managed_window_close') return record(data) && managedWindowId(data.windowId) && data.closed === true;
+  if (command === 'managed_window_create') return record(data) && managedWindowId(data.windowId) && data.backend === 'NATIVE_EMBEDDED' && data.documentReady === false;
   if (command === 'fs_read_file') return record(data) && text(data.path) && typeof data.content === 'string';
   if (command === 'fs_write_file') return record(data) && text(data.path) && nonnegativeInteger(data.bytesWritten);
   if (command === 'fs_list_sandbox') {

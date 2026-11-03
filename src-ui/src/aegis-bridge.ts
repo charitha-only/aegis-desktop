@@ -36,6 +36,22 @@ export interface AppDirectories {
   cache: string;
 }
 
+/** Managed child IDs are app-scoped handles, not credentials. */
+export type ManagedWindowId = `child-${number}`;
+export interface ManagedWindowOptions {
+  url?: string;
+  title?: string;
+  width?: number;
+  height?: number;
+  resizable?: boolean;
+  decorations?: boolean;
+}
+export interface ManagedWindowCreated {
+  windowId: ManagedWindowId;
+  backend: 'NATIVE_EMBEDDED';
+  documentReady: false;
+}
+
 export interface NativeDialogSubmission {
   requestId: string;
   status: 'pending';
@@ -381,6 +397,22 @@ export class AegisBridge {
   // Multi-Window & Native Dialog APIs (v0.12)
   public async spawnWindow(options: { url?: string; title?: string; width?: number; height?: number; modal?: boolean }): Promise<IpcResponse> {
     return this.invoke('window_spawn', options);
+  }
+
+  public async createManagedWindow(options: ManagedWindowOptions = {}): Promise<IpcResponse<ManagedWindowCreated>> {
+    return this.invoke('managed_window_create', options);
+  }
+
+  public async listManagedWindows(): Promise<IpcResponse<{windowIds: ManagedWindowId[]}>> {
+    return this.invoke('managed_window_list');
+  }
+
+  public async closeManagedWindow(windowId: ManagedWindowId): Promise<IpcResponse<{windowId: ManagedWindowId; closed: true}>> {
+    const result = await this.invoke<{windowId: ManagedWindowId; closed: true}>('managed_window_close', {windowId});
+    if (result.success && result.data?.windowId !== windowId) {
+      return {id: result.id, success: false, error: 'Managed close receipt does not match the requested window', errorCode: 'INVALID_RESPONSE'};
+    }
+    return result;
   }
 
   public async showNativeDialog(title: string, message: string, type: 'info' | 'warning' | 'error' = 'info'): Promise<IpcResponse<NativeDialogSubmission>> {

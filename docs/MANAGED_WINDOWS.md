@@ -1,5 +1,7 @@
 # Managed native child windows — v0.29.18 experimental
 
+The [typed TypeScript SDK and compiled example](MANAGED_WINDOW_SDK.md) provide explicit create/list/close helpers; their follow-up hosted verification is recorded separately.
+
 Exact source `3a61048` passed [three-OS native GUI acceptance](https://github.com/charitha-only/aegis-desktop/actions/runs/41566723082), [three-OS portable/template checks](https://github.com/charitha-only/aegis-desktop/actions/runs/41566723062) and [Windows installer/upgrade/data-preservation/real-lock verification](https://github.com/charitha-only/aegis-desktop/actions/runs/41566723141). Source tag: v0.29.18. This preview adds explicit IPC commands for the optional native host; legacy window_spawn remains an external-browser launch and window_list remains capability discovery.
 
 Enable security.capabilities.system.allowManagedWindows in aegis.config.json (default false), compile with native-desktop, and start with --native-window. Without permission commands are denied. Without an attached host they fail unavailable. No command opens a fallback browser.

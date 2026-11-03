@@ -1,3 +1,9 @@
+# Unreleased — Typed managed-window SDK (2026-11-04)
+
+- Add createManagedWindow, listManagedWindows and closeManagedWindow with public option/result/ID types and a compilable availability/owned-handle example.
+- Runtime guards reject malformed creation receipts, non-native backend markers, oversized/duplicate lists and invalid IDs. Close helpers also require the returned ID to match the requested handle. Permission denials are preserved; there is no external launch fallback.
+- Three SDK public-boundary red/green tests cover helpers and malformed responses. Local SDK suite: 22 passed; UI build passed. Hosted exact-source verification is pending. The example performs no work unless invoked; native GUI evidence remains separate.
+
 # Unreleased — Native capacity and live-child teardown acceptance (2026-11-04)
 
 - Extend the guarded actual-GUI fixture to fill eight child slots, reject the ninth while preserving existing handles, release/reuse capacity with a fresh ID, and leave one live child at primary-host shutdown.
