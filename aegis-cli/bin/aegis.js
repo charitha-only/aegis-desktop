@@ -50,6 +50,10 @@ try{const command=process.argv[2]||'dev';
    const plan={steps:['check-prerequisites','build-locked-core','build-ui','bundle','write-integrity','verify-integrity'],bundleDirectory,overwrite:false,publisherAuthenticated:false};
    if(process.argv[3]==='--print-plan') console.log(JSON.stringify(plan));
    else {
+     try {
+       const parent=fs.lstatSync(path.dirname(bundleDirectory));
+       if(!parent.isDirectory()||parent.isSymbolicLink())throw new Error('Bundle output parent must be an ordinary directory');
+     } catch(error) {if(error.code!=='ENOENT')throw error;}
      const refuseOccupied=(filename,label)=>{
        try {fs.lstatSync(filename);} catch(error) {if(error.code==='ENOENT')return;throw error;}
        throw new Error(label+' already exists; preserve or move it only after confirming no builder is active');

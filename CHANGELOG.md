@@ -1,3 +1,8 @@
+# Unreleased — Output-parent preflight (2026-11-03)
+
+- Reject an observed linked or non-directory dist-bundle parent before prerequisite tools and compilation. A missing parent remains allowed. The Rust bundler already enforced this boundary later; this change improves early feedback.
+- Public CLI regression uses an owned junction/symlink and checks that external owner bytes and the directory inventory are preserved. This does not prevent hostile filesystem races or validate every ancestor. Hosted CI for this follow-up is pending.
+
 # Unreleased — Early package occupancy checks (2026-11-03)
 
 - Refuse occupied exact-name build locks before prerequisite tool checks and compilation. Windows installer-sidecar occupancy is checked at the same early point. Preserve every existing entry; no stale-lock takeover.
