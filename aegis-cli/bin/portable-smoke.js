@@ -55,6 +55,14 @@ try {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({id: String(++seq), command, payload, nonce: handshake.token}), signal: AbortSignal.timeout(10000),
   }).then(r => r.json());
+  const windowCapabilities = await call('window_list');
+  assert.equal(windowCapabilities.success, true);
+  assert.equal(windowCapabilities.data.responseKind, 'capabilities');
+  assert.equal(windowCapabilities.data.multiWindowSupported, false);
+  assert.equal(windowCapabilities.data.managedWindowEnumerationAvailable, false);
+  assert.equal(windowCapabilities.data.managedWindowCloseAvailable, false);
+  assert.equal(windowCapabilities.data.externalBrowserLaunchAvailable, true);
+  console.log('PASS: window discovery distinguishes external launch from unavailable managed lifecycle');
   const info = await call('platform_info');
   assert.equal(info.success, true, 'Platform capability interface must exist');
   assert.equal(info.data.os, {win32: 'windows', linux: 'linux', darwin: 'macos'}[process.platform]);

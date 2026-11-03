@@ -1,3 +1,8 @@
+# Unreleased — Truthful managed-window discovery (2026-11-03)
+
+- Correct window_list, security status and permission descriptions advertising multi-window availability even though no managed native handles exist. Describe external-browser launch availability separately; identify window_list as a capability response rather than handle enumeration.
+- Extend public IPC regression coverage for the false managed flags and explicit discovery fields. Existing browser launch behavior is retained. This is a compatibility correction to discovery metadata, not completed native child creation/list/close integration. Native event-loop dispatch and actual three-OS GUI acceptance remain pending.
+
 # Unreleased — Native child controls and completion tracks (2026-11-03)
 
 - Preserve supported native resizable/decorations options in child preparation while retaining external-browser restrictions. Native child preparation still rejects unsupported native controls, remote/cross-authority URLs and malformed options. Add a public policy regression that first reproduced the external-control rejection.

@@ -876,6 +876,16 @@ fn ipc_window_capabilities_do_not_advertise_unimplemented_controls() {
     };
     let response = call("window_list", serde_json::json!({}));
     assert!(response.success);
+    let status = call("get_security_status", serde_json::json!({}));
+    assert!(status.success);
+    assert_eq!(status.data.as_ref().unwrap()["multiWindowApiActive"], false);
+    assert_eq!(status.data.as_ref().unwrap()["activeCapabilities"]["multiWindow"], false);
+    let report = response.data.as_ref().unwrap();
+    assert_eq!(report["multiWindowSupported"], false);
+    assert_eq!(report["managedWindowEnumerationAvailable"], false);
+    assert_eq!(report["managedWindowCloseAvailable"], false);
+    assert_eq!(report["externalBrowserLaunchAvailable"], true);
+    assert_eq!(report["responseKind"], "capabilities");
     let capabilities = &response.data.as_ref().unwrap()["capabilities"];
     for unsupported in ["modal", "kiosk", "alwaysOnTop", "customSize"] {
         assert_eq!(
