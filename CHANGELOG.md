@@ -1,3 +1,9 @@
+# Unreleased — Native capacity and live-child teardown acceptance (2026-11-04)
+
+- Extend the guarded actual-GUI fixture to fill eight child slots, reject the ninth while preserving existing handles, release/reuse capacity with a fresh ID, and leave one live child at primary-host shutdown.
+- Add smoke-only retained-child release diagnostics on both native adapters. Assert the release marker alongside fixture readiness and successful exit. This is registry/native-object teardown evidence, not complete OS process-tree cleanup or fault recovery.
+- Pace requests below the rate limiter and allow a bounded 45/60-second fixture/launcher deadline. Local native-feature compile and generated-script syntax checks passed; hosted exact-source verification is pending. No personal desktop actions were performed. Current source version remains v0.29.18; its existing tag remains unchanged.
+
 # v0.29.18 — Managed native child preview (2026-11-03)
 
 - Connect the owned request channel to winit/Wry (Windows/macOS) and GTK4/WebKit6 (Linux) UI threads. Add managed_window_create/list/close commands behind system.allowManagedWindows, default false; unavailable hosts fail closed without browser fallback.

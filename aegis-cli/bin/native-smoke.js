@@ -20,7 +20,7 @@ try {
   await writeFile(path.join(app, 'ui/managed-fixture.js'), `
   (async()=>{
     const {token}=await fetch('/handshake').then(r=>r.json());let seq=0;
-    const call=async(command,payload={})=>fetch('/ipc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:String(++seq),command,payload,nonce:token})}).then(r=>r.json());
+    const call=async(command,payload={})=>{await new Promise(resolve=>setTimeout(resolve,70));return fetch('/ipc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:String(++seq),command,payload,nonce:token})}).then(r=>r.json());};
     const check=(ok,message)=>{if(!ok)throw Error(message);};
     const first=await call('managed_window_create',{url:location.origin+'/child.html',title:'Owned child 1',resizable:false,decorations:false});
     check(first.success,'first create: '+first.error);
@@ -37,6 +37,22 @@ try {
     const reopened=await call('managed_window_create',{url:location.origin+'/child.html'});check(reopened.success,'reopen');
     check(reopened.data.windowId!==first.data.windowId&&reopened.data.windowId!==second.data.windowId,'no handle reuse');
     check((await call('managed_window_close',{windowId:reopened.data.windowId})).success,'close reopened');
+    const live=[];
+    for(let i=0;i<8;i++){
+      const created=await call('managed_window_create',{url:location.origin+'/child.html',title:'Limit child '+i});
+      check(created.success,'create within limit: '+created.error);live.push(created.data.windowId);
+    }
+    const overflow=await call('managed_window_create',{url:location.origin+'/child.html'});
+    check(!overflow.success&&overflow.error.includes('limit'),'ninth child rejected');
+    const full=await call('managed_window_list');
+    check(full.success&&full.data.windowIds.length===8&&live.every(id=>full.data.windowIds.includes(id)),'limit rejection preserves handles');
+    const retired=live.pop();check((await call('managed_window_close',{windowId:retired})).success,'free one slot');
+    const replacement=await call('managed_window_create',{url:location.origin+'/child.html'});
+    check(replacement.success&&!live.includes(replacement.data.windowId)&&replacement.data.windowId!==retired,'freed slot reusable with fresh ID');
+    live.push(replacement.data.windowId);
+    for(const id of live.slice(1))check((await call('managed_window_close',{windowId:id})).success,'close surplus child');
+    const remaining=await call('managed_window_list');
+    check(remaining.success&&remaining.data.windowIds.length===1&&remaining.data.windowIds[0]===live[0],'one live child retained for primary shutdown');
     document.title='Aegis Native Smoke Fixture';
   })().catch(error=>{document.title='MANAGED_WINDOW_FIXTURE_FAILED: '+error.message;});
 `);
@@ -47,11 +63,11 @@ try {
   }});
   let output = '';
   for (const stream of [child.stdout, child.stderr]) stream.on('data', data => {output = (output + data.toString()).slice(-16000);});
-  const timer = setTimeout(() => child.kill(), 30000);
+  const timer = setTimeout(() => child.kill(), 60000);
   const code = await new Promise((resolve, reject) => {child.once('error', reject); child.once('exit', resolve);});
   clearTimeout(timer);
-  if (code !== 0 || !output.includes('AEGIS_NATIVE_SMOKE_READY')) throw new Error(`Native GUI fixture failed: ${output}`);
-  console.log('PASS: native dynamic-port primary, managed child create/list/close/reopen, origin rejection and shutdown');
+  if (code !== 0 || (!output.includes('AEGIS_NATIVE_SMOKE_READY') || !output.includes('AEGIS_NATIVE_SMOKE_CHILDREN_DROPPED=1'))) throw new Error(`Native GUI fixture failed: ${output}`);
+  console.log('PASS: native dynamic-port primary, managed child lifecycle, eight-child limit, capacity recovery and live-child shutdown');
 } finally {
   const relative = path.relative(tmpdir(), fixture);
   if (!relative.startsWith('..') && !path.isAbsolute(relative)) await rm(fixture, {recursive: true, force: true, maxRetries: 10, retryDelay: 100});

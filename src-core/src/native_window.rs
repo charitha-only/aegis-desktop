@@ -239,7 +239,7 @@ pub fn run(
     if smoke {
         let proxy = event_loop.create_proxy();
         std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_secs(20));
+            std::thread::sleep(std::time::Duration::from_secs(45));
             let _ = proxy.send_event(false);
         });
     }
@@ -259,7 +259,11 @@ pub fn run(
         next_child: 1,
     };
     event_loop.run_app(&mut app)?;
+    let retained_children = app.children.len();
     app.children.clear();
+    if smoke {
+        println!("AEGIS_NATIVE_SMOKE_CHILDREN_DROPPED={retained_children}");
+    }
     drop(app.webview.take());
     drop(app.window.take());
     if let Some(error) = app.error {
@@ -506,7 +510,7 @@ pub fn run(
     });
     if smoke {
         let app = app.downgrade();
-        gtk::glib::timeout_add_local_once(std::time::Duration::from_secs(20), move || {
+        gtk::glib::timeout_add_local_once(std::time::Duration::from_secs(45), move || {
             if let Some(app) = app.upgrade() {
                 app.quit();
             }
@@ -517,8 +521,12 @@ pub fn run(
         source.remove();
     }
     let retained = std::mem::take(&mut *children.borrow_mut());
+    let retained_children = retained.len();
     for (_, (window, _)) in retained {
         window.close();
+    }
+    if smoke {
+        println!("AEGIS_NATIVE_SMOKE_CHILDREN_DROPPED={retained_children}");
     }
     if result != gtk::glib::ExitCode::SUCCESS {
         return Err("Native GTK application failed".into());
