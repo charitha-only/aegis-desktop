@@ -1,3 +1,8 @@
+# Unreleased — Case-variant recovery diagnostics (2026-11-03)
+
+- Report case-variant staging candidates separately as possibleAliasStages. Previously exact-case matching could omit relevant candidates on case-insensitive Windows/macOS filesystems.
+- Preserve exact matches and all filesystem entries; no claim of shared ownership, stale state or automatic recovery. Add a public CLI regression that preserves the candidate marker. Hosted CI results for this follow-up are pending; the earlier ba9920b evidence below applies only to that earlier source.
+
 # Unreleased — Read-only bundle diagnostics (verified 2026-11-03)
 
 - Add `inspect-bundle <dist-bundle-directory> <package-name>` for manual recovery planning. Report observed payload/sidecar/lock types and matching random staging entries without reading contents or deleting/moving anything.

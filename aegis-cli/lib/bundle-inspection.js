@@ -10,18 +10,24 @@ export async function inspectBundle({outputDirectory,name}){
  if(typeof outputDirectory!=='string'||!outputDirectory)throw new Error('Output directory required');
  const directory=path.resolve(outputDirectory),rootType=await kind(directory);
  if(rootType!=='directory'&&rootType!=='absent')throw new Error('Output root must be an ordinary directory');
- const stages=[];
+ const stages=[],possibleAliasStages=[];
  if(rootType==='directory'){
   let count=0;
   for await(const entry of await opendir(directory)){
    if(++count>4096)throw new Error('Bundle inspection exceeds 4096 entries');
    const suffix=entry.name.slice(('.aegis-stage-'+name+'-').length);
-   if(entry.name.startsWith('.aegis-stage-'+name+'-')&&/^[a-f0-9]{32}$/.test(suffix))stages.push({name:entry.name,type:await kind(path.join(directory,entry.name))});
+   if(/^[a-f0-9]{32}$/.test(suffix)){
+    const prefix='.aegis-stage-'+name+'-';
+    const exact=entry.name.startsWith(prefix);
+    if(exact||entry.name.toLowerCase().startsWith(prefix.toLowerCase())){
+     (exact?stages:possibleAliasStages).push({name:entry.name,type:await kind(path.join(directory,entry.name))});
+    }
+   }
   }
  }
- stages.sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:0);
+ for(const list of [stages,possibleAliasStages])list.sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:0);
  return {schemaVersion:1,outputDirectory:directory,name,root:rootType,
   payload:await kind(path.join(directory,name)),lock:await kind(path.join(directory,'.aegis-bundle-'+name+'.lock')),
-  installerSidecar:await kind(path.join(directory,name+'-installer.iss')),stages,
+  installerSidecar:await kind(path.join(directory,name+'-installer.iss')),stages,possibleAliasStages,
   snapshotOnly:true,publisherAuthenticated:false};
 }

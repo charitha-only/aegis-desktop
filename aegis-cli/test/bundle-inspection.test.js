@@ -43,3 +43,16 @@ test('bundle inspection rejects linked roots and bounds all scanned entries',asy
   const result=inspect(target);assert.notEqual(result.status,0);assert.match(result.stderr,/4096/);assert.equal(result.stdout,'');
  }finally{await rm(root,{recursive:true,force:true});}
 });
+test('bundle inspection surfaces case-variant staging candidates without claiming ownership',async()=>{
+ const root=await mkdtemp(path.join(os.tmpdir(),'aegis-inspect-'));
+ try{
+  const candidate='.aegis-stage-DEMO-'+'c'.repeat(32);
+  await mkdir(path.join(root,candidate));
+  await writeFile(path.join(root,candidate,'marker'),'other build');
+  const result=inspect(root);assert.equal(result.status,0,result.stderr);
+  const report=JSON.parse(result.stdout);
+  assert.deepEqual(report.stages,[]);
+  assert.deepEqual(report.possibleAliasStages,[{name:candidate,type:'directory'}]);
+  assert.equal(await readFile(path.join(root,candidate,'marker'),'utf8'),'other build');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
