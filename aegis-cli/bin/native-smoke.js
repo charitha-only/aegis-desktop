@@ -72,6 +72,7 @@ try {
   const code = await new Promise((resolve, reject) => {child.once('error', reject); child.once('exit', resolve);});
   clearTimeout(timer);
   if (code !== 0 || (!output.includes('AEGIS_NATIVE_SMOKE_READY') || !output.includes('AEGIS_NATIVE_SMOKE_CHILDREN_DROPPED=1'))) throw new Error(`Native GUI fixture failed: ${output}`);
+  for (const line of output.split(/\r?\n/)) if (line.startsWith('AEGIS_NATIVE_SMOKE_STAGE ')) console.log(line);
   console.log('PASS: native dynamic-port primary, managed child lifecycle, eight-child limit, capacity recovery and live-child shutdown');
 } finally {
   const relative = path.relative(tmpdir(), fixture);
