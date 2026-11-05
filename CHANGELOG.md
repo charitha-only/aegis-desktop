@@ -2,7 +2,7 @@
 
 - Retain smoke-only monotonic stage timings for Windows/macOS primary initialization and page loading, without logging URLs, tokens or application payloads.
 - Require three sequential fresh-fixture Windows GUI runs; any failed iteration fails the job. macOS/Linux retain one. Fresh projects/WebView directories are cleaned between runs; this is additional coverage, not retry-until-pass.
-- Keep existing readiness/teardown assertions and 45/60-second deadlines unchanged. Local native compile and script syntax checks passed; hosted exact-source verification is pending. The previous intermittent Windows startup cause remains unresolved; no speculative native fix is claimed.
+- Keep existing readiness/teardown assertions and 45/60-second deadlines unchanged. Local native compile and script syntax checks passed. Exact source 829411d passed native (42040446975), portable/template/SDK (42040446956) and Windows installer/upgrade/data-preservation/real-lock (42040446989) workflows on attempt 1. All three fresh Windows GUI runs passed; macOS/Linux passed one each. Retained stage observations show WebView build intervals of 8135/329/321 ms on that Windows runner, not whole-app or independent-device performance. The previous intermittent startup cause remains unresolved; no speculative native fix is claimed.
 
 # Unreleased — Typed window capability discovery (2026-11-04)
 

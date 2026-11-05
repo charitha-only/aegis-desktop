@@ -6,6 +6,8 @@ Keep one evidence record per source commit, OS, architecture, package format and
 
 ## v0.26: native application behavior
 
+- Investigate the [intermittent Windows native startup observation](NATIVE_STARTUP_OBSERVATION.md). Later three-run acceptance and stage timings improve evidence but do not identify or fix its original cause.
+
 - Preserve the clean native dependency graph documented in NATIVE_BACKEND_DECISION.md; keep auditing the dependencies selected for supported platforms. The initial Linux dependency blocker is resolved.
 - Extend the passing hosted embedded-window fixtures on Windows, Linux and macOS to physical-device acceptance. Record installed webview/runtime versions and tested Linux display sessions; the Linux hosted fixture uses a virtual display.
 - Implement typed, permission-controlled window, dialog, file-selection, clipboard, notification and lifecycle interfaces. Return errors for unavailable behavior.
