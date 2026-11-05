@@ -72,7 +72,7 @@ try {
 `);
   await writeFile(path.join(app, 'ui/index.html'), '<!doctype html><title>Managed window verification pending</title><h1>Native fixture</h1><script src="/managed-fixture.js"></script>');
   const child = spawn(path.join(app, executable), ['--port=0', '--native-window'], {cwd: app, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: {
-    ...process.env, AEGIS_NATIVE_SMOKE: '1', HOME: fixture, LOCALAPPDATA: path.join(fixture, 'local'), APPDATA: path.join(fixture, 'roaming'),
+    ...process.env, RUST_BACKTRACE: '1', AEGIS_NATIVE_SMOKE: '1', HOME: fixture, LOCALAPPDATA: path.join(fixture, 'local'), APPDATA: path.join(fixture, 'roaming'),
     XDG_DATA_HOME: path.join(fixture, 'data'), XDG_CONFIG_HOME: path.join(fixture, 'config'), XDG_CACHE_HOME: path.join(fixture, 'cache'),
   }});
   let output = '';

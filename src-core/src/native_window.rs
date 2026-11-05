@@ -70,6 +70,13 @@ pub fn run(
         fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
             use crate::window_requests::WindowOperation;
             while let Some(request) = self.host.as_ref().and_then(|host| host.next()) {
+                if self.smoke {
+                    match &request.operation {
+                        crate::window_requests::WindowOperation::Focus(_) => eprintln!("NATIVE_SMOKE_CONTROL focus"),
+                        crate::window_requests::WindowOperation::SetMinimized {minimized,..} => eprintln!("NATIVE_SMOKE_CONTROL setMinimized={minimized}"),
+                        _ => {},
+                    }
+                }
                 let result = match &request.operation {
                     WindowOperation::List => Ok(
                         serde_json::json!({"windowIds":self.children.keys().collect::<Vec<_>>() }),
