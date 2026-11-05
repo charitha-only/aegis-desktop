@@ -1,3 +1,9 @@
+# Unreleased — Native startup stage diagnostics (2026-11-05)
+
+- Retain smoke-only monotonic stage timings for Windows/macOS primary initialization and page loading, without logging URLs, tokens or application payloads.
+- Require three sequential fresh-fixture Windows GUI runs; any failed iteration fails the job. macOS/Linux retain one. Fresh projects/WebView directories are cleaned between runs; this is additional coverage, not retry-until-pass.
+- Keep existing readiness/teardown assertions and 45/60-second deadlines unchanged. Local native compile and script syntax checks passed; hosted exact-source verification is pending. The previous intermittent Windows startup cause remains unresolved; no speculative native fix is claimed.
+
 # Unreleased — Typed window capability discovery (2026-11-04)
 
 - Type and validate getWindowCapabilities/window_list rather than accepting arbitrary successful data. Reject malformed availability flags, method lists and control metadata while accepting well-formed disabled support and additive fields.

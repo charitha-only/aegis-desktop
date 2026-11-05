@@ -13,6 +13,16 @@ fn smoke_enabled() -> bool {
 }
 
 #[cfg(any(target_os = "windows", target_os = "macos"))]
+fn smoke_stage(enabled: bool, started: std::time::Instant, stage: &str) {
+    if enabled {
+        eprintln!(
+            "AEGIS_NATIVE_SMOKE_STAGE stage={stage} elapsed_ms={}",
+            started.elapsed().as_millis()
+        );
+    }
+}
+
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 pub fn run(
     url: &str,
     config: &WindowConfig,
@@ -20,6 +30,9 @@ pub fn run(
     host: Option<crate::window_requests::WindowHost>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let _activity = NativeActivity;
+    let smoke = smoke_enabled();
+    let started = std::time::Instant::now();
+    smoke_stage(smoke, started, "host_started");
     use winit::{
         application::ApplicationHandler,
         event::WindowEvent,
@@ -37,6 +50,7 @@ pub fn run(
         proxy: winit::event_loop::EventLoopProxy<bool>,
         smoke: bool,
         ready: bool,
+        started: std::time::Instant,
         host: Option<crate::window_requests::WindowHost>,
         children: std::collections::BTreeMap<String, (wry::WebView, Window)>,
         next_child: u64,
@@ -45,8 +59,10 @@ pub fn run(
         fn user_event(&mut self, event_loop: &ActiveEventLoop, ready: bool) {
             if ready {
                 self.ready = true;
+                smoke_stage(self.smoke, self.started, "fixture_ready");
                 println!("AEGIS_NATIVE_SMOKE_READY");
             } else {
+                smoke_stage(self.smoke, self.started, "deadline");
                 self.error = Some("Native fixture document did not load before timeout".into());
             }
             event_loop.exit();
@@ -131,7 +147,9 @@ pub fn run(
             if self.window.is_some() {
                 return;
             }
+            smoke_stage(self.smoke, self.started, "resumed");
             let mut build = || -> Result<(Window, wry::WebView), Box<dyn std::error::Error>> {
+                smoke_stage(self.smoke, self.started, "primary_window_build");
                 let window = event_loop.create_window(
                     Window::default_attributes()
                         .with_title(&self.config.title)
@@ -143,13 +161,23 @@ pub fn run(
                         .with_decorations(self.config.decorations)
                         .with_visible(false),
                 )?;
+                smoke_stage(self.smoke, self.started, "primary_window_created");
                 let policy = self.policy.clone();
+                let started = self.started;
                 let proxy = self.proxy.clone();
                 let smoke = self.smoke;
+                smoke_stage(smoke, started, "primary_webview_build");
                 let webview = wry::WebViewBuilder::new_with_web_context(&mut self.web_context)
                     .with_url(&self.url)
                     .with_incognito(true)
                     .with_devtools(false)
+                    .with_on_page_load_handler(move |event, _| {
+                        let stage = match event {
+                            wry::PageLoadEvent::Started => "primary_load_started",
+                            wry::PageLoadEvent::Finished => "primary_load_finished",
+                        };
+                        smoke_stage(smoke, started, stage);
+                    })
                     .with_document_title_changed_handler(move |title| {
                         if smoke {
                             eprintln!("NATIVE_SMOKE_TITLE: {title}");
@@ -163,7 +191,9 @@ pub fn run(
                     .with_permission_handler(|_| wry::PermissionResponse::Deny)
                     .with_download_started_handler(|_, _| false)
                     .build(&window)?;
+                smoke_stage(smoke, started, "primary_webview_created");
                 window.set_visible(true);
+                smoke_stage(smoke, started, "primary_visible");
                 crate::window::WindowManager::mark_native_active();
                 Ok((window, webview))
             };
@@ -235,7 +265,7 @@ pub fn run(
     std::fs::create_dir_all(&webview_data)?;
     let event_loop = EventLoop::<bool>::with_user_event().build()?;
     event_loop.set_control_flow(ControlFlow::Wait);
-    let smoke = smoke_enabled();
+    smoke_stage(smoke, started, "event_loop_created");
     if smoke {
         let proxy = event_loop.create_proxy();
         std::thread::spawn(move || {
@@ -243,21 +273,25 @@ pub fn run(
             let _ = proxy.send_event(false);
         });
     }
+    let web_context = wry::WebContext::new(Some(webview_data));
+    smoke_stage(smoke, started, "web_context_created");
     let mut app = App {
         url: url.into(),
         config: config.clone(),
         policy,
         window: None,
         webview: None,
-        web_context: wry::WebContext::new(Some(webview_data)),
+        web_context,
         error: None,
         proxy: event_loop.create_proxy(),
         smoke,
         ready: false,
+        started,
         host,
         children: std::collections::BTreeMap::new(),
         next_child: 1,
     };
+    smoke_stage(smoke, started, "event_loop_running");
     event_loop.run_app(&mut app)?;
     let retained_children = app.children.len();
     app.children.clear();

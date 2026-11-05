@@ -6,6 +6,11 @@ import {spawn} from 'node:child_process';
 if (process.env.GITHUB_ACTIONS !== 'true' || process.env.RUNNER_ENVIRONMENT !== 'github-hosted') {
   throw new Error('Native GUI smoke is restricted to disposable GitHub-hosted runners');
 }
+const args = process.argv.slice(2);
+if (args.length > 1 || (args[0] && !/^--repeat=(1|3)$/.test(args[0]))) throw new Error('Usage: native-smoke.js [--repeat=1|3]');
+const repetitions = args[0] === '--repeat=3' ? 3 : 1;
+for (let iteration = 1; iteration <= repetitions; iteration++) {
+console.log(`NATIVE_SMOKE_RUN ${iteration}/${repetitions}`);
 const fixture = await mkdtemp(path.join(tmpdir(), 'aegis-native-'));
 const executable = `aegis-core${process.platform === 'win32' ? '.exe' : ''}`;
 try {
@@ -72,3 +77,6 @@ try {
   const relative = path.relative(tmpdir(), fixture);
   if (!relative.startsWith('..') && !path.isAbsolute(relative)) await rm(fixture, {recursive: true, force: true, maxRetries: 10, retryDelay: 100});
 }
+
+}
+console.log(`PASS: all ${repetitions} fresh-fixture native runs passed`);
