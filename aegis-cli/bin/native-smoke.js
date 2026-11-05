@@ -25,7 +25,15 @@ try {
   await writeFile(path.join(app, 'ui/managed-fixture.js'), `
   (async()=>{
     const {token}=await fetch('/handshake').then(r=>r.json());let seq=0;
-    const call=async(command,payload={})=>{await new Promise(resolve=>setTimeout(resolve,70));return fetch('/ipc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:String(++seq),command,payload,nonce:token})}).then(r=>r.json());};
+    const call=async(command,payload={})=>{
+      const step=++seq;const started=performance.now();
+      document.title='CONTROL_PROBE '+step+' '+command+' wait';
+      await new Promise(resolve=>setTimeout(resolve,70));
+      document.title='CONTROL_PROBE '+step+' '+command+' fetch delay='+Math.round(performance.now()-started);
+      const response=await fetch('/ipc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:String(step),command,payload,nonce:token})}).then(r=>r.json());
+      document.title='CONTROL_PROBE '+step+' '+command+' reply elapsed='+Math.round(performance.now()-started);
+      return response;
+    };
     const check=(ok,message)=>{if(!ok)throw Error(message);};
     const first=await call('managed_window_create',{url:location.origin+'/child.html',title:'Owned child 1',resizable:false,decorations:false});
     check(first.success,'first create: '+first.error);

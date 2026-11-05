@@ -157,6 +157,13 @@ pub fn run(
                         })()
                     }
                 };
+                if self.smoke {
+                    match &request.operation {
+                        WindowOperation::Focus(_) => eprintln!("CONTROL_PROBE native focus returned"),
+                        WindowOperation::SetMinimized { minimized, .. } => eprintln!("CONTROL_PROBE native minimized={minimized} returned"),
+                        _ => {},
+                    }
+                }
                 request.finish(result);
             }
             event_loop.set_control_flow(if self.host.is_some() {
