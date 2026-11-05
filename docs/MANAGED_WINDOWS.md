@@ -40,3 +40,8 @@ The guarded actual-GUI fixture issues focus, minimize and unminimize requests, c
 ### macOS content-view regression
 
 The new real-GUI control fixture aborted on macOS at e9f62a7 and 7ead998. The diagnostic backtrace identifies winit's window_did_resign_key callback. In winit 0.30.13 that callback casts the window contentView to WinitView; Wry 0.57.1 full-view build replaces it with WryWebViewParent. Both primary and managed macOS webviews now use build_as_child to retain winit's view and attach WebKit as a subview. Wry derives initial child bounds from the parent; existing resize handlers maintain bounds. Windows retains its existing full-view build. The same focus/minimize/unminimize GUI fixture remains the regression check; verification of the fix is pending. Temporary operation/backtrace probes were removed after diagnosis.
+
+
+### Windows browser timer dependency in the control fixture
+
+Windows source af4ae13 reached page load but timed out during the control fixture. Probe source 46cba4e shows focus returned successfully (252 ms including request pacing), then the page entered its next 70 ms timer without reaching the following fetch before the 45-second host deadline. This separates the stall from native focus execution and startup; it does not establish the precise WebView scheduling policy. The fixture now runs minimize/unminimize/focus last and removes artificial timer pacing only between those three requests. The bounded final burst remains below the unchanged rate limit. All receipt, malformed-input, capacity, cleanup and three-fresh-Windows-run assertions remain; deadlines are unchanged. Probe titles/native logs were removed. Exact-source verification is pending.

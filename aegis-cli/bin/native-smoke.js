@@ -25,26 +25,12 @@ try {
   await writeFile(path.join(app, 'ui/managed-fixture.js'), `
   (async()=>{
     const {token}=await fetch('/handshake').then(r=>r.json());let seq=0;
-    const call=async(command,payload={})=>{
-      const step=++seq;const started=performance.now();
-      document.title='CONTROL_PROBE '+step+' '+command+' wait';
-      await new Promise(resolve=>setTimeout(resolve,70));
-      document.title='CONTROL_PROBE '+step+' '+command+' fetch delay='+Math.round(performance.now()-started);
-      const response=await fetch('/ipc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:String(step),command,payload,nonce:token})}).then(r=>r.json());
-      document.title='CONTROL_PROBE '+step+' '+command+' reply elapsed='+Math.round(performance.now()-started);
-      return response;
-    };
+    const call=async(command,payload={},pace=true)=>{if(pace)await new Promise(resolve=>setTimeout(resolve,70));return fetch('/ipc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:String(++seq),command,payload,nonce:token})}).then(r=>r.json());};
     const check=(ok,message)=>{if(!ok)throw Error(message);};
     const first=await call('managed_window_create',{url:location.origin+'/child.html',title:'Owned child 1',resizable:false,decorations:false});
     check(first.success,'first create: '+first.error);
     const second=await call('managed_window_create',{url:location.origin+'/child.html',title:'Owned child 2'});
     check(second.success,'second create: '+second.error);
-    const focused=await call('managed_window_focus',{windowId:first.data.windowId});
-    check(focused.success&&focused.data.windowId===first.data.windowId&&focused.data.action==='focus'&&focused.data.requested===true&&focused.data.stateConfirmed===false,'focus request receipt');
-    for(const minimized of [true,false]){
-      const changed=await call('managed_window_set_minimized',{windowId:second.data.windowId,minimized});
-      check(changed.success&&changed.data.windowId===second.data.windowId&&changed.data.action==='setMinimized'&&changed.data.requested===true&&changed.data.requestedMinimized===minimized&&changed.data.stateConfirmed===false,'minimize/restore request receipt');
-    }
     check(!(await call('managed_window_focus',{windowId:'child-99999'})).success,'unknown focus target');
     for(const payload of [{windowId:second.data.windowId,minimized:'false'},{windowId:second.data.windowId,minimized:false,extra:true}])check(!(await call('managed_window_set_minimized',payload)).success,'malformed minimize denied');
 
@@ -75,6 +61,15 @@ try {
     for(const id of live.slice(1))check((await call('managed_window_close',{windowId:id})).success,'close surplus child');
     const remaining=await call('managed_window_list');
     check(remaining.success&&remaining.data.windowIds.length===1&&remaining.data.windowIds[0]===live[0],'one live child retained for primary shutdown');
+    // Focus/visibility changes can throttle the initiating browser's timers. Keep
+    // the three control requests last, with no artificial pacing between them.
+    // This small final burst remains below the unchanged 30 requests/sec limit.
+    for(const minimized of [true,false]){
+      const changed=await call('managed_window_set_minimized',{windowId:live[0],minimized},false);
+      check(changed.success&&changed.data.windowId===live[0]&&changed.data.action==='setMinimized'&&changed.data.requested===true&&changed.data.requestedMinimized===minimized&&changed.data.stateConfirmed===false,'minimize/restore request receipt');
+    }
+    const focused=await call('managed_window_focus',{windowId:live[0]},false);
+    check(focused.success&&focused.data.windowId===live[0]&&focused.data.action==='focus'&&focused.data.requested===true&&focused.data.stateConfirmed===false,'focus request receipt');
     document.title='Aegis Native Smoke Fixture';
   })().catch(error=>{document.title='MANAGED_WINDOW_FIXTURE_FAILED: '+error.message;});
 `);
