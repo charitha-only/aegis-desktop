@@ -31,6 +31,15 @@ try {
     check(first.success,'first create: '+first.error);
     const second=await call('managed_window_create',{url:location.origin+'/child.html',title:'Owned child 2'});
     check(second.success,'second create: '+second.error);
+    const focused=await call('managed_window_focus',{windowId:first.data.windowId});
+    check(focused.success&&focused.data.windowId===first.data.windowId&&focused.data.action==='focus'&&focused.data.requested===true&&focused.data.stateConfirmed===false,'focus request receipt');
+    for(const minimized of [true,false]){
+      const changed=await call('managed_window_set_minimized',{windowId:second.data.windowId,minimized});
+      check(changed.success&&changed.data.windowId===second.data.windowId&&changed.data.action==='setMinimized'&&changed.data.requested===true&&changed.data.requestedMinimized===minimized&&changed.data.stateConfirmed===false,'minimize/restore request receipt');
+    }
+    check(!(await call('managed_window_focus',{windowId:'child-99999'})).success,'unknown focus target');
+    for(const payload of [{windowId:second.data.windowId,minimized:'false'},{windowId:second.data.windowId,minimized:false,extra:true}])check(!(await call('managed_window_set_minimized',payload)).success,'malformed minimize denied');
+
     check(first.data.windowId!==second.data.windowId,'unique IDs');
     const listed=await call('managed_window_list');
     check(listed.success&&listed.data.windowIds.length===2&&listed.data.windowIds.includes(first.data.windowId)&&listed.data.windowIds.includes(second.data.windowId),'list ownership');
@@ -73,7 +82,7 @@ try {
   clearTimeout(timer);
   if (code !== 0 || (!output.includes('AEGIS_NATIVE_SMOKE_READY') || !output.includes('AEGIS_NATIVE_SMOKE_CHILDREN_DROPPED=1'))) throw new Error(`Native GUI fixture failed: ${output}`);
   for (const line of output.split(/\r?\n/)) if (line.startsWith('AEGIS_NATIVE_SMOKE_STAGE ')) console.log(line);
-  console.log('PASS: native dynamic-port primary, managed child lifecycle, eight-child limit, capacity recovery and live-child shutdown');
+  console.log('PASS: native dynamic-port primary, managed child lifecycle and focus/minimize request receipts, eight-child limit, capacity recovery and live-child shutdown');
 } finally {
   const relative = path.relative(tmpdir(), fixture);
   if (!relative.startsWith('..') && !path.isAbsolute(relative)) await rm(fixture, {recursive: true, force: true, maxRetries: 10, retryDelay: 100});

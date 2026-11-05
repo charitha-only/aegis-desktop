@@ -74,6 +74,26 @@ pub fn run(
                     WindowOperation::List => Ok(
                         serde_json::json!({"windowIds":self.children.keys().collect::<Vec<_>>() }),
                     ),
+                    WindowOperation::SetMinimized { id, minimized } => {
+                        match self.children.get(id) {
+                            Some((_, window)) => {
+                                window.set_minimized(*minimized);
+                                Ok(
+                                    serde_json::json!({"windowId":id,"action":"setMinimized","requested":true,"requestedMinimized":minimized,"stateConfirmed":false}),
+                                )
+                            }
+                            None => Err("Unknown managed window ID".into()),
+                        }
+                    }
+                    WindowOperation::Focus(id) => match self.children.get(id) {
+                        Some((_, window)) => {
+                            window.focus_window();
+                            Ok(
+                                serde_json::json!({"windowId":id,"action":"focus","requested":true,"stateConfirmed":false}),
+                            )
+                        }
+                        None => Err("Unknown managed window ID".into()),
+                    },
                     WindowOperation::Close(id) => match self.children.remove(id) {
                         Some((view, window)) => {
                             drop(view);
@@ -347,6 +367,14 @@ pub fn run(
                 WindowOperation::List => Ok(
                     serde_json::json!({"windowIds":child_map.borrow().keys().collect::<Vec<_>>() }),
                 ),
+                    WindowOperation::SetMinimized {id,minimized} => match child_map.borrow().get(id) {
+                    Some((window,_)) => {if *minimized {window.minimize();}else{window.unminimize();}Ok(serde_json::json!({"windowId":id,"action":"setMinimized","requested":true,"requestedMinimized":minimized,"stateConfirmed":false}))},
+                    None => Err("Unknown managed window ID".into()),
+                },
+                WindowOperation::Focus(id) => match child_map.borrow().get(id) {
+                    Some((window,_)) => {window.present();Ok(serde_json::json!({"windowId":id,"action":"focus","requested":true,"stateConfirmed":false}))},
+                    None => Err("Unknown managed window ID".into()),
+                },
                 WindowOperation::Close(id) => {
                     let entry = child_map.borrow_mut().remove(id);
                     match entry {

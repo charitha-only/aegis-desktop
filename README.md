@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.29.18-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.29.18-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.29.19-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.29.19-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -16,11 +16,11 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.29.18 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
+[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.29.19 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
 
 </div>
 
-> **v0.29.18 — experimental framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock and Linux Debian/macOS package install/upgrade/reinstall data-preservation acceptance run on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
+> **v0.29.19 — experimental framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock and Linux Debian/macOS package install/upgrade/reinstall data-preservation acceptance run on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
 >
 > **Latest verified tooling:** Source `829411d` passed three-OS portable/native and Windows installer checks on attempt 1, including three required fresh Windows GUI runs. The [typed managed-window SDK](docs/MANAGED_WINDOW_SDK.md) has 23 SDK tests per hosted OS. [Startup stage timings](docs/NATIVE_STARTUP_OBSERVATION.md) are now retained; the earlier timeout remains unexplained, not fixed. See the [exact-source ledger](docs/IMPLEMENTATION_STATUS.md).
 >
@@ -90,14 +90,15 @@ and twenty IPC samples with host details and binary SHA-256. Use
 explicit limits. These are core-only measurements, not whole-app RAM or UI latency.
 See [performance tooling and physical device procedure](docs/PERFORMANCE_EVIDENCE.md).
 
-## 📜 Version & Release Notes (`v0.29.18`)
+## 📜 Version & Release Notes (`v0.29.19`)
 
-The current source version is **`v0.29.18` (Experimental)**. Published tags and completed checks are recorded in the [verification ledger](docs/IMPLEMENTATION_STATUS.md).
+The current source version is **`v0.29.19` (Experimental)**. Published tags and completed checks are recorded in the [verification ledger](docs/IMPLEMENTATION_STATUS.md).
 
 The **v0.27** performance tooling still requires whole-app/low-resource measurements. The current **v0.28** distribution tooling preview still requires native installer parity, signing and authenticated updates. The **v0.29** developer tooling preview adds `npm run doctor` and `npm run package` (locked release build, portable bundle and file-integrity verification). Stable typed API/plugin contracts remain open. **v1.0** requires stable APIs plus physical-device and independent audit evidence. These are acceptance goals, not completed features.
 
 | Version | Status | Highlights & Changelog |
 | :---: | :---: | :--- |
+| **`v0.29.19`** | **Native focus/minimize requests — experimental** | Permission-controlled focus and minimize/unminimize requests, typed receipts and SDK helpers; OS state is not confirmed. Exact-source hosted verification pending; see [managed-window limits](docs/MANAGED_WINDOWS.md). |
 | **`v0.29.18`** | **Managed native children — experimental** | Opt-in permission, bounded child create/list/close on native UI threads and guarded three-OS GUI acceptance. Exact-source three-OS portable/native and Windows installer verification passed; see [managed-window limits](docs/MANAGED_WINDOWS.md). |
 | **`v0.29.17`** | **Staged bundle publication** | Build payloads in owned staging, publish final directory after completion, preserve occupied outputs/locks and verify repair/retry. Three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |
 | **`v0.29.16`** | **Frontend asset preflight** | Reject linked frontend roots, nested links/reparse points and special files before package output. Actual-core rejection/recovery, three-OS portable/native and Windows installer checks passed; see [verification evidence](docs/IMPLEMENTATION_STATUS.md). |

@@ -763,7 +763,11 @@ impl IpcRouter {
                 Err(e) => IpcResponse::err(&req.id, &e),
             },
 
-            "managed_window_create" | "managed_window_list" | "managed_window_close" => {
+            "managed_window_create"
+            | "managed_window_list"
+            | "managed_window_close"
+            | "managed_window_focus"
+            | "managed_window_set_minimized" => {
                 if let Err(error) = self.security.check_managed_windows() {
                     return IpcResponse::err(&req.id, &error);
                 }
@@ -790,6 +794,20 @@ impl IpcRouter {
                             Err("List options must be an empty object".into())
                         }
                     }
+                    "managed_window_set_minimized" => {
+                        match req.payload.as_object().filter(|p| p.len() == 2) {
+                            Some(options) => match (
+                                options.get("windowId").and_then(|v| v.as_str()),
+                                options.get("minimized").and_then(|v| v.as_bool()),
+                            ) {
+                                (Some(id), Some(minimized)) => client.set_minimized(id, minimized),
+                                _ => {
+                                    Err("Minimize requires windowId and a boolean minimized".into())
+                                }
+                            },
+                            None => Err("Minimize requires only windowId and minimized".into()),
+                        }
+                    }
                     _ => match req
                         .payload
                         .as_object()
@@ -797,8 +815,14 @@ impl IpcRouter {
                         .and_then(|p| p.get("windowId"))
                         .and_then(|v| v.as_str())
                     {
-                        Some(id) => client.close(id),
-                        None => Err("Close requires only windowId".into()),
+                        Some(id) => {
+                            if req.command == "managed_window_focus" {
+                                client.focus(id)
+                            } else {
+                                client.close(id)
+                            }
+                        }
+                        None => Err("Window operation requires only windowId".into()),
                     },
                 };
                 match ticket.and_then(|ticket| ticket.wait(std::time::Duration::from_secs(5))) {

@@ -11,6 +11,8 @@ pub enum WindowOperation {
     Create { url: String, config: WindowConfig },
     List,
     Close(String),
+    Focus(String),
+    SetMinimized { id: String, minimized: bool },
 }
 pub struct WindowRequest {
     pub operation: WindowOperation,
@@ -56,6 +58,29 @@ impl WindowClient {
             return Err("Invalid managed window ID".into());
         }
         self.submit(WindowOperation::Close(id.into()))
+    }
+    pub fn focus(&self, id: &str) -> Result<WindowTicket, String> {
+        if !id.starts_with("child-")
+            || id.len() > 32
+            || id.len() == 6
+            || !id[6..].bytes().all(|b| b.is_ascii_digit())
+        {
+            return Err("Invalid managed window ID".into());
+        }
+        self.submit(WindowOperation::Focus(id.into()))
+    }
+    pub fn set_minimized(&self, id: &str, minimized: bool) -> Result<WindowTicket, String> {
+        if !id.starts_with("child-")
+            || id.len() > 32
+            || id.len() == 6
+            || !id[6..].bytes().all(|b| b.is_ascii_digit())
+        {
+            return Err("Invalid managed window ID".into());
+        }
+        self.submit(WindowOperation::SetMinimized {
+            id: id.into(),
+            minimized,
+        })
     }
     fn submit(&self, operation: WindowOperation) -> Result<WindowTicket, String> {
         let (reply, receiver) = mpsc::sync_channel(1);
@@ -201,5 +226,38 @@ mod tests {
         assert!(matches!(&request.operation, WindowOperation::Close(id) if id=="child-1"));
         request.finish(Err("Unknown managed window ID".into()));
         assert!(ticket.wait(Duration::from_secs(1)).is_err());
+    }
+    #[test]
+    fn focus_requests_target_only_managed_ids_and_do_not_confirm_os_state() {
+        let policy =
+            NativeWindowPolicy::new("http://127.0.0.1:48291/", &WindowConfig::default()).unwrap();
+        let (client, host) = window_channel(policy);
+        assert!(client.focus("primary").is_err());
+        let ticket = client.focus("child-1").unwrap();
+        let request = host.next().unwrap();
+        assert!(matches!(&request.operation,WindowOperation::Focus(id) if id=="child-1"));
+        request.finish(Ok(serde_json::json!({"windowId":"child-1","action":"focus","requested":true,"stateConfirmed":false})));
+        let result = ticket.wait(Duration::from_secs(1)).unwrap();
+        assert_eq!(result["stateConfirmed"], false);
+        assert_eq!(result["action"], "focus");
+    }
+
+    #[test]
+    fn minimize_and_restore_requests_preserve_the_requested_boolean() {
+        let policy =
+            NativeWindowPolicy::new("http://127.0.0.1:48291/", &WindowConfig::default()).unwrap();
+        let (client, host) = window_channel(policy);
+        assert!(client.set_minimized("primary", true).is_err());
+        for minimized in [true, false] {
+            let ticket = client.set_minimized("child-1", minimized).unwrap();
+            let request = host.next().unwrap();
+            assert!(
+                matches!(&request.operation,WindowOperation::SetMinimized{id,minimized:flag} if id=="child-1" && *flag==minimized)
+            );
+            request.finish(Ok(serde_json::json!({"windowId":"child-1","action":"setMinimized","requested":true,"requestedMinimized":minimized,"stateConfirmed":false})));
+            let result = ticket.wait(Duration::from_secs(1)).unwrap();
+            assert_eq!(result["requestedMinimized"], minimized);
+            assert_eq!(result["stateConfirmed"], false);
+        }
     }
 }

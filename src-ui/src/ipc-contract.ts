@@ -15,6 +15,8 @@ export function validCommandData(command: string, data: unknown): boolean {
     && booleans(data, ['multiWindowSupported','managedWindowEnumerationAvailable','managedWindowCloseAvailable','externalBrowserLaunchAvailable'])
     && text(data.apiVersion) && text(data.platformHint) && Array.isArray(data.spawnMethods) && data.spawnMethods.every(text)
     && record(data.capabilities) && booleans(data.capabilities, ['modal','kiosk','alwaysOnTop','customSize','customUrl']);
+  if (command === 'managed_window_focus') return record(data) && managedWindowId(data.windowId) && data.action === 'focus' && data.requested === true && data.stateConfirmed === false;
+  if (command === 'managed_window_set_minimized') return record(data) && managedWindowId(data.windowId) && data.action === 'setMinimized' && data.requested === true && typeof data.requestedMinimized === 'boolean' && data.stateConfirmed === false;
   if (command === 'managed_window_list') return record(data) && Array.isArray(data.windowIds) && data.windowIds.length <= 8
     && data.windowIds.every(managedWindowId) && new Set(data.windowIds).size === data.windowIds.length;
   if (command === 'managed_window_close') return record(data) && managedWindowId(data.windowId) && data.closed === true;

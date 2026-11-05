@@ -1,3 +1,10 @@
+# v0.29.19 — Native control requests (2026-11-05)
+
+- Add permission-controlled managed_window_focus and managed_window_set_minimized IPC requests with native UI-thread dispatch on Windows/macOS/Linux. Strictly validate the target/payload and reject unknown child IDs.
+- Return requested=true/stateConfirmed=false receipts; minimized=false requests unminimize. OS/window-manager state is not observed or guaranteed. Preserve child-only scope and no browser fallback.
+- Add typed SDK control helpers, correlated receipt guards and compiled examples. Two public Rust transport tests and two SDK red/green tests cover the new requests; extend default-permission rejection and actual native GUI receipts/malformed-input acceptance.
+- Local default Rust: 108 passed plus one ignored; SDK: 25 passed; Windows native compile passed. Hosted exact-source verification pending. Windows GUI still requires three fresh runs. Earlier startup timeout remains unresolved; modal/focus events, physical/race/fault, signing and independent-review gates remain open.
+
 # Unreleased — Native startup stage diagnostics (2026-11-05)
 
 - Retain smoke-only monotonic stage timings for Windows/macOS primary initialization and page loading, without logging URLs, tokens or application payloads.

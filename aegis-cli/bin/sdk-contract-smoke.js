@@ -439,3 +439,31 @@ test('SDK window discovery validates capability types and accepts disabled nativ
     const result=await aegis.getWindowCapabilities();assert.equal(result.success,true);assert.equal(result.data.futureField,'kept');
   });
 });
+test('SDK focus helper requires a matching unconfirmed request receipt',async()=>{
+  const receipt={windowId:'child-1',action:'focus',requested:true,stateConfirmed:false};let data=receipt;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake')return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request)body+=chunk;const input=JSON.parse(body);
+    assert.equal(input.command,'managed_window_focus');assert.deepEqual(input.payload,{windowId:'child-1'});
+    json(response,{id:input.id,success:true,data});
+  },async({aegis})=>{
+    assert.equal((await aegis.focusManagedWindow('child-1')).success,true);
+    for(const invalid of [null,{...receipt,windowId:'child-2'},{...receipt,stateConfirmed:true},{...receipt,requested:false},{...receipt,action:'setMinimized'}]){
+      data=invalid;const result=await aegis.focusManagedWindow('child-1');assert.equal(result.success,false);assert.equal(result.errorCode,'INVALID_RESPONSE');
+    }
+  });
+});
+test('SDK minimize helper preserves restore false and validates the echoed request',async()=>{
+  let minimized=true;let corrupt=false;
+  await fixture(async(request,response)=>{
+    if(request.url==='/handshake')return json(response,{token:'a'.repeat(64)});
+    let body='';for await(const chunk of request)body+=chunk;const input=JSON.parse(body);
+    assert.equal(input.command,'managed_window_set_minimized');assert.deepEqual(input.payload,{windowId:'child-1',minimized});
+    json(response,{id:input.id,success:true,data:{windowId:'child-1',action:'setMinimized',requested:true,requestedMinimized:corrupt?!minimized:minimized,stateConfirmed:false}});
+  },async({aegis})=>{
+    for(const flag of [true,false]){
+      minimized=flag;const result=await aegis.setManagedWindowMinimized('child-1',flag);assert.equal(result.success,true);assert.equal(result.data.requestedMinimized,flag);assert.equal(result.data.stateConfirmed,false);
+    }
+    corrupt=true;const result=await aegis.setManagedWindowMinimized('child-1',false);assert.equal(result.success,false);assert.equal(result.errorCode,'INVALID_RESPONSE');
+  });
+});

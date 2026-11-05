@@ -16,3 +16,16 @@ export async function closeOwnedChild(windowId: ManagedWindowId): Promise<void> 
   const closed = await aegis.closeManagedWindow(windowId);
   if (!closed.success) throw new Error(closed.error || 'Managed child close was not confirmed');
 }
+
+
+/** An accepted request is not proof the OS focused the child. */
+export async function requestOwnedChildFocus(windowId: ManagedWindowId): Promise<void> {
+  const result = await aegis.focusManagedWindow(windowId);
+  if (!result.success) throw new Error(result.error || 'Focus request was not accepted');
+}
+
+/** false requests unminimize; actual OS state is not confirmed by the receipt. */
+export async function requestOwnedChildMinimized(windowId: ManagedWindowId, minimized: boolean): Promise<void> {
+  const result = await aegis.setManagedWindowMinimized(windowId, minimized);
+  if (!result.success) throw new Error(result.error || 'Minimize request was not accepted');
+}

@@ -38,6 +38,19 @@ export interface AppDirectories {
 
 /** Managed child IDs are app-scoped handles, not credentials. */
 export type ManagedWindowId = `child-${number}`;
+export interface ManagedFocusRequest {
+  windowId: ManagedWindowId;
+  action: 'focus';
+  requested: true;
+  stateConfirmed: false;
+}
+export interface ManagedMinimizeRequest {
+  windowId: ManagedWindowId;
+  action: 'setMinimized';
+  requested: true;
+  requestedMinimized: boolean;
+  stateConfirmed: false;
+}
 export interface WindowCapabilities {
   responseKind: 'capabilities';
   multiWindowSupported: boolean;
@@ -423,6 +436,18 @@ export class AegisBridge {
     if (result.success && result.data?.windowId !== windowId) {
       return {id: result.id, success: false, error: 'Managed close receipt does not match the requested window', errorCode: 'INVALID_RESPONSE'};
     }
+    return result;
+  }
+
+  public async focusManagedWindow(windowId: ManagedWindowId): Promise<IpcResponse<ManagedFocusRequest>> {
+    const result = await this.invoke<ManagedFocusRequest>('managed_window_focus', {windowId});
+    if (result.success && result.data?.windowId !== windowId) return {id: result.id, success: false, error: 'Focus receipt does not match requested window', errorCode: 'INVALID_RESPONSE'};
+    return result;
+  }
+
+  public async setManagedWindowMinimized(windowId: ManagedWindowId, minimized: boolean): Promise<IpcResponse<ManagedMinimizeRequest>> {
+    const result = await this.invoke<ManagedMinimizeRequest>('managed_window_set_minimized', {windowId, minimized});
+    if (result.success && (result.data?.windowId !== windowId || result.data?.requestedMinimized !== minimized)) return {id: result.id, success: false, error: 'Minimize receipt does not match requested window/state', errorCode: 'INVALID_RESPONSE'};
     return result;
   }
 
