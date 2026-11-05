@@ -35,3 +35,8 @@ Windows/macOS dispatch focus_window/set_minimized on their winit window. GTK dis
 The paired SDK adds focusManagedWindow and setManagedWindowMinimized, with typed results and request-ID/state echo validation. Use a matching v0.29.19 core for these new commands; older managed-window hosts can report an unsupported command. The compiled example shows explicit request methods. Native event delivery, observed focus/minimize state, modal parenting and physical/WM acceptance remain pending.
 
 The guarded actual-GUI fixture issues focus, minimize and unminimize requests, checks truthful receipts, rejects an unknown focus target and malformed minimize payloads, then retains its existing capacity/teardown checks. It does not assert physical focus or observed minimization. Windows still requires all three fresh-fixture runs. Local default Rust 108 passed plus one ignored, SDK 25 passed and Windows native compile passed; hosted exact-source checks remain pending.
+
+
+### macOS content-view regression
+
+The new real-GUI control fixture aborted on macOS at e9f62a7 and 7ead998. The diagnostic backtrace identifies winit's window_did_resign_key callback. In winit 0.30.13 that callback casts the window contentView to WinitView; Wry 0.57.1 full-view build replaces it with WryWebViewParent. Both primary and managed macOS webviews now use build_as_child to retain winit's view and attach WebKit as a subview. Wry derives initial child bounds from the parent; existing resize handlers maintain bounds. Windows retains its existing full-view build. The same focus/minimize/unminimize GUI fixture remains the regression check; verification of the fix is pending. Temporary operation/backtrace probes were removed after diagnosis.

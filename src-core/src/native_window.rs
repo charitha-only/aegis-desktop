@@ -70,13 +70,6 @@ pub fn run(
         fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
             use crate::window_requests::WindowOperation;
             while let Some(request) = self.host.as_ref().and_then(|host| host.next()) {
-                if self.smoke {
-                    match &request.operation {
-                        crate::window_requests::WindowOperation::Focus(_) => eprintln!("NATIVE_SMOKE_CONTROL focus"),
-                        crate::window_requests::WindowOperation::SetMinimized {minimized,..} => eprintln!("NATIVE_SMOKE_CONTROL setMinimized={minimized}"),
-                        _ => {},
-                    }
-                }
                 let result = match &request.operation {
                     WindowOperation::List => Ok(
                         serde_json::json!({"windowIds":self.children.keys().collect::<Vec<_>>() }),
@@ -135,7 +128,7 @@ pub fn run(
                                         .with_visible(false),
                                 )
                                 .map_err(|e| e.to_string())?;
-                            let view =
+                            let builder =
                                 wry::WebViewBuilder::new_with_web_context(&mut self.web_context)
                                     .with_url(url)
                                     .with_incognito(true)
@@ -147,9 +140,13 @@ pub fn run(
                                         wry::NewWindowResponse::Deny
                                     })
                                     .with_permission_handler(|_| wry::PermissionResponse::Deny)
-                                    .with_download_started_handler(|_, _| false)
-                                    .build(&window)
-                                    .map_err(|e| e.to_string())?;
+                                    .with_download_started_handler(|_, _| false);
+                            // Preserve winit's content view: its focus delegate relies on it.
+                            #[cfg(target_os = "macos")]
+                            let view =
+                                builder.build_as_child(&window).map_err(|e| e.to_string())?;
+                            #[cfg(target_os = "windows")]
+                            let view = builder.build(&window).map_err(|e| e.to_string())?;
                             let id = format!("child-{}", self.next_child);
                             self.next_child = next;
                             window.set_visible(true);
@@ -194,7 +191,7 @@ pub fn run(
                 let proxy = self.proxy.clone();
                 let smoke = self.smoke;
                 smoke_stage(smoke, started, "primary_webview_build");
-                let webview = wry::WebViewBuilder::new_with_web_context(&mut self.web_context)
+                let builder = wry::WebViewBuilder::new_with_web_context(&mut self.web_context)
                     .with_url(&self.url)
                     .with_incognito(true)
                     .with_devtools(false)
@@ -216,8 +213,12 @@ pub fn run(
                     .with_navigation_handler(move |target| policy.allows_navigation(&target))
                     .with_new_window_req_handler(|_, _| wry::NewWindowResponse::Deny)
                     .with_permission_handler(|_| wry::PermissionResponse::Deny)
-                    .with_download_started_handler(|_, _| false)
-                    .build(&window)?;
+                    .with_download_started_handler(|_, _| false);
+                // Wry's full-view build replaces the view winit uses in focus callbacks.
+                #[cfg(target_os = "macos")]
+                let webview = builder.build_as_child(&window)?;
+                #[cfg(target_os = "windows")]
+                let webview = builder.build(&window)?;
                 smoke_stage(smoke, started, "primary_webview_created");
                 window.set_visible(true);
                 smoke_stage(smoke, started, "primary_visible");
