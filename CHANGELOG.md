@@ -2,13 +2,13 @@
 
 - Type and validate getWindowCapabilities/window_list rather than accepting arbitrary successful data. Reject malformed availability flags, method lists and control metadata while accepting well-formed disabled support and additive fields.
 - Add a public SDK regression that reproduced successful acceptance of null/malformed discovery. Current discovery metadata requires a matching v0.29.18-era core; legacy missing fields fail closed.
-- Local SDK suite: 23 passed; UI/example build passed. Hosted exact-source verification is pending. Native behavior and existing source tags are unchanged.
+- Local SDK suite: 23 passed; UI/example build passed. Exact source b0d9e79 passed three-OS portable/template/SDK (41742778758), Windows installer/upgrade/data-preservation/real-lock (41742778875) and native (41742778773, attempt 2) checks. Initial Windows native startup timed out; an unchanged-source retry passed without raising deadlines. The cause remains unresolved; see docs/NATIVE_STARTUP_OBSERVATION.md. Existing source tags are unchanged.
 
 # Unreleased — Typed managed-window SDK (2026-11-04)
 
 - Add createManagedWindow, listManagedWindows and closeManagedWindow with public option/result/ID types and a compilable availability/owned-handle example.
 - Runtime guards reject malformed creation receipts, non-native backend markers, oversized/duplicate lists and invalid IDs. Close helpers also require the returned ID to match the requested handle. Permission denials are preserved; there is no external launch fallback.
-- Three SDK public-boundary red/green tests cover helpers and malformed responses. Local SDK suite: 22 passed; UI build passed. Hosted exact-source verification is pending. The example performs no work unless invoked; native GUI evidence remains separate.
+- Three SDK public-boundary red/green tests cover helpers and malformed responses. Local SDK suite: 22 passed; UI build passed. The later b0d9e79 verification above covers these helpers. The example performs no work unless invoked; native GUI evidence and the Windows retry caveat remain separate.
 
 # Unreleased — Native capacity and live-child teardown acceptance (2026-11-04)
 
