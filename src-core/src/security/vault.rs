@@ -73,7 +73,11 @@ impl VaultEngine {
                 },
             )
             .map_err(|_| "Decryption failed: wrong passphrase or tampered data")?;
-        String::from_utf8(plain).map_err(|_| "Invalid plaintext encoding".into())
+        let plain = Zeroizing::new(plain);
+        let s = std::str::from_utf8(&plain)
+            .map_err(|_| "Invalid plaintext encoding")?
+            .to_string();
+        Ok(s)
     }
 }
 #[cfg(test)]

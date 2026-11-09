@@ -68,9 +68,9 @@ fn no_link(path: &Path) -> Result<(), String> {
 fn replacement(path: &Path, data: &[u8]) -> Result<(), String> {
     no_link(path)?;
     let parent = path.parent().ok_or("Missing parent directory")?;
-    let mut random = [0u8; 16];
-    getrandom::getrandom(&mut random).map_err(|_| "Secure random source unavailable")?;
-    let temp = parent.join(format!(".aegis-tmp-{}", hex::encode(random)));
+    let mut random = zeroize::Zeroizing::new([0u8; 16]);
+    getrandom::getrandom(&mut *random).map_err(|_| "Secure random source unavailable")?;
+    let temp = parent.join(format!(".aegis-tmp-{}", hex::encode(&*random)));
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]

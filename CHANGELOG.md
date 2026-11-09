@@ -1,3 +1,10 @@
+# v0.29.25 — 2026-11-09
+
+- Memory-Guarded Cryptographic Zeroization: Wrap sensitive plaintext decryption buffers in `zeroize::Zeroizing` within `VaultEngine` to guarantee immediate memory sanitization on drop.
+- Zeroized Random Seed Storage: Enforce `Zeroizing` on temporary cryptographic random seed arrays across `HandshakeSession` and atomic `storage` replacement paths.
+- Cold-Memory Anti-Forensics: Prevent plaintext artifact residues from remaining in process heap after vault and session operations.
+- All 108 tests passed; verified dev and native-desktop compiles with zero warnings.
+
 # v0.29.24 — 2026-11-09
 
 - Zero-Warning Clean Compilation: Comprehensive compiler hygiene across default core and native-desktop targets with strict feature guards on network, plugin, updater, WASM, and multi-OS packaging pipelines.

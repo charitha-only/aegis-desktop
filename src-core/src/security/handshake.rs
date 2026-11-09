@@ -13,9 +13,9 @@ impl HandshakeSession {
             .unwrap_or_default()
             .as_millis() as u64;
 
-        let mut random = [0u8; 32];
-        getrandom::getrandom(&mut random).expect("OS secure random source is required");
-        let token = hex::encode(random);
+        let mut random = zeroize::Zeroizing::new([0u8; 32]);
+        getrandom::getrandom(&mut *random).expect("OS secure random source is required");
+        let token = hex::encode(&*random);
 
         Self {
             session_token: Mutex::new(zeroize::Zeroizing::new(token)),
