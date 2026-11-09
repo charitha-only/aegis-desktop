@@ -228,6 +228,11 @@ impl CoreServer {
             // 2. Sliding Window Anti-DoS & Brute Force Rate Limiting
             let origin_key = origin_header.as_deref().unwrap_or("local_loopback");
             if self.rate_limiter.is_locked_out(origin_key) {
+                let retry_secs = self
+                    .rate_limiter
+                    .remaining_lockout_secs(origin_key)
+                    .unwrap_or(10)
+                    .to_string();
                 let err_json = json!({
                     "success": false,
                     "error": "Access Locked Out: Too many consecutive invalid nonces. Backoff penalty active!"
@@ -238,7 +243,7 @@ impl CoreServer {
                         Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap(),
                     )
                     .with_header(
-                        Header::from_bytes("Retry-After", "10").unwrap(),
+                        Header::from_bytes("Retry-After", retry_secs.as_bytes()).unwrap(),
                     )
                     .with_header(
                         Header::from_bytes(

@@ -1,3 +1,9 @@
+# v0.29.29 — 2026-11-09
+
+- Dynamic Rate-Limiter Backoff Calculation: Server now queries `RateLimiter::remaining_lockout_secs` to return the exact remaining lockout window in HTTP `Retry-After` headers rather than static estimates.
+- Anti-Memory-Exhaustion DoS Protection: Added automatic stale entry pruning when failed nonce tracking exceeds 1024 entries, preventing memory exhaustion from spoofed origin floods.
+- Zero-Warning Clean Build: All 111 tests passed; verified dev and native-desktop compiles with zero compiler warnings.
+
 # v0.29.28 — 2026-11-09
 
 - Managed Window Ticket Cancellation Lifecycle: Proactive cancellation APIs (`WindowTicket::cancel`, `is_cancelled`) preventing orphaned window creation requests from dispatching when callers disconnect or timeout.

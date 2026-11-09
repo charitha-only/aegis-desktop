@@ -72,6 +72,15 @@ impl RateLimiter {
     pub fn record_nonce_failure(&self, origin: &str) -> bool {
         let mut state = self.state.lock().unwrap();
         let now = Instant::now();
+
+        // Evict expired entries if table exceeds bound to prevent memory exhaustion DoS
+        if state.failed_nonces.len() >= 1024 {
+            let lockout = self.lockout_duration;
+            state
+                .failed_nonces
+                .retain(|_, (_, last_time)| now.duration_since(*last_time) <= lockout);
+        }
+
         let entry = state
             .failed_nonces
             .entry(origin.to_string())
@@ -100,5 +109,52 @@ impl RateLimiter {
                 && Instant::now().duration_since(last_time) < self.lockout_duration;
         }
         false
+    }
+
+    /// Returns remaining lockout duration in seconds if the origin is locked out.
+    pub fn remaining_lockout_secs(&self, origin: &str) -> Option<u64> {
+        let state = self.state.lock().unwrap();
+        if let Some(&(failures, last_time)) = state.failed_nonces.get(origin) {
+            if failures >= self.lockout_threshold {
+                let elapsed = Instant::now().duration_since(last_time);
+                if elapsed < self.lockout_duration {
+                    return Some((self.lockout_duration - elapsed).as_secs().max(1));
+                }
+            }
+        }
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rate_limiter_sliding_window_and_dynamic_lockout() {
+        let limiter = RateLimiter::new(5, 1, 10);
+        for _ in 0..5 {
+            assert!(limiter.check_request().is_ok());
+        }
+        assert!(limiter.check_request().is_err());
+
+        // Lockout tracking
+        let origin = "http://malicious-fuzzer.local";
+        assert!(!limiter.is_locked_out(origin));
+        assert_eq!(limiter.remaining_lockout_secs(origin), None);
+
+        for _ in 0..4 {
+            assert!(!limiter.record_nonce_failure(origin));
+        }
+        assert!(limiter.record_nonce_failure(origin));
+        assert!(limiter.is_locked_out(origin));
+
+        let remaining = limiter.remaining_lockout_secs(origin);
+        assert!(remaining.is_some());
+        assert!(remaining.unwrap() <= 10 && remaining.unwrap() >= 1);
+
+        limiter.clear_nonce_failures(origin);
+        assert!(!limiter.is_locked_out(origin));
+        assert_eq!(limiter.remaining_lockout_secs(origin), None);
     }
 }
