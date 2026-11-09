@@ -1,16 +1,28 @@
-param([Parameter(Mandatory)][string]$SignedFixture, [Parameter(Mandatory)][string]$UnsignedFixture)
+param(
+ [Parameter(Mandatory)][string]$SignedFixture,
+ [Parameter(Mandatory)][string]$UnsignedFixture,
+ [switch]$AllowSelfSigned
+)
 $ErrorActionPreference = 'Stop'
 $signature = Get-AuthenticodeSignature -LiteralPath $SignedFixture
-if ($signature.Status -ne 'Valid') { throw 'A genuinely publisher-signed fixture is required' }
+if ($signature.Status -ne 'Valid' -and -not ($AllowSelfSigned -and $signature.Status -eq 'UnknownError' -and $signature.SignerCertificate)) {
+ throw 'A genuinely publisher-signed fixture is required'
+}
 $thumbprint = $signature.SignerCertificate.Thumbprint
-& "$PSScriptRoot/sign-windows.ps1" -Path $SignedFixture -Thumbprint $thumbprint -VerifyOnly
+$verifyArgs = @{ Path = $SignedFixture; Thumbprint = $thumbprint; VerifyOnly = $true }
+if ($AllowSelfSigned) { $verifyArgs['AllowSelfSigned'] = $true }
+& "$PSScriptRoot/sign-windows.ps1" @verifyArgs
 $wrongThumbprint = if ($thumbprint -eq ('0'*40)) { '1'*40 } else { '0'*40 }
 try {
- & "$PSScriptRoot/sign-windows.ps1" -Path $SignedFixture -Thumbprint $wrongThumbprint -VerifyOnly
+ $wrongArgs = @{ Path = $SignedFixture; Thumbprint = $wrongThumbprint; VerifyOnly = $true }
+ if ($AllowSelfSigned) { $wrongArgs['AllowSelfSigned'] = $true }
+ & "$PSScriptRoot/sign-windows.ps1" @wrongArgs
  throw 'Wrong publisher unexpectedly accepted'
 } catch { if ($_.Exception.Message -notmatch 'signature is missing, invalid or belongs') { throw } }
 try {
- & "$PSScriptRoot/sign-windows.ps1" -Path $UnsignedFixture -Thumbprint $thumbprint -VerifyOnly
+ $unsignedArgs = @{ Path = $UnsignedFixture; Thumbprint = $thumbprint; VerifyOnly = $true }
+ if ($AllowSelfSigned) { $unsignedArgs['AllowSelfSigned'] = $true }
+ & "$PSScriptRoot/sign-windows.ps1" @unsignedArgs
  throw 'Unsigned executable unexpectedly accepted'
 } catch { if ($_.Exception.Message -notmatch 'signature is missing, invalid or belongs') { throw } }
 try {

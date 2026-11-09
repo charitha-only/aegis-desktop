@@ -243,10 +243,56 @@ impl NetworkPolicyEngine {
 
 fn domain_matches(host: &str, pattern: &str) -> bool {
     let host = host.trim_end_matches('.').to_ascii_lowercase();
-    let pattern = pattern.to_ascii_lowercase();
-    if let Some(base) = pattern.strip_prefix("*.") {
-        host.ends_with(&format!(".{base}")) && host.len() > base.len() + 1
+    let pattern = pattern.trim_end_matches('.').to_ascii_lowercase();
+
+    if pattern == "*" {
+        return true;
+    }
+
+    if let Some(suffix) = pattern.strip_prefix("*.") {
+        host == suffix
+            || (host.ends_with(suffix)
+                && host
+                    .as_bytes()
+                    .get(host.len().saturating_sub(suffix.len() + 1))
+                    == Some(&b'.'))
+    } else if let Some(suffix) = pattern.strip_prefix('*') {
+        host == suffix || host.ends_with(suffix)
     } else {
         host == pattern
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn domain_matches_wildcards_and_exact() {
+        assert!(domain_matches("localhost", "localhost"));
+        assert!(domain_matches("127.0.0.1", "127.0.0.1"));
+        assert!(domain_matches("api.corp.internal", "*.corp.internal"));
+        assert!(domain_matches("corp.internal", "*.corp.internal"));
+        assert!(!domain_matches("fake-corp.internal", "*.corp.internal"));
+
+        assert!(domain_matches("google-analytics.com", "*google-analytics.com"));
+        assert!(domain_matches("ssl.google-analytics.com", "*google-analytics.com"));
+        assert!(domain_matches("telemetry.com", "*.telemetry.com"));
+        assert!(domain_matches("sub.telemetry.com", "*.telemetry.com"));
+        assert!(!domain_matches("other.com", "*.telemetry.com"));
+    }
+
+    #[test]
+    fn policy_blocks_telemetry_and_allows_localhost() {
+        let engine = NetworkPolicyEngine::new();
+        let eval_local = engine.evaluate_connection("127.0.0.1", 48291);
+        assert!(eval_local.allowed);
+
+        let eval_analytics = engine.evaluate_connection("ssl.google-analytics.com", 443);
+        assert!(!eval_analytics.allowed);
+        assert!(eval_analytics.reason.contains("Violates policy"));
+
+        let eval_telemetry = engine.evaluate_connection("sub.telemetry.com", 443);
+        assert!(!eval_telemetry.allowed);
     }
 }

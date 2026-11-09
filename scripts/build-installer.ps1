@@ -1,7 +1,8 @@
 param(
  [string]$BundleName = 'AegisDesktopApplication',
  [string]$ExpectedThumbprint,
- [switch]$AllowUnsignedForTesting
+ [switch]$AllowUnsignedForTesting,
+ [switch]$AllowSelfSigned
 )
 $ErrorActionPreference = 'Stop'
 if ($BundleName -notmatch '^[A-Za-z0-9_-]+$') { throw 'Invalid bundle name' }
@@ -9,7 +10,9 @@ $root = Split-Path $PSScriptRoot -Parent
 $binary = Join-Path $root "dist-bundle/$BundleName/aegis-core.exe"
 if (-not $AllowUnsignedForTesting) {
  if (-not $ExpectedThumbprint) { throw 'A publisher thumbprint is required; unsigned compilation is for testing only' }
- & "$PSScriptRoot/sign-windows.ps1" -Path $binary -Thumbprint $ExpectedThumbprint -VerifyOnly
+ $verifyArgs = @{ Path = $binary; Thumbprint = $ExpectedThumbprint; VerifyOnly = $true }
+ if ($AllowSelfSigned) { $verifyArgs['AllowSelfSigned'] = $true }
+ & "$PSScriptRoot/sign-windows.ps1" @verifyArgs
 }
 $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
 $compilerPath = if ($env:AEGIS_ISCC_PATH) { $env:AEGIS_ISCC_PATH } elseif ($compiler) { $compiler.Source } else { 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' }

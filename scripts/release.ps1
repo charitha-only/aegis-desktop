@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # release.ps1 — Version bump + GitHub push script
 # Usage:
 #   .\scripts\release.ps1          # patch bump (0.29.19 → 0.29.20)
@@ -142,14 +142,22 @@ Write-Host "   ✅ Pushed to GitHub" -ForegroundColor Green
 
 # ── 11. Create GitHub Release via gh CLI ─────────────────────
 Write-Host "`n📢 Publishing GitHub Release..." -ForegroundColor Cyan
-try {
-    gh release create "v$newVersion" --title "v$newVersion" --notes "$releaseNotes" 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        gh release edit "v$newVersion" --title "v$newVersion" --notes "$releaseNotes" 2>$null
+$ghCmd = (Get-Command gh.exe -ErrorAction SilentlyContinue)?.Source
+if (-not $ghCmd -and (Test-Path "C:\Program Files\GitHub CLI\gh.exe")) {
+    $ghCmd = "C:\Program Files\GitHub CLI\gh.exe"
+}
+if ($ghCmd) {
+    try {
+        & $ghCmd release create "v$newVersion" --title "v$newVersion" --notes "$releaseNotes" 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            & $ghCmd release edit "v$newVersion" --title "v$newVersion" --notes "$releaseNotes" 2>$null
+        }
+        Write-Host "   ✅ GitHub Release published" -ForegroundColor Green
+    } catch {
+        Write-Host "   ⚠️ Could not publish GitHub Release via gh CLI: $_" -ForegroundColor Yellow
     }
-    Write-Host "   ✅ GitHub Release published" -ForegroundColor Green
-} catch {
-    Write-Host "   ⚠️ Could not publish GitHub Release via gh CLI: $_" -ForegroundColor Yellow
+} else {
+    Write-Host "   ⚠️ gh CLI not found; skipping GitHub Release creation." -ForegroundColor Yellow
 }
 
 Write-Host "`n✨ Done! v$newVersion is now live on GitHub." -ForegroundColor Green

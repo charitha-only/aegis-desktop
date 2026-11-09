@@ -1,3 +1,10 @@
+# v0.30.2 — 2026-11-10
+
+- Dual-Engine Windows Authenticode Signing & Developer Tools: Eliminated Windows SDK dependency in `scripts/sign-windows.ps1` with native PowerShell fallback (`Set-AuthenticodeSignature`), added `-AllowSelfSigned` flag, and introduced `scripts/create-dev-cert.ps1` for development and CI testing.
+- Network Policy Wildcard Matching Hardening: Fixed prefix wildcard matching in `domain_matches` (enabling wildcard blocking for `*google-analytics.com` and subdomain root matching `*.corp.internal`), with subdomain takeover boundary protection.
+- RFC 6454 Case-Insensitive Origin Matching: Normalized scheme and host comparison in `OriginValidator` to guarantee strict conformance with web origin standards.
+- Zero-Warning Quality Guarantee: All 116 Rust core tests and 25 SDK smoke tests pass with 0 compiler warnings.
+
 # v0.30.1 — 2026-11-10
 
 - Cryptographic Handshake Token Rotation & Expiry: Add dynamic `rotate()` and age/expiry calculation (`age_millis`, `is_expired`) on `HandshakeSession` with zeroized in-memory token replacement.
