@@ -108,16 +108,32 @@ impl CoreServer {
                                         .unwrap_or("")
                                     {
                                         "html" => "text/html; charset=utf-8",
-                                        "js" => "text/javascript",
+                                        "js" | "mjs" => "text/javascript",
                                         "css" => "text/css",
                                         "svg" => "image/svg+xml",
                                         "png" => "image/png",
+                                        "jpg" | "jpeg" => "image/jpeg",
+                                        "webp" => "image/webp",
+                                        "gif" => "image/gif",
+                                        "ico" => "image/x-icon",
+                                        "json" => "application/json",
+                                        "wasm" => "application/wasm",
                                         "woff2" => "font/woff2",
+                                        "woff" => "font/woff",
+                                        "ttf" => "font/ttf",
                                         _ => "application/octet-stream",
+                                    };
+                                    let cache_control = if relative.starts_with("assets/") {
+                                        "public, max-age=31536000, immutable"
+                                    } else {
+                                        "no-cache"
                                     };
                                     let response = Response::from_data(bytes)
                                         .with_header(
                                             Header::from_bytes("Content-Type", mime).unwrap(),
+                                        )
+                                        .with_header(
+                                            Header::from_bytes("Cache-Control", cache_control).unwrap(),
                                         )
                                         .with_header(
                                             Header::from_bytes(

@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # release.ps1 — Version bump + GitHub push script
 # Usage:
 #   .\scripts\release.ps1          # patch bump (0.29.19 → 0.29.20)
@@ -89,6 +89,14 @@ if (Test-Path $uiPkgPath) {
     Write-Host "   ✅ src-ui/package.json → $newVersion"
 }
 
+$aegisCfgPath = Join-Path $root "aegis.config.json"
+if (Test-Path $aegisCfgPath) {
+    $cfgRaw = Get-Content $aegisCfgPath -Raw
+    $cfgRaw = [regex]::Replace($cfgRaw, '"version": "\d+\.\d+\.\d+"', "`"version`": `"$newVersion`"")
+    Set-Content -Path $aegisCfgPath -Value $cfgRaw -NoNewline
+    Write-Host "   ✅ aegis.config.json → $newVersion"
+}
+
 # ── 6. Ask for release notes ─────────────────────────────────
 Write-Host "`n📄 Enter release notes (press Enter twice when done):" -ForegroundColor Cyan
 $lines = @()
@@ -117,7 +125,7 @@ Write-Host "   ✅ CHANGELOG.md updated"
 
 # ── 8. Git commit ────────────────────────────────────────────
 Write-Host "`n📦 Creating git commit..." -ForegroundColor Cyan
-git add package.json src-core/Cargo.toml src-ui/package.json CHANGELOG.md
+git add package.json src-core/Cargo.toml src-ui/package.json aegis.config.json CHANGELOG.md README.md
 git commit -m "chore: bump version to v$newVersion"
 Write-Host "   ✅ Committed"
 

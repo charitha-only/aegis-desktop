@@ -1,3 +1,11 @@
+# v0.29.23 — 2026-11-09
+
+- Comprehensive Static Asset MIME Mapping: Add typed mapping for WebAssembly (`.wasm`), JSON (`.json`), icons (`.ico`), WebP (`.webp`), JPEG, and modern web fonts (`.woff`, `.woff2`, `.ttf`), preventing instantiation and rendering failures in embedded WebViews.
+- High-Performance Webview Caching: Serve hashed assets under `assets/` with `Cache-Control: public, max-age=31536000, immutable` and root documents with `no-cache`, eliminating redundant disk I/O and asset recompilation.
+- Unified App Manifest Configuration: Synchronize version tracking across `aegis.config.json`, `package.json`, `src-core/Cargo.toml`, and `src-ui/package.json` in automated release tooling.
+- Project Health Diagnostics: Verified `npm run doctor` passes all environment, toolchain, and prerequisite policy checks.
+- All 108 tests passed; verified dev and native-desktop compiles.
+
 # v0.29.22 — 2026-11-09
 
 - O(1) Pre-normalized Origin Validation: Replace linear vector traversal and per-request trimming allocations with pre-normalized `HashSet<String>` lookups in `OriginValidator`.
