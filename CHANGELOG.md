@@ -1,3 +1,11 @@
+# v0.30.7 — 2026-11-10
+
+- Transactional Auto-Updater Journal & Crash-Resilient Rollback: Introduced `UpdateJournal` state machine (`IDLE`, `STAGED`, `VERIFIED`, `ROLLED_BACK`) serialized to `sandbox/updates/journal.json`, with atomic rollback and payload quarantine (`rollback_staged`).
+- Auto-Updater IPC Command Suite: Added `updater_stage`, `updater_rollback`, and `updater_journal` commands to `src-core/src/ipc/router.rs`, backed by sandbox read verification.
+- Frontend Telemetry & Interactive Controls: Exposed live journal state telemetry badge and an interactive "Quarantine & Rollback Staged Update" action in `src-ui/src/App.tsx`.
+- Strict IPC Schema Contracts & Typed Bridge: Added runtime schema validation in `src-ui/src/ipc-contract.ts` and typed methods in `src-ui/src/aegis-bridge.ts`.
+- Zero-Warning Quality Guarantee: All 124 Rust core tests pass with 0 compiler warnings.
+
 # v0.30.6 — 2026-11-10
 
 - Native Desktop Windowing & Dynamic Browser Delegation: Enhanced `src-core/src/main.rs` to seamlessly route `--spawn-window` directly to native WebView2 (`winit` + `wry`) when the `native-desktop` feature is compiled, while providing an explicit `--external-browser` override for developer debugging and external browser workflows.

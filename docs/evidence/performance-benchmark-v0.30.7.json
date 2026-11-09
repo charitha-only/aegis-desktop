@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "measuredAt": "2026-11-10T05:22:00.000Z",
+  "environment": {
+    "os": "win32",
+    "osRelease": "10.0.19045",
+    "architecture": "x64",
+    "cpu": "AMD Ryzen 5 3500 6-Core Processor",
+    "logicalCpus": 6,
+    "ramBytes": 17102303232
+  },
+  "provenance": {
+    "gitRevision": "b93ba2e",
+    "trackedWorkingTreeClean": true,
+    "binarySha256": "3209105ec1b4b0038daf1bff9432102e1544bb01c9eeaa19fed67c762adc8250"
+  },
+  "binaryBytes": 8451573,
+  "startup": {
+    "count": 5,
+    "minMs": 25.61,
+    "p50Ms": 26.31,
+    "p95Ms": 33.25,
+    "maxMs": 33.25
+  },
+  "ipc": {
+    "count": 20,
+    "minMs": 1.28,
+    "p50Ms": 1.69,
+    "p95Ms": 6.15,
+    "maxMs": 6.68
+  },
+  "idle": {
+    "durationMs": 2272.65,
+    "rssBytes": 9232384,
+    "peakRssBytes": 9236480,
+    "cpuPercentOfOneLogicalCore": 0.0
+  },
+  "budget": {
+    "targetMaxStartupMs": 100.0,
+    "targetMaxIpcP95Ms": 10.0,
+    "targetMaxRssBytes": 52428800,
+    "status": "PASS",
+    "memoryPerformanceClass": "Ultra-Low Memory (under 10 MiB)"
+  }
+}

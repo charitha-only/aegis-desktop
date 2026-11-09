@@ -39,7 +39,7 @@ export async function withBenchmarkCore({binary,args=['--port=0'],startupTimeout
       child.stdout.on('data',data=>{
         output=(output+data).slice(-16384);
         // A chunk can end halfway through the numeric port. Require its newline.
-        const match=output.match(/IPC Bridge Server actively listening on (http:\/\/127\.0\.0\.1:\d+)\r?\n/);
+        const match=output.match(/IPC Bridge Server actively listening on (http:\/\/127\.0\.0\.1:\d+)(?:[^\r\n]*)?\r?\n/);
         if(match) resolve(match[1]);
       });
     });

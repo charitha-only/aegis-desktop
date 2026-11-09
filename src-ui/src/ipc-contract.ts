@@ -71,5 +71,15 @@ export function validCommandData(command: string, data: unknown): boolean {
   if (command === 'updater_verify') {
     return record(data) && typeof data.verified === 'boolean' && text(data.filePath) && text(data.sha256);
   }
+  if (command === 'updater_journal') {
+    return record(data) && ['IDLE', 'STAGED', 'VERIFIED', 'ROLLED_BACK'].includes(data.state as string)
+      && text(data.active_version);
+  }
+  if (command === 'updater_rollback') {
+    return record(data) && data.rolledBack === true;
+  }
+  if (command === 'updater_stage') {
+    return record(data) && text(data.staged_path) && text(data.version) && typeof data.ready_to_apply === 'boolean';
+  }
   return true;
 }

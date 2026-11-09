@@ -1,4 +1,4 @@
-﻿param(
+param(
   [Parameter(Mandatory)][string]$Path,
   [string]$Thumbprint = $env:AEGIS_SIGN_THUMBPRINT,
   [string]$CertPath = $env:AEGIS_SIGN_CERT_PATH,

@@ -1181,6 +1181,37 @@ impl IpcRouter {
                 }
             }
 
+            "updater_stage" => {
+                let file_path = match req.payload.get("filePath").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'filePath' parameter"),
+                };
+                let verified_path = match self.security.check_fs_read(file_path) {
+                    Ok(p) => p,
+                    Err(e) => return IpcResponse::err(&req.id, &format!("Unauthorized file access: {e}")),
+                };
+                let version = match req.payload.get("version").and_then(|v| v.as_str()) {
+                    Some(v) => v,
+                    None => return IpcResponse::err(&req.id, "Missing 'version' parameter"),
+                };
+                let expected_sha256 = req.payload.get("expectedSha256").and_then(|h| h.as_str());
+
+                match self.updater.stage_update(&verified_path, version, expected_sha256) {
+                    Ok(staged) => IpcResponse::ok(&req.id, serde_json::to_value(&staged).unwrap_or(json!({}))),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "updater_rollback" => match self.updater.rollback_staged() {
+                Ok(res) => IpcResponse::ok(&req.id, res),
+                Err(e) => IpcResponse::err(&req.id, &e),
+            },
+
+            "updater_journal" => IpcResponse::ok(
+                &req.id,
+                serde_json::to_value(self.updater.read_journal()).unwrap_or(json!({})),
+            ),
+
             // ─── PERMISSION MANAGER IPC (v0.13 / v0.14) ────────────────────
             "permissions_status" => IpcResponse::ok(
                 &req.id,

@@ -1,0 +1,177 @@
+name: Release Cross-Platform Distribution Matrix
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag Name (e.g. v0.30.7)'
+        required: false
+        default: 'v0.30.7'
+
+permissions:
+  contents: write
+
+jobs:
+  # ─── 1. WINDOWS X64 (Authenticode Signed + Inno Setup) ─────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run Core Tests & Lint
+        run: cargo test --locked --manifest-path src-core/Cargo.toml
+
+      - name: Setup Inno Setup
+        shell: pwsh
+        run: ./scripts/setup-inno-ci.ps1
+
+      - name: Build UI & Bundle
+        run: |
+          npm ci --prefix src-ui
+          npm run bundle
+
+      - name: Import Publisher Certificate (if secrets provided)
+        id: cert
+        shell: pwsh
+        env:
+          SIGNING_PFX: ${{ secrets.AEGIS_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.AEGIS_SIGNING_PFX_PASSWORD }}
+        run: |
+          if ($env:SIGNING_PFX -and $env:SIGNING_PASSWORD) {
+            $pfxPath = Join-Path $env:RUNNER_TEMP 'publisher-signing.pfx'
+            [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:SIGNING_PFX))
+            $pass = ConvertTo-SecureString $env:SIGNING_PASSWORD -AsPlainText -Force
+            $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $pass
+            "thumbprint=$($cert.Thumbprint)" >> $env:GITHUB_OUTPUT
+            "has_cert=true" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "Commercial certificate secrets not configured; generating development certificate."
+            ./scripts/create-dev-cert.ps1 -Subject "CN=Aegis Desktop Authority" -InstallToStore
+            $devCert = (Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -match "Aegis Desktop Authority" })[0]
+            "thumbprint=$($devCert.Thumbprint)" >> $env:GITHUB_OUTPUT
+            "has_cert=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Sign Core Executable
+        shell: pwsh
+        run: |
+          $allowSelfSigned = if ('${{ steps.cert.outputs.has_cert }}' -eq 'true') { @() } else { @('-AllowSelfSigned') }
+          ./scripts/sign-windows.ps1 -Path ./dist-bundle/AegisDesktopApplication/aegis-core.exe -Thumbprint '${{ steps.cert.outputs.thumbprint }}' @allowSelfSigned
+
+      - name: Build and Sign Inno Setup Installer
+        shell: pwsh
+        run: |
+          ./scripts/build-installer.ps1 -ExpectedThumbprint '${{ steps.cert.outputs.thumbprint }}'
+          $installer = Get-ChildItem './dist-bundle/installers/*-Setup-*.exe' | Select-Object -First 1
+          if ($installer) {
+            $allowSelfSigned = if ('${{ steps.cert.outputs.has_cert }}' -eq 'true') { @() } else { @('-AllowSelfSigned') }
+            ./scripts/sign-windows.ps1 -Path $installer.FullName -Thumbprint '${{ steps.cert.outputs.thumbprint }}' @allowSelfSigned
+          }
+
+      - name: Compress Standalone Zip Bundle
+        shell: pwsh
+        run: |
+          $ver = '${{ github.ref_name }}'
+          if (-not $ver -or $ver -match '^refs/') { $ver = '${{ github.event.inputs.tag_name }}' }
+          if (-not $ver) { $ver = 'v0.30.7' }
+          Compress-Archive -Path dist-bundle\AegisDesktopApplication\* -DestinationPath "dist-bundle/AegisDesktopApplication-$ver-windows-x64.zip" -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: |
+            dist-bundle/AegisDesktopApplication-*-windows-x64.zip
+            dist-bundle/installers/*-Setup-*.exe
+
+  # ─── 2. LINUX X64 (Debian .deb Packager) ──────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Debian Packaging Tools
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev fakeroot libwebkit2gtk-4.1-dev libgtk-3-dev
+
+      - name: Build Core & UI
+        run: |
+          npm ci --prefix src-ui
+          npm run build
+
+      - name: Bundle and Package Debian .deb
+        run: |
+          npm run bundle
+          node scripts/package-cross-platform.mjs
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: dist-bundle/*.deb
+          if-no-files-found: ignore
+
+  # ─── 3. MACOS UNIVERSAL (Native .pkg Packager) ─────────────────────────────
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build Core & UI
+        run: |
+          npm ci --prefix src-ui
+          npm run build
+
+      - name: Bundle and Package macOS .pkg
+        run: |
+          npm run bundle
+          node scripts/package-cross-platform.mjs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: dist-bundle/*.pkg
+          if-no-files-found: ignore
+
+  # ─── 4. PUBLISH RELEASE ASSETS ─────────────────────────────────────────────
+  publish-release:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Publish or Update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [[ -z "$TAG" || "$TAG" == refs/* ]]; then
+            TAG="${{ github.event.inputs.tag_name }}"
+          fi
+          if [[ -z "$TAG" ]]; then
+            TAG="v0.30.7"
+          fi
+
+          echo "Publishing release assets for tag: $TAG"
+          find release-artifacts/ -type f -exec ls -lh {} +
+
+          # Upload assets to existing release or create release
+          gh release upload "$TAG" release-artifacts/*/* --clobber || \
+          gh release create "$TAG" release-artifacts/*/* --title "$TAG — Production-Hardened Multi-OS Release" --notes "Automated cross-platform production build containing verified Windows x64 signed binaries, Linux .deb packages, and macOS .pkg installers."

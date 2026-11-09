@@ -197,12 +197,23 @@ export interface AttestationVerification {
   audit_log: string[];
 }
 
+export interface UpdateJournal {
+  journal_version: number;
+  state: 'IDLE' | 'STAGED' | 'VERIFIED' | 'ROLLED_BACK';
+  active_version: string;
+  target_version?: string;
+  staged_file?: string;
+  staged_sha256?: string;
+  last_status: string;
+}
+
 export interface UpdaterStatus {
   autoUpdaterVersion: string;
   currentVersion: string;
   stagingDir: string;
   hasStagedUpdates: boolean;
   stagedFiles: string[];
+  journal?: UpdateJournal;
   verificationAlgorithm: string;
   securityPolicy: string;
   airGapCompatible: boolean;
@@ -445,6 +456,18 @@ export class AegisBridge {
 
   public async verifyUpdatePayload(filePath: string, expectedSha256: string): Promise<IpcResponse<{ verified: boolean; filePath: string; sha256: string }>> {
     return this.invoke<{ verified: boolean; filePath: string; sha256: string }>('updater_verify', { filePath, expectedSha256 });
+  }
+
+  public async getUpdateJournal(): Promise<IpcResponse<UpdateJournal>> {
+    return this.invoke<UpdateJournal>('updater_journal');
+  }
+
+  public async rollbackUpdate(): Promise<IpcResponse<{ rolledBack: boolean; journal: UpdateJournal }>> {
+    return this.invoke<{ rolledBack: boolean; journal: UpdateJournal }>('updater_rollback');
+  }
+
+  public async stageUpdate(filePath: string, version: string, expectedSha256?: string): Promise<IpcResponse<{ staged_path: string; version: string; ready_to_apply: boolean }>> {
+    return this.invoke<{ staged_path: string; version: string; ready_to_apply: boolean }>('updater_stage', { filePath, version, expectedSha256 });
   }
 
   // Zero-Knowledge Encrypted Vault APIs

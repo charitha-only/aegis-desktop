@@ -512,6 +512,18 @@ export default function App() {
     setUpdaterLoading(false);
   };
 
+  const handleRollbackUpdate = async () => {
+    setUpdaterLoading(true);
+    const res = await aegis.call('updater_rollback', {});
+    if (res.success) {
+      addLog('INFO', 'updater_rollback', 'Staged update quarantined and rolled back');
+      await refreshUpdaterStatus();
+    } else {
+      addLog('BLOCKED', 'updater_rollback', res.error || 'Rollback failed');
+    }
+    setUpdaterLoading(false);
+  };
+
   // v0.14 Handlers
   const refreshHardwareKeys = async () => {
     setHwKeyLoading(true);
@@ -2313,11 +2325,17 @@ export default function App() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
                         <span style={{ fontSize: '12px', color: '#94a3b8' }}>Current Installed Version:</span>
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#38bdf8' }}>{updaterStatus?.currentVersion || '0.13.0'}</span>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#38bdf8' }}>{updaterStatus?.currentVersion || '0.30.6'}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
                         <span style={{ fontSize: '12px', color: '#94a3b8' }}>Staging Directory:</span>
                         <span style={{ fontSize: '12px', fontWeight: 500, color: '#94a3b8' }}>{updaterStatus?.stagingDir || '.aegis_updates'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Transactional Journal:</span>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: updaterStatus?.journal?.state === 'VERIFIED' ? '#34d399' : updaterStatus?.journal?.state === 'STAGED' ? '#fbbf24' : '#94a3b8' }}>
+                          {updaterStatus?.journal?.state || 'IDLE'}
+                        </span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
                         <span style={{ fontSize: '12px', color: '#94a3b8' }}>Integrity Verification:</span>
@@ -2327,6 +2345,16 @@ export default function App() {
                         <span style={{ fontSize: '12px', color: '#94a3b8' }}>Air-Gap Support:</span>
                         <span style={{ fontSize: '12px', fontWeight: 600, color: '#34d399' }}>Full Local File Support</span>
                       </div>
+                      {updaterStatus?.journal && updaterStatus.journal.state !== 'IDLE' && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                          <button
+                            onClick={handleRollbackUpdate}
+                            style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 500 }}
+                          >
+                            Quarantine & Rollback Staged Update
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 

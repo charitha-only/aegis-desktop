@@ -70,6 +70,29 @@ impl SemVer {
 
 // ─── Update Engine ─────────────────────────────────────────────────────────
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum JournalState {
+    #[serde(rename = "IDLE")]
+    Idle,
+    #[serde(rename = "STAGED")]
+    Staged,
+    #[serde(rename = "VERIFIED")]
+    Verified,
+    #[serde(rename = "ROLLED_BACK")]
+    RolledBack,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateJournal {
+    pub journal_version: u32,
+    pub state: JournalState,
+    pub active_version: String,
+    pub target_version: Option<String>,
+    pub staged_file: Option<String>,
+    pub staged_sha256: Option<String>,
+    pub last_status: String,
+}
+
 pub struct AutoUpdater {
     current_version: String,
     update_dir: PathBuf,
@@ -133,6 +156,13 @@ impl AutoUpdater {
         let computed = format!("{:x}", hasher.finalize());
 
         if constant_time_eq_ascii(&computed, expected_sha256.trim()) {
+            let mut journal = self.read_journal();
+            if journal.state == JournalState::Staged {
+                journal.state = JournalState::Verified;
+                journal.staged_sha256 = Some(expected_sha256.to_string());
+                journal.last_status = "Cryptographic integrity verified; ready for install".to_string();
+                let _ = self.write_journal(&journal);
+            }
             Ok(())
         } else {
             Err(format!(
@@ -142,10 +172,65 @@ impl AutoUpdater {
         }
     }
 
+    fn journal_file(&self) -> PathBuf {
+        self.update_dir.join("journal.json")
+    }
+
+    pub fn read_journal(&self) -> UpdateJournal {
+        let default_journal = UpdateJournal {
+            journal_version: 1,
+            state: JournalState::Idle,
+            active_version: self.current_version.clone(),
+            target_version: None,
+            staged_file: None,
+            staged_sha256: None,
+            last_status: "No pending update transactions".to_string(),
+        };
+
+        let file = self.journal_file();
+        if !file.exists() {
+            return default_journal;
+        }
+
+        match fs::read_to_string(&file) {
+            Ok(content) => serde_json::from_str(&content).unwrap_or(default_journal),
+            Err(_) => default_journal,
+        }
+    }
+
+    pub fn write_journal(&self, journal: &UpdateJournal) -> Result<(), String> {
+        let _ = fs::create_dir_all(&self.update_dir);
+        let content = serde_json::to_string_pretty(journal)
+            .map_err(|e| format!("Failed to serialize journal: {e}"))?;
+        fs::write(self.journal_file(), content)
+            .map_err(|e| format!("Failed to write journal: {e}"))
+    }
+
+    pub fn rollback_staged(&self) -> Result<serde_json::Value, String> {
+        let mut journal = self.read_journal();
+        if let Some(ref staged) = journal.staged_file {
+            let path = PathBuf::from(staged);
+            if path.exists() {
+                let _ = fs::remove_file(path);
+            }
+        }
+        journal.state = JournalState::RolledBack;
+        journal.last_status = "Transaction rolled back and staged payload quarantined".to_string();
+        self.write_journal(&journal)?;
+        Ok(serde_json::json!({
+            "rolledBack": true,
+            "journal": journal
+        }))
+    }
+
     /// Stage a downloaded update binary into the quarantine directory.
     /// The update is NOT applied until `verify_integrity` passes.
-    #[allow(dead_code)]
-    pub fn stage_update(&self, source_path: &Path, version: &str) -> Result<StagedUpdate, String> {
+    pub fn stage_update(
+        &self,
+        source_path: &Path,
+        version: &str,
+        expected_sha256: Option<&str>,
+    ) -> Result<StagedUpdate, String> {
         fs::create_dir_all(&self.update_dir)
             .map_err(|e| format!("Cannot create update staging dir: {}", e))?;
 
@@ -153,11 +238,23 @@ impl AutoUpdater {
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("bin");
-        let staged_name = format!("aegis-update-{}.{}", version.replace('.', "_"), ext);
+        let safe_ver = version.replace(|c: char| !c.is_alphanumeric() && c != '.', "_");
+        let staged_name = format!("aegis-update-{}.{}", safe_ver, ext);
         let staged_path = self.update_dir.join(&staged_name);
 
         fs::copy(source_path, &staged_path)
             .map_err(|e| format!("Failed to stage update: {}", e))?;
+
+        let journal = UpdateJournal {
+            journal_version: 1,
+            state: JournalState::Staged,
+            active_version: self.current_version.clone(),
+            target_version: Some(version.to_string()),
+            staged_file: Some(staged_path.to_string_lossy().to_string()),
+            staged_sha256: expected_sha256.map(|s| s.to_string()),
+            last_status: format!("Update payload staged at {}", staged_name),
+        };
+        let _ = self.write_journal(&journal);
 
         Ok(StagedUpdate {
             staged_path: staged_path.to_string_lossy().to_string(),
@@ -192,6 +289,7 @@ impl AutoUpdater {
             "stagingDir": self.update_dir.to_string_lossy(),
             "hasStagedUpdates": updates_exist,
             "stagedFiles": staged,
+            "journal": self.read_journal(),
             "verificationAlgorithm": "SHA-256",
             "securityPolicy": "All updates must pass SHA-256 hash verification before execution",
             "airGapCompatible": true,
@@ -325,5 +423,48 @@ mod tests {
 
         let tampered_sha256 = "1".repeat(64);
         assert!(updater.verify_integrity(&file_path, &tampered_sha256).is_err());
+    }
+
+    #[test]
+    fn test_transactional_journal_workflow() {
+        let temp = TempDir::new();
+        let updater = AutoUpdater::new("0.30.6", temp.path());
+
+        // 1. Initial State: Idle
+        let journal = updater.read_journal();
+        assert_eq!(journal.state, JournalState::Idle);
+        assert_eq!(journal.active_version, "0.30.6");
+
+        // 2. Stage an update
+        let payload = b"Aegis v0.30.7 Staged Update Package Bytes";
+        let src_file = temp.path().join("downloaded_v0.30.7.bin");
+        fs::write(&src_file, payload).unwrap();
+
+        let mut hasher = Sha256::new();
+        hasher.update(payload);
+        let expected_sha256 = format!("{:x}", hasher.finalize());
+
+        let staged = updater.stage_update(&src_file, "0.30.7", Some(&expected_sha256)).unwrap();
+        assert_eq!(staged.version, "0.30.7");
+
+        let journal_after_stage = updater.read_journal();
+        assert_eq!(journal_after_stage.state, JournalState::Staged);
+        assert_eq!(journal_after_stage.target_version.as_deref(), Some("0.30.7"));
+        assert!(PathBuf::from(journal_after_stage.staged_file.as_ref().unwrap()).exists());
+
+        // 3. Verify integrity: transitions to Verified
+        let staged_path = PathBuf::from(journal_after_stage.staged_file.as_ref().unwrap());
+        assert!(updater.verify_integrity(&staged_path, &expected_sha256).is_ok());
+
+        let journal_after_verify = updater.read_journal();
+        assert_eq!(journal_after_verify.state, JournalState::Verified);
+
+        // 4. Rollback: quarantines staged file and marks RolledBack
+        let rollback_res = updater.rollback_staged().unwrap();
+        assert_eq!(rollback_res["rolledBack"], true);
+
+        let journal_after_rollback = updater.read_journal();
+        assert_eq!(journal_after_rollback.state, JournalState::RolledBack);
+        assert!(!staged_path.exists());
     }
 }
