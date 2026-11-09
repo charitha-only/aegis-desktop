@@ -23,8 +23,15 @@ pub struct WindowRequest {
 }
 impl WindowRequest {
     #[allow(dead_code)]
+    pub fn is_cancelled(&self) -> bool {
+        self.cancelled.load(Ordering::Acquire)
+    }
+
+    #[allow(dead_code)]
     pub fn finish(self, result: Result<serde_json::Value, String>) {
-        let _ = self.reply.try_send(result);
+        if !self.cancelled.load(Ordering::Acquire) {
+            let _ = self.reply.try_send(result);
+        }
     }
 }
 #[derive(Clone)]
@@ -125,6 +132,16 @@ impl Drop for WindowTicket {
     }
 }
 impl WindowTicket {
+    #[allow(dead_code)]
+    pub fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Release);
+    }
+
+    #[allow(dead_code)]
+    pub fn is_cancelled(&self) -> bool {
+        self.cancelled.load(Ordering::Acquire)
+    }
+
     pub fn wait(self, timeout: Duration) -> Result<serde_json::Value, String> {
         self.receiver.recv_timeout(timeout).map_err(|error| {
             match error {
@@ -265,5 +282,17 @@ mod tests {
             assert_eq!(result["requestedMinimized"], minimized);
             assert_eq!(result["stateConfirmed"], false);
         }
+    }
+
+    #[test]
+    fn proactive_cancel_and_cancellation_check() {
+        let policy =
+            NativeWindowPolicy::new("http://127.0.0.1:48291/", &WindowConfig::default()).unwrap();
+        let (client, host) = window_channel(policy);
+        let ticket = client.create(&serde_json::json!({})).unwrap();
+        assert!(!ticket.is_cancelled());
+        ticket.cancel();
+        assert!(ticket.is_cancelled());
+        assert!(host.next().is_none());
     }
 }

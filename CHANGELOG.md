@@ -1,3 +1,9 @@
+# v0.29.28 — 2026-11-09
+
+- Managed Window Ticket Cancellation Lifecycle: Proactive cancellation APIs (`WindowTicket::cancel`, `is_cancelled`) preventing orphaned window creation requests from dispatching when callers disconnect or timeout.
+- Host Race & Timeout Reconciliation: Check cancellation state before executing expensive native window operations and before replying, eliminating race conditions when tickets drop during dispatch.
+- Zero-Warning Clean Build: All 110 tests passed; verified dev and native-desktop compiles with zero compiler warnings.
+
 # v0.29.27 — 2026-11-09
 
 - Atomic Storage Size & Integrity Verification: Validate written byte lengths against source payloads before atomic file replacement, preventing corrupted or truncated writes on disk exhaustion or filesystem errors.
