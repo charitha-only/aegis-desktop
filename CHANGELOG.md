@@ -1,3 +1,31 @@
+# v0.30.4 — 2026-11-10
+
+- Commercial CA Code Signing Suite: Upgraded `scripts/sign-windows.ps1` to fully support commercial CAs (DigiCert, Sectigo, etc.) via Hardware Token / Certificate Stores (`CurrentUser\My` and `LocalMachine\My`), secure PFX/PKCS#12 file signing with password/env var injection, Microsoft Azure Trusted Signing cloud HSM integration, and auto-signing of compiled Inno Setup installer packages in `scripts/build-installer.ps1`.
+- Complete Windows Code Signing Guide: Published comprehensive enterprise documentation at `docs/WINDOWS_CODE_SIGNING.md` covering provider selection, SmartScreen zero-warning reputation mechanics, hardware tokens, and GitHub Actions CI/CD workflows.
+- Auto-Updater Streaming Integrity Verification: Replaced full in-memory file buffering with bounded 64KB streaming SHA-256 chunk digestion, added timing-attack safe `constant_time_eq_ascii` comparison, and added 4 unit tests.
+- Zero-Warning Quality Guarantee: All 122 Rust core tests and 76 SDK/CLI unit tests pass with 0 compiler warnings.
+
+# v0.30.3 — 2026-11-10
+
+- Silent Windows Launcher & 64-Bit Inno Setup Hardening: Bundler now emits `Launch {name} (Silent).vbs` alongside `.bat` to launch GUI without command prompt flashing. Enhanced Inno Setup generator with `ArchitecturesInstallIn64BitMode=x64compatible`, `UninstallDisplayIcon`, and explicit `WorkingDir: "{app}"`.
+- Resilient Edge Browser Discovery: Extended Windows Edge browser detection across `ProgramFiles(x86)`, `ProgramFiles`, and per-user `LOCALAPPDATA` paths for locked-down enterprise environments.
+- Comprehensive HTTP Security Headers on Assets: Added `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Permissions-Policy: geolocation=(), camera=(), microphone=()` to all static asset responses.
+- Zero-Warning Quality Guarantee: All 118 Rust core tests and 76 SDK/CLI unit tests pass with 0 compiler warnings.
+
+# v0.30.2 — 2026-11-10
+
+- Dual-Engine Windows Authenticode Signing & Developer Tools: Eliminated Windows SDK dependency in `scripts/sign-windows.ps1` with native PowerShell fallback (`Set-AuthenticodeSignature`), added `-AllowSelfSigned` flag, and introduced `scripts/create-dev-cert.ps1` for development and CI testing.
+- Network Policy Wildcard Matching Hardening: Fixed prefix wildcard matching in `domain_matches` (enabling wildcard blocking for `*google-analytics.com` and subdomain root matching `*.corp.internal`), with subdomain takeover boundary protection.
+- RFC 6454 Case-Insensitive Origin Matching: Normalized scheme and host comparison in `OriginValidator` to guarantee strict conformance with web origin standards.
+- Zero-Warning Quality Guarantee: All 116 Rust core tests and 25 SDK smoke tests pass with 0 compiler warnings.
+
+# v0.30.4 — 2026-11-10
+
+- Commercial CA Code Signing Suite: Upgraded `scripts/sign-windows.ps1` to fully support commercial CAs (DigiCert, Sectigo, etc.) via Hardware Token / Certificate Stores (`CurrentUser\My` and `LocalMachine\My`), secure PFX/PKCS#12 file signing with password/env var injection, Microsoft Azure Trusted Signing cloud HSM integration, and auto-signing of compiled Inno Setup installer packages in `scripts/build-installer.ps1`.
+- Complete Windows Code Signing Guide: Published comprehensive enterprise documentation at `docs/WINDOWS_CODE_SIGNING.md` covering provider selection, SmartScreen zero-warning reputation mechanics, hardware tokens, and GitHub Actions CI/CD workflows.
+- Auto-Updater Streaming Integrity Verification: Replaced full in-memory file buffering with bounded 64KB streaming SHA-256 chunk digestion, added timing-attack safe `constant_time_eq_ascii` comparison, and added 4 unit tests.
+- Zero-Warning Quality Guarantee: All 122 Rust core tests and 76 SDK/CLI unit tests pass with 0 compiler warnings.
+
 # v0.30.3 — 2026-11-10
 
 - Silent Windows Launcher & 64-Bit Inno Setup Hardening: Bundler now emits `Launch {name} (Silent).vbs` alongside `.bat` to launch GUI without command prompt flashing. Enhanced Inno Setup generator with `ArchitecturesInstallIn64BitMode=x64compatible`, `UninstallDisplayIcon`, and explicit `WorkingDir: "{app}"`.

@@ -33,3 +33,4 @@ Write-Output "Created certificate with Thumbprint: $($cert.Thumbprint)"
 Write-Output "Subject: $($cert.Subject)"
 Write-Output "Expires: $($cert.NotAfter)"
 return $cert.Thumbprint
+
