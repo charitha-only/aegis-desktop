@@ -125,10 +125,10 @@ impl CrashReporter {
         let dir = self.directory()?;
         let _lock = Self::lock(&dir)?;
         let mut records = Self::load(&dir)?;
-        let mut random = [0u8; 16];
-        getrandom::getrandom(&mut random).map_err(|_| "Secure diagnostic identity unavailable")?;
+        let mut random = zeroize::Zeroizing::new([0u8; 16]);
+        getrandom::getrandom(&mut *random).map_err(|_| "Secure diagnostic identity unavailable")?;
         let record = CrashRecord {
-            crash_id: format!("crash_{}", hex::encode(random)),
+            crash_id: format!("crash_{}", hex::encode(&*random)),
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()

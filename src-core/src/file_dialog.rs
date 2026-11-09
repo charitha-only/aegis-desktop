@@ -133,8 +133,8 @@ impl<T: DialogOutcome> DialogJobs<T> {
         if slot.is_some() {
             return Err("A native dialog request already exists; poll or cancel it first".into());
         }
-        let mut random = [0u8; 16];
-        getrandom::getrandom(&mut random).map_err(|_| "Native dialog identifier unavailable")?;
+        let mut random = zeroize::Zeroizing::new([0u8; 16]);
+        getrandom::getrandom(&mut *random).map_err(|_| "Native dialog identifier unavailable")?;
         let child = command
             .stdin(if input.is_some() {
                 Stdio::piped()
@@ -147,7 +147,7 @@ impl<T: DialogOutcome> DialogJobs<T> {
             .map_err(|_| "Native dialog could not start")?;
         let (tx, rx) = mpsc::channel();
         let mut job = Job {
-            id: hex::encode(random),
+            id: hex::encode(&*random),
             profile: profile.into(),
             child,
             output: rx,

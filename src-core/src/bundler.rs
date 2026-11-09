@@ -67,10 +67,10 @@ impl BundleTransaction {
             lock: Some(lock),
             published_sidecar: None,
         };
-        let mut random = [0u8; 16];
-        getrandom::getrandom(&mut random)
+        let mut random = zeroize::Zeroizing::new([0u8; 16]);
+        getrandom::getrandom(&mut *random)
             .map_err(|e| format!("Cannot allocate bundle staging name: {e}"))?;
-        let stage = parent.join(format!(".aegis-stage-{name}-{}", hex::encode(random)));
+        let stage = parent.join(format!(".aegis-stage-{name}-{}", hex::encode(&*random)));
         fs::create_dir(&stage).map_err(|e| format!("Cannot create private bundle stage: {e}"))?;
         transaction.stage = Some(stage);
         Ok(transaction)

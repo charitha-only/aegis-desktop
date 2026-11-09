@@ -238,6 +238,9 @@ impl CoreServer {
                         Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap(),
                     )
                     .with_header(
+                        Header::from_bytes("Retry-After", "10").unwrap(),
+                    )
+                    .with_header(
                         Header::from_bytes(
                             &b"Access-Control-Allow-Origin"[..],
                             cors_origin.as_bytes(),
@@ -258,6 +261,9 @@ impl CoreServer {
                     .with_status_code(StatusCode(429))
                     .with_header(
                         Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap(),
+                    )
+                    .with_header(
+                        Header::from_bytes("Retry-After", "1").unwrap(),
                     )
                     .with_header(
                         Header::from_bytes(

@@ -1,3 +1,10 @@
+# v0.29.26 — 2026-11-09
+
+- RFC 6585 Standardized Rate-Limit Signalling: Add standard `Retry-After: 1` on sliding-window limits and `Retry-After: 10` on brute-force lockouts, enabling predictable backoff for frontend SDK clients.
+- Universal Cryptographic Random Sanitization: Extend `Zeroizing` wrappers to file dialog job IDs, crash reporter IDs, and bundle staging identifiers, ensuring complete memory hygiene across all random generation points.
+- Hardened Anti-DoS Response Pipeline: Enforce standard headers across all rate-limited loopback paths without leaking internal server state.
+- All 108 tests passed; verified dev and native-desktop compiles with zero warnings.
+
 # v0.29.25 — 2026-11-09
 
 - Memory-Guarded Cryptographic Zeroization: Wrap sensitive plaintext decryption buffers in `zeroize::Zeroizing` within `VaultEngine` to guarantee immediate memory sanitization on drop.
