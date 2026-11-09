@@ -219,9 +219,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!(
             "AEGIS_LAUNCH_PLAN={}",
             serde_json::json!({
-                "packaged":packaged,"bridgeUrl":server.bridge_url(),"uiUrl":ui_url,
-                "nativeRequested":args.iter().any(|a| a == "--native-window"),
-                "nativeFeatureCompiled":cfg!(feature = "native-desktop")
+                "packaged": packaged,
+                "bridgeUrl": server.bridge_url(),
+                "uiUrl": ui_url,
+                "nativeRequested": args.iter().any(|a| a == "--native-window"),
+                "externalBrowserRequested": args.iter().any(|a| a == "--external-browser"),
+                "nativeFeatureCompiled": cfg!(feature = "native-desktop")
             })
         );
         return Ok(());
@@ -231,7 +234,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .any(|arg| arg == "--spawn-window" || arg == "--native-window")
     {
         let win_cfg = window_config;
-        if args.iter().any(|arg| arg == "--native-window") {
+        let prefer_external = args.iter().any(|arg| arg == "--external-browser");
+        let prefer_native = args.iter().any(|arg| arg == "--native-window");
+        if !prefer_external
+            && (prefer_native
+                || (cfg!(feature = "native-desktop") && args.iter().any(|arg| arg == "--spawn-window")))
+        {
             #[cfg(feature = "native-desktop")]
             {
                 let policy = window::NativeWindowPolicy::new(&ui_url, &win_cfg)?;
@@ -246,7 +254,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 return native_window::run(&ui_url, &win_cfg, &base_dir, host);
             }
             #[cfg(not(feature = "native-desktop"))]
-            return Err("Rebuild with --features native-desktop to use --native-window".into());
+            if prefer_native {
+                return Err("Rebuild with --features native-desktop to use --native-window".into());
+            }
         }
         WindowManager::spawn_window(&ui_url, &win_cfg)?;
     }

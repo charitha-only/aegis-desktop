@@ -1,3 +1,9 @@
+# v0.30.6 — 2026-11-10
+
+- Native Desktop Windowing & Dynamic Browser Delegation: Enhanced `src-core/src/main.rs` to seamlessly route `--spawn-window` directly to native WebView2 (`winit` + `wry`) when the `native-desktop` feature is compiled, while providing an explicit `--external-browser` override for developer debugging and external browser workflows.
+- Launch Plan Inspection Telemetry: Extended `AEGIS_LAUNCH_PLAN` diagnostic JSON output with `externalBrowserRequested` and `nativeFeatureCompiled` attributes.
+- Comprehensive Test Pass: All 123 Rust core tests and all 76 Node CLI tests pass with 0 compiler warnings.
+
 # v0.30.5 — 2026-11-10
 
 - Runtime Auto-Updater UI & Telemetry: Activated live Auto-Updater dashboard in `src-ui/src/App.tsx`, wired full IPC command pipeline (`updater_status`, `updater_check`, `updater_verify`) with zero-trust filesystem sandbox read checks, added typed bridge interfaces in `aegis-bridge.ts`, and enforced strict IPC schema contracts in `ipc-contract.ts`.
