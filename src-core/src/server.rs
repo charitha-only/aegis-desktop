@@ -4,6 +4,14 @@ use serde_json::json;
 use std::sync::Arc;
 use tiny_http::{Header, Method, Response, Server, StatusCode};
 
+// Number of worker threads for concurrent request handling.
+// Using available_parallelism keeps startup fast on constrained devices.
+fn worker_thread_count() -> usize {
+    std::thread::available_parallelism()
+        .map(|n| n.get().min(4).max(2))
+        .unwrap_or(2)
+}
+
 pub struct CoreServer {
     server: Server,
     router: Arc<IpcRouter>,
@@ -46,23 +54,36 @@ impl CoreServer {
     }
 
     pub fn run(&self) {
+        let workers = worker_thread_count();
         println!(
-            "[Aegis Core] IPC Bridge Server actively listening on http://{}",
-            self.server.server_addr()
+            "[Aegis Core] IPC Bridge Server actively listening on http://{} ({} worker threads)",
+            self.server.server_addr(),
+            workers
         );
         println!("[Aegis Security] Anti-DoS Rate Limiter active: Max 30 req/s, brute-force lockout active.");
 
-        for mut request in self.server.incoming_requests() {
-            let host = request
-                .headers()
-                .iter()
-                .find(|h| h.field.equiv("Host"))
-                .map(|h| h.value.as_str())
-                .unwrap_or("");
-            if host != self.server.server_addr().to_string() {
-                let _ = respond(request, Response::empty(StatusCode(403)));
-                continue;
+        std::thread::scope(|s| {
+            for _ in 0..workers {
+                s.spawn(|| {
+                    for request in self.server.incoming_requests() {
+                        self.handle_one_request(request);
+                    }
+                });
             }
+        });
+    }
+
+    fn handle_one_request(&self, mut request: tiny_http::Request) {
+        let host = request
+            .headers()
+            .iter()
+            .find(|h| h.field.equiv("Host"))
+            .map(|h| h.value.as_str())
+            .unwrap_or("");
+        if host != self.server.server_addr().to_string() {
+            let _ = respond(request, Response::empty(StatusCode(403)));
+            return;
+        }
             if *request.method() == Method::Get && request.url() != "/handshake" {
                 if let Some(root) = &self.ui_root {
                     let route = request.url().split('?').next().unwrap_or("/");
@@ -110,14 +131,14 @@ impl CoreServer {
                                                 .unwrap(),
                                         );
                                     let _ = respond(request, response);
-                                    continue;
+                                    return;
                                 }
                             }
                         }
                     }
                 }
                 let _ = respond(request, Response::empty(StatusCode(404)));
-                continue;
+                return;
             }
             let origin_header = request
                 .headers()
@@ -141,7 +162,7 @@ impl CoreServer {
 
             if !is_allowed_origin {
                 let _ = respond(request, Response::empty(StatusCode(403)));
-                continue;
+                return;
             }
 
             // Handle Preflight OPTIONS
@@ -169,7 +190,7 @@ impl CoreServer {
                         .unwrap(),
                     );
                 let _ = respond(request, response);
-                continue;
+                return;
             }
 
             // 1. Origin security enforcement
@@ -185,7 +206,7 @@ impl CoreServer {
                         Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap(),
                     );
                 let _ = respond(request, resp);
-                continue;
+                return;
             }
 
             // 2. Sliding Window Anti-DoS & Brute Force Rate Limiting
@@ -208,7 +229,7 @@ impl CoreServer {
                         .unwrap(),
                     );
                 let _ = respond(request, resp);
-                continue;
+                return;
             }
 
             if let Err(rate_err) = self.rate_limiter.check_request() {
@@ -230,7 +251,7 @@ impl CoreServer {
                         .unwrap(),
                     );
                 let _ = respond(request, resp);
-                continue;
+                return;
             }
 
             match (request.method(), request.url()) {
@@ -274,11 +295,11 @@ impl CoreServer {
                         .unwrap_or("");
                     if content_type != "application/json" {
                         let _ = respond(request, Response::empty(StatusCode(415)));
-                        continue;
+                        return;
                     }
                     if request.body_length().is_none_or(|n| n > 1024 * 1024) {
                         let _ = respond(request, Response::empty(StatusCode(413)));
-                        continue;
+                        return;
                     }
                     let mut body = zeroize::Zeroizing::new(String::new());
                     use std::io::Read;
@@ -343,7 +364,6 @@ impl CoreServer {
             }
         }
     }
-}
 
 struct WipingBody {
     bytes: zeroize::Zeroizing<Vec<u8>>,
@@ -384,6 +404,14 @@ fn respond<R: std::io::Read>(
         response.add_header(Header::from_bytes("X-Content-Type-Options", "nosniff").unwrap());
     }
     response.add_header(Header::from_bytes("Referrer-Policy", "no-referrer").unwrap());
+    response.add_header(Header::from_bytes("X-Frame-Options", "DENY").unwrap());
+    response.add_header(
+        Header::from_bytes(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=(), payment=()",
+        )
+        .unwrap(),
+    );
     // An additional CSP policy intersects with the configured asset policy.
     // It cannot be weakened by a custom app CSP or duplicate directives there.
     response.add_header(

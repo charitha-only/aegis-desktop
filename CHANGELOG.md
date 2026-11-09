@@ -1,39 +1,47 @@
-# v0.29.20 � 2026-11-09
+# v0.29.21 — 2026-11-09
+
+- Multi-threaded IPC Server: Replace single-threaded blocking event loop with a scoped worker thread pool (`worker_thread_count()`, 2-4 threads) via `std::thread::scope`, enabling concurrent request processing without latency spikes.
+- O(1) Sliding-Window Rate Limiter: Replace O(N) linear `Vec::retain` scan with `VecDeque` ring buffer for amortized constant-time stale timestamp eviction from the front.
+- Hardened HTTP Security Headers: Add `X-Frame-Options: DENY` and `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()` to all server responses alongside existing strict CSP, nosniff, and Referrer-Policy.
+- Synchronized Multi-Crate Release Tooling: Enhance `scripts/release.ps1` to atomically update versions across `package.json`, `src-core/Cargo.toml`, and `src-ui/package.json`, with automated GitHub release publishing via `gh` CLI.
+- All 108 core tests passed; native-desktop and UI production builds passed.
+
+# v0.29.20 — 2026-11-09
 
 - Version bump to v0.29.20; add automated release script (scripts/release.ps1) for version management and GitHub push workflow.
 
-# v0.29.19 — Native control requests (2026-11-05)
+# v0.29.19 â€” Native control requests (2026-11-05)
 
 - Add permission-controlled managed_window_focus and managed_window_set_minimized IPC requests with native UI-thread dispatch on Windows/macOS/Linux. Strictly validate the target/payload and reject unknown child IDs.
 - Return requested=true/stateConfirmed=false receipts; minimized=false requests unminimize. OS/window-manager state is not observed or guaranteed. Preserve child-only scope and no browser fallback.
 - Add typed SDK control helpers, correlated receipt guards and compiled examples. Two public Rust transport tests and two SDK red/green tests cover the new requests; extend default-permission rejection and actual native GUI receipts/malformed-input acceptance.
 - Local default Rust: 108 passed plus one ignored; SDK: 25 passed; Windows native compile passed. Hosted exact-source verification pending. Windows GUI still requires three fresh runs. Earlier startup timeout remains unresolved; modal/focus events, physical/race/fault, signing and independent-review gates remain open.
 
-# Unreleased — Native startup stage diagnostics (2026-11-05)
+# Unreleased â€” Native startup stage diagnostics (2026-11-05)
 
 - Retain smoke-only monotonic stage timings for Windows/macOS primary initialization and page loading, without logging URLs, tokens or application payloads.
 - Require three sequential fresh-fixture Windows GUI runs; any failed iteration fails the job. macOS/Linux retain one. Fresh projects/WebView directories are cleaned between runs; this is additional coverage, not retry-until-pass.
 - Keep existing readiness/teardown assertions and 45/60-second deadlines unchanged. Local native compile and script syntax checks passed. Exact source 829411d passed native (42040446975), portable/template/SDK (42040446956) and Windows installer/upgrade/data-preservation/real-lock (42040446989) workflows on attempt 1. All three fresh Windows GUI runs passed; macOS/Linux passed one each. Retained stage observations show WebView build intervals of 8135/329/321 ms on that Windows runner, not whole-app or independent-device performance. The previous intermittent startup cause remains unresolved; no speculative native fix is claimed.
 
-# Unreleased — Typed window capability discovery (2026-11-04)
+# Unreleased â€” Typed window capability discovery (2026-11-04)
 
 - Type and validate getWindowCapabilities/window_list rather than accepting arbitrary successful data. Reject malformed availability flags, method lists and control metadata while accepting well-formed disabled support and additive fields.
 - Add a public SDK regression that reproduced successful acceptance of null/malformed discovery. Current discovery metadata requires a matching v0.29.18-era core; legacy missing fields fail closed.
 - Local SDK suite: 23 passed; UI/example build passed. Exact source b0d9e79 passed three-OS portable/template/SDK (41742778758), Windows installer/upgrade/data-preservation/real-lock (41742778875) and native (41742778773, attempt 2) checks. Initial Windows native startup timed out; an unchanged-source retry passed without raising deadlines. The cause remains unresolved; see docs/NATIVE_STARTUP_OBSERVATION.md. Existing source tags are unchanged.
 
-# Unreleased — Typed managed-window SDK (2026-11-04)
+# Unreleased â€” Typed managed-window SDK (2026-11-04)
 
 - Add createManagedWindow, listManagedWindows and closeManagedWindow with public option/result/ID types and a compilable availability/owned-handle example.
 - Runtime guards reject malformed creation receipts, non-native backend markers, oversized/duplicate lists and invalid IDs. Close helpers also require the returned ID to match the requested handle. Permission denials are preserved; there is no external launch fallback.
 - Three SDK public-boundary red/green tests cover helpers and malformed responses. Local SDK suite: 22 passed; UI build passed. The later b0d9e79 verification above covers these helpers. The example performs no work unless invoked; native GUI evidence and the Windows retry caveat remain separate.
 
-# Unreleased — Native capacity and live-child teardown acceptance (2026-11-04)
+# Unreleased â€” Native capacity and live-child teardown acceptance (2026-11-04)
 
 - Extend the guarded actual-GUI fixture to fill eight child slots, reject the ninth while preserving existing handles, release/reuse capacity with a fresh ID, and leave one live child at primary-host shutdown.
 - Add smoke-only retained-child release diagnostics on both native adapters. Assert the release marker alongside fixture readiness and successful exit. This is registry/native-object teardown evidence, not complete OS process-tree cleanup or fault recovery.
 - Pace requests below the rate limiter and allow a bounded 45/60-second fixture/launcher deadline. Local native-feature compile and generated-script syntax checks passed. Exact source ef6d1a6 passed three-OS native (41735933346), portable/template (41735933330) and Windows installer/upgrade/data-preservation/real-lock (41735933316) workflows. The expanded actual-GUI capacity/recovery/live-child teardown assertions passed on all three hosted OSes; see docs/NATIVE_CAPACITY_ACCEPTANCE.md. No personal desktop actions were performed. Current source version remains v0.29.18; its existing tag remains unchanged.
 
-# v0.29.18 — Managed native child preview (2026-11-03)
+# v0.29.18 â€” Managed native child preview (2026-11-03)
 
 - Connect the owned request channel to winit/Wry (Windows/macOS) and GTK4/WebKit6 (Linux) UI threads. Add managed_window_create/list/close commands behind system.allowManagedWindows, default false; unavailable hosts fail closed without browser fallback.
 - Limit live children to eight, queue to sixteen, use non-reused process-lifetime child IDs and restrict URLs to the parent app authority. Primary shutdown drops children; child close leaves the primary running. Native objects remain UI-thread owned; a successful create confirms object creation, not document readiness.
@@ -43,7 +51,7 @@
 
 - Include previously unversioned bundle diagnostics and early output/lock/sidecar/linked-parent checks, with their public CLI regressions. Inspection remains read-only, including separate case-variant staging candidates; stale ownership is never inferred.
 
-# v0.29.17 — Staged bundle publication (2026-11-02)
+# v0.29.17 â€” Staged bundle publication (2026-11-02)
 
 - Build the portable payload in an exclusive random staging directory under dist-bundle, then rename it to the final application directory only after payload writes succeed. Previously a late bundle error could leave a partially populated final directory blocking retries.
 - Serialize cooperating builders for an exact manifest name with an exclusive build lock. Preserve occupied final paths, installer sidecars and existing locks; never infer stale ownership or delete another lock.
@@ -51,7 +59,7 @@
 - Add actual-core failure/retry fixtures: an occupied Windows installer sidecar and an unreadable Unix frontend file, plus occupied-lock preservation, no final payload after failure and successful repair/retry. Extend existing byte fixtures to remove only their own installer sidecars between repeated builds.
 - This is live-process directory publication, not an atomic directory-plus-installer transaction, whole CLI integrity transaction or power-loss guarantee. Crashes can leave staging/locks/sidecars for manual inspection; malicious filesystem races and noncooperating writers remain outside the guarantee. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed, including filesystem obstruction, lock preservation and repair/retry acceptance; see the verification ledger.
 
-# v0.29.16 — Frontend asset preflight (2026-11-02)
+# v0.29.16 â€” Frontend asset preflight (2026-11-02)
 
 - Fix bundling following a linked frontend root. Existing checks inspected directory entries, but src-ui/dist itself (or its src-ui parent) could be a directory link/junction and copy assets from another folder. Reproduced with an owned Windows junction and TEST_ONLY external assets.
 - Validate ordinary frontend directories/files before creating package output. Reject observed symlinks, Windows reparse points and special file types across the distributed asset tree. Repeat type checks while copying.
@@ -59,7 +67,7 @@
 - This is build-time asset-source hardening, not remote runtime authorization or protection from a compromised build account. No malicious filesystem-race, hard-link provenance, whole-project ancestry, atomic snapshot, copy-time/disk-budget or crash-durability guarantee is added. Later I/O failure can still leave partial output for inspection.
 - Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed, including actual-core link rejection and repair acceptance; see the verification ledger. Signing, physical-device and independent-audit gates remain open.
 
-# v0.29.15 — Explicit bundle metadata (2026-11-02)
+# v0.29.15 â€” Explicit bundle metadata (2026-11-02)
 
 - Stop the CLI manifest loader silently replacing explicit wrong-type fields with defaults. A numeric version previously produced a successful package labeled 1.0.0 instead of rejecting configuration.
 - Require object configuration with explicit string name/version. Absent author/description retain defaults; explicit values must be strings. Icon remains absent/null or string. Existing BundleEngine name/version token and installer metadata checks still apply.
@@ -68,7 +76,7 @@
 - Reproduce through the actual optimized --bundle CLI; extend byte-provenance acceptance with invalid metadata/no-output cases and exact valid metadata/default preservation. Add a public doctor version regression. Local CLI: 70 passed. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed; see the verification ledger.
 - Publisher authenticity, physical-device/signing and independent-audit gates remain open.
 
-# v0.29.14 — Packaged executable provenance (2026-11-01)
+# v0.29.14 â€” Packaged executable provenance (2026-11-01)
 
 - Complete the v0.29.11 artifact-selection fix: the JS executor selected the new binary, but the Rust --bundle handler still copied src-core/target/release. A stale default slot could therefore enter the package despite correct CLI execution.
 - Pass the running executable explicitly into the Rust CLI bundler and copy only that selected file. Do not substitute a different build path. The existing direct BundleEngine::bundle API retains its explicit default-release-path semantics for the legacy package pipeline.
@@ -76,7 +84,7 @@
 - Extend both-template acceptance: the Vanilla project builds with CARGO_BUILD_TARGET set to the installed host triple, has a deliberately stale default binary, and requires packaged executable bytes to match the Cargo-selected target artifact. React retains the ordinary default build path.
 - Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed, including actual-core and full CLI package byte equality; see the verification ledger. This verifies byte selection, not publisher authenticity, compiler trust or cross-compilation support. Physical-device/signing/independent-audit gates remain open.
 
-# v0.29.13 — Portable package preflight (2026-11-01)
+# v0.29.13 â€” Portable package preflight (2026-11-01)
 
 - Align doctor application-ID checks with the existing Rust portable identity rules: bounded ASCII names, traversal/separator/device-name rejection and no trailing dot/space. Previously any string, including an empty ID, could pass configuration diagnostics despite runtime rejection.
 - Require Cargo/UI lockfiles and the installed Vite entry to resolve to regular files, not merely existing paths. Directory-shaped prerequisites previously passed diagnostic checks.
@@ -84,7 +92,7 @@
 - Add two public diagnostic regressions covering invalid and valid IDs, boundary lengths, directory-shaped prerequisites and recovery after restoring files. Local CLI suite: 69 passed. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed; see the verification ledger.
 - These checks do not validate lockfile contents, every configuration field, linker usability, signing or production readiness. stat follows symlinks; no new malicious-filesystem-race guarantee is introduced.
 
-# v0.29.12 — Bounded release diagnostics (2026-10-31)
+# v0.29.12 â€” Bounded release diagnostics (2026-10-31)
 
 - Correct the release executor's claimed 1 MiB diagnostic-line limit: measure UTF-8 bytes rather than JavaScript character count, and enforce before parsing complete lines as well as on pending unterminated input.
 - Reproduce acceptance of an oversized Unicode diagnostic through the public release execution boundary before patching. On overflow stop the owned tool and refuse downstream UI/bundle work.
@@ -92,7 +100,7 @@
 - Make portable CI discover all CLI *.test.js files rather than maintaining a fixed filename list, so new regression files are included.
 - Local CLI suite: 67 passed. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed, including all five new release tests; see the verification ledger. This bounds individual retained diagnostic lines, not total tool output, whole-process memory or arbitrary trusted compiler/build-script side effects.
 
-# v0.29.11 — Cargo-reported release artifact (2026-10-31)
+# v0.29.11 â€” Cargo-reported release artifact (2026-10-31)
 
 - Fix release bundling selecting a stale src-core/target/release executable when a Cargo build target places the new artifact under a target-triple directory. Explicit target-dir alone did not prevent this.
 - Parse the current successful Cargo build's compiler-artifact output and use its reported aegis-core binary for bundle/package execution. Fail closed if no core artifact is reported; do not fall back to an old path. Render compiler diagnostics and bound pending diagnostic lines.
@@ -100,28 +108,28 @@
 - Read-only plans retain the default predicted path but mark artifactSelection and the build/bundle command flags describing dynamic selection. Cross-compilation is not new supported packaging: a non-runnable selected binary must fail execution rather than run a stale host binary.
 - Local CLI tests: 62 passed. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed; see the verification ledger. Publisher-signing, physical-device and independent-audit gates remain open.
 
-# v0.29.10 — Consistent internal-name listings (2026-10-31)
+# v0.29.10 â€” Consistent internal-name listings (2026-10-31)
 
 - Apply the same ASCII case-insensitive .aegis- prefix policy to sandbox directory listings as to file access. Previously externally seeded mixed-case internal files/directories could appear in a listing even though v0.29.9 correctly rejected their read/write paths.
 - Reproduce through public IPC before the patch; add a real temporary-filesystem regression for lower/upper/mixed-case files, an internal directory and ordinary visible names.
 - Preserve sorted output, the 4096 scanned-entry cap (including filtered entries), and error propagation. This is response consistency hardening, not a newly demonstrated vault-access bypass or a filesystem-race fix.
 - Local Windows Rust suite: 99 passed, one ignored. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed; see the verification ledger. Physical-device, publisher-signing and independent-audit gates remain open.
 
-# v0.29.9 — Reserved storage name protection (2026-10-30)
+# v0.29.9 â€” Reserved storage name protection (2026-10-30)
 
 - Reject ASCII case variants of the internal .aegis- prefix in every sandbox path component on all platforms. On case-insensitive filesystems, the former case-sensitive check let generic file writes address the internal write-lock filename through a casing alias.
 - Confirmed the reserved-name write bypass through public IPC on an owned Windows temporary profile before patching. Concurrent data corruption/lock-serialization exploitation was not demonstrated.
 - Add a public IPC regression covering mixed-case internal read/write denials, nested paths and continued access to ordinary files. Local Windows Rust suite: 98 passed, one ignored. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed; see the verification ledger.
 - Record the bounded project AI review; this does not complete the external independent audit, publisher signing or physical-device gates.
 
-# v0.29.8 — Bounded filesystem listings and SDK contracts (2026-10-30)
+# v0.29.8 â€” Bounded filesystem listings and SDK contracts (2026-10-30)
 
 - Fix fs_list_sandbox reporting directory read failures as successful empty lists. Enumeration/entry metadata errors now propagate without partial successful data.
 - Limit a listing to 4096 scanned directory entries, counting filtered names too; fail explicitly on overflow and sort successful public entries by name. No silent truncation or pagination is introduced.
 - Validate filesystem read/write/list data through the shared SDK path, including nonnegative safe byte counts, valid empty content/list results and a 4096-entry array limit.
 - Add two public Rust regressions for real directory failure and scan-limit/retry/order, three SDK response-fault cases (nineteen total), and actual-core UTF-8 file roundtrip/receipt/sorted-list checks. Exact-source three-OS portable/native and Windows installer/upgrade/data-preservation/real-lock checks passed; see the verification ledger.
 
-# v0.29.7 — Consistent developer toolchain (2026-10-30)
+# v0.29.7 â€” Consistent developer toolchain (2026-10-30)
 
 - Add read-only `--print-plan` to build/build-release/bundle. Release commands share locked Cargo builds, an explicit local target directory and the exact compiled core for bundling. Package uses the same plan.
 - Resolve npm-cli.js beside the active Node runtime and execute it directly with Node rather than selecting PATH npm/npm.cmd through a Windows shell. Doctor reports those same tool choices; debug development shares Cargo selection and honors CARGO_HOME.
@@ -129,56 +137,56 @@
 - Prevent diagnostic version queries from implicitly installing a missing Rustup toolchain using RUSTUP_AUTO_INSTALL=0; a real Rustup proxy/owned-loopback regression reproduced distribution requests before the fix.
 - Add five public plan/diagnostic regressions. Existing both-template build/package and development lifecycle acceptance cover execution. Exact-source three-OS portable/native and Windows installer checks passed; see the verification ledger.
 
-# v0.29.6 — Vanilla TypeScript starter (2026-10-29)
+# v0.29.6 â€” Vanilla TypeScript starter (2026-10-29)
 
 - Add `create <new-directory> --template=vanilla` alongside the existing React default/explicit option. The DOM-based starter uses the same typed SDK/security defaults without a React renderer in its frontend bundle. Shared development dependencies remain locked and include React tooling.
 - Generate application-specific HTML titles and starter entry paths. Reject unsupported/repeated options before output; validate malformed source configuration before creating partial projects. General filesystem failures are not made transactional.
 - Extend three-OS clean-project acceptance to locked Rust/UI builds and verified portable packages for both templates, with a 64 KiB raw-JavaScript budget for the stock vanilla starter. This is a fixture asset budget, not whole-app or physical-device performance evidence.
 - Four new public create regressions cover vanilla output, malformed source config, invalid template options and reusing a generated vanilla project to create either template. Exact-source three-OS portable/native and Windows installer acceptance passed; stock vanilla JS measured 13644 raw bytes on each runner. See the verification ledger.
 
-# v0.29.5 — Vault SDK data contracts (2026-10-29)
+# v0.29.5 â€” Vault SDK data contracts (2026-10-29)
 
 - Validate vault write receipts, session credentials and ordered positive integer timeouts before exposing typed success. Keep process-handshake credentials distinct from returned vault-session tokens.
 - Require locked:true on successful lock acknowledgements and integrityVerified:true plus string content on successful decrypt/session reads. Reject malformed data without including its plaintext in returned failures. Empty plaintext remains valid.
 - Four public SDK regression cases reproduced false/malformed success paths before fixes. The suite now has sixteen cases; actual-core SDK acceptance includes vault write/decrypt/lock plus retained-session success or rejection according to platform lifecycle availability.
 - Exact-source three-OS portable/native and Windows installer checks passed; see the verification ledger. These are response-contract checks, not cryptographic verification by the client, server-operation rollback, browser-memory zeroization or production certification.
 
-# v0.29.4 — Runtime SDK data contracts (2026-10-29)
+# v0.29.4 â€” Runtime SDK data contracts (2026-10-29)
 
 - Validate successful platform_info, platform_directories and get_security_status response data before returning success through typed helpers or raw invoke. Invalid payloads become INVALID_RESPONSE without returning invalid data.
 - Require the documented core fields and boolean capability flags without coercion. Preserve false values, Unicode directory strings and additive unknown fields. Optional known flags must have the correct type when present; existing backend denials remain unchanged.
 - Add three real-loopback malformed-data regressions (twelve SDK cases total) and extend actual-core acceptance to all three covered commands. This validates runtime shapes, not the truth of security declarations or authority/safety of paths.
 - Exact-source three-OS portable/native and Windows installer checks passed for source 244655a; the cancelled macOS portable job passed on rerun. See the verification ledger. Other command data schemas, browser/device acceptance, signing and independent audit remain open.
 
-# v0.29.3 — Bounded SDK responses and shared initialization (2026-10-29)
+# v0.29.3 â€” Bounded SDK responses and shared initialization (2026-10-29)
 
-- Bound actual received JSON body bytes before decoding/parsing: 4 KiB handshake/rate-limit bodies and configurable IPC success bodies (16 MiB default, 1 KiB–64 MiB allowed). Oversized responses return RESPONSE_TOO_LARGE and abort the owned fetch.
+- Bound actual received JSON body bytes before decoding/parsing: 4 KiB handshake/rate-limit bodies and configurable IPC success bodies (16 MiB default, 1 KiBâ€“64 MiB allowed). Oversized responses return RESPONSE_TOO_LARGE and abort the owned fetch.
 - Coalesce concurrent init/invoke calls into one pending handshake per client. Explicit refresh clears the cached token before joining callers; failed handshakes send no dependent commands and permit a fresh shared retry. Already-issued commands are not cancelled.
 - Use a growing bounded byte buffer instead of retaining arbitrarily many chunks. This limits response-byte accumulation, not total JS/browser memory or server-side effects.
 - Add five real-loopback SDK regressions, bringing the fault suite to nine. Exact-source portable/native checks on all three OSes and Windows installer acceptance passed; see the verification ledger. Nested data schemas, browser/device acceptance and independent audit remain open.
 
-# v0.29.2 — SDK transport contract (2026-10-29)
+# v0.29.2 â€” SDK transport contract (2026-10-29)
 
 - Validate the core handshake token before retaining it; failed explicit reinitialization clears cached state. Reject HTTP failure statuses, mismatched request IDs and malformed IPC envelopes/JSON instead of accepting them as success.
 - Export configurable `AegisBridge` instances with 15-second default per-request deadlines covering response bodies, plus additive local `errorCode` values. No automatic replay after timeout; server completion may be unknown.
 - Preserve string-valued rate-limit errors even with malformed error fields. Correct the legacy header that advertised unavailable providers as implemented.
 - Add four real-loopback TypeScript SDK fixtures for invalid handshake/envelopes/status/JSON, stalled bodies/retry and rate-limit errors, alongside the actual-core fixture on all OS runners. Exact-source portable/native checks on all three OSes and Windows installer acceptance passed; see the verification ledger. Nested command data schemas, response-byte limits and concurrent init ordering remain open.
 
-# v0.29.1 — Plugin registration contract (2026-10-29)
+# v0.29.1 â€” Plugin registration contract (2026-10-29)
 
 - Replace silent native-handler overwrites with `RegistrationError::DuplicateName`, preserving the original registration and its disabled state.
 - Validate bounded descriptor names/version/author/description and supported unique grants before publication. Limit registry size to 128 including built-ins.
 - `register` and `register_builtin_plugins` now return `Result`; application startup propagates built-in registration errors. Native callers must handle errors. Faulted handlers require process restart; registration no longer resets them.
 - Three public Rust regressions reproduced duplicate overwrite, invalid-descriptor publication and unlimited registration before fixes. Exact-source three-OS portable/native and Windows installer checks passed; see the verification ledger. Native handlers remain trusted host code with no CPU/memory sandbox.
 
-# v0.29.0 — Developer workflow preview (2026-10-29)
+# v0.29.0 â€” Developer workflow preview (2026-10-29)
 
 - Add read-only `doctor [--json]` prerequisite diagnostics with actionable failures.
 - Add `package [--print-plan]`: locked Rust build, UI build, portable bundling, bounded integrity inventory and immediate verification. Pin the Cargo target directory to avoid packaging a stale binary when Cargo configuration redirects output. Refuse existing bundle output before compilation.
 - Extend clean generated-project acceptance from UI-only compilation to actual Rust/UI release builds and verified portable packages on Windows, Linux and macOS.
 - Exact-source portable/native checks on all three OSes and Windows installer acceptance passed; see the verification ledger. This is not signing, an installer or a security certification; stable API/plugin contracts and physical-device/audit gates remain open.
 
-# 📜 Aegis Desktop Changelog & Release Notes
+# ðŸ“œ Aegis Desktop Changelog & Release Notes
 
 All notable changes, new features, security updates, and bug fixes for **Aegis Desktop** will be documented in this file.
 
@@ -485,20 +493,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## 🔮 [Upcoming Roadmap] - v0.24.0
+## ðŸ”® [Upcoming Roadmap] - v0.24.0
 > **Target Release:** Q1 2027
 
-### 🚀 Planned Features & Enhancements
+### ðŸš€ Planned Features & Enhancements
 - [ ] **Decentralized Zero-Knowledge Identity (DID/VC):** Verifiable credentials and zero-knowledge selective disclosure for user profiles.
 - [ ] **Quantum-Resistant Lattice Cryptography:** Post-quantum ML-KEM (Kyber) and ML-DSA (Dilithium) key exchange and assertions.
 - [ ] **Automated Cross-Enclave Memory Sanitization:** Ephemeral memory wipe handlers using zeroize and guard-page protection.
 
 ---
 
-## 🚀 [v0.18.0] - 2026-10-26
+## ðŸš€ [v0.18.0] - 2026-10-26
 > **The Automated Multi-OS Packaging Pipeline, Distributed P2P Plugin Marketplace & HSM PKCS#11 Enclave Release**
 
-### ✨ Highlights & New Features
+### âœ¨ Highlights & New Features
 - **Automated Multi-OS Packaging Pipeline (`src-core/src/package_pipeline.rs`):**
   - One-click multi-platform release compiler supporting Windows, macOS, and Linux from a single configuration.
   - **macOS Bundler:** Automatic `.app` folder generation, bundle layout (`Contents/MacOS`, `Contents/Resources`), dynamic `Info.plist` creation, and `hdiutil` Apple DMG packaging script generation.
@@ -522,28 +530,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - IPC commands: `hsm_slots`, `hsm_login`, `hsm_logout`, `hsm_keys`, `hsm_sign`.
   - Full React UI panel: Connected PKCS#11 slot browser, token PIN session unlocker, on-chip key inspector, and hardware signature generator.
 
-### 🔐 Security & Privacy Improvements
+### ðŸ”� Security & Privacy Improvements
 - Multi-OS packages staged with SHA-256 cryptographic manifest digests preventing supply-chain tampering.
 - Decentralized P2P plugin marketplace enforces m-of-n multi-sig consensus, eliminating single-point-of-failure vendor compromise.
 - HSM PKCS#11 architecture ensures master signing and encryption keys never touch host OS RAM or disk.
 
-### 🛠️ Internal Changes
-- `src-core/src/package_pipeline.rs` — implemented `MultiOsPipeline`, `TargetPlatform`, and bundle generators for macOS, Linux, Debian, Windows.
-- `src-core/src/p2p_market.rs` — implemented `P2PPluginMarketplace`, IPFS CID validation, and DID multi-sig verification.
-- `src-core/src/security/hsm_pkcs11.rs` — implemented `HsmPkcs11Engine`, PKCS#11 slot registry, PIN login, and on-chip signing.
-- `src-core/src/security/mod.rs` — exported `HsmPkcs11Engine`.
-- `src-core/src/ipc/router.rs` — wired 8 new v0.18 IPC routes (`package_pipeline_stage`, `p2p_market_list`, `p2p_market_sign`, `p2p_market_install`, `hsm_slots`, `hsm_login`, `hsm_logout`, `hsm_keys`, `hsm_sign`).
-- `src-core/src/main.rs` — initialized `MultiOsPipeline`, `P2PPluginMarketplace`, and `HsmPkcs11Engine`.
-- `src-ui/src/aegis-bridge.ts` — updated header to v0.18; added 8 typed bridge methods.
-- `src-ui/src/App.tsx` — added Multi-OS Pipeline, P2P Marketplace, and HSM PKCS#11 sidebar navigation and tab panels.
-- `src-core/Cargo.toml` & `package.json` — version bumped to `0.18.0`.
+### ðŸ› ï¸� Internal Changes
+- `src-core/src/package_pipeline.rs` â€” implemented `MultiOsPipeline`, `TargetPlatform`, and bundle generators for macOS, Linux, Debian, Windows.
+- `src-core/src/p2p_market.rs` â€” implemented `P2PPluginMarketplace`, IPFS CID validation, and DID multi-sig verification.
+- `src-core/src/security/hsm_pkcs11.rs` â€” implemented `HsmPkcs11Engine`, PKCS#11 slot registry, PIN login, and on-chip signing.
+- `src-core/src/security/mod.rs` â€” exported `HsmPkcs11Engine`.
+- `src-core/src/ipc/router.rs` â€” wired 8 new v0.18 IPC routes (`package_pipeline_stage`, `p2p_market_list`, `p2p_market_sign`, `p2p_market_install`, `hsm_slots`, `hsm_login`, `hsm_logout`, `hsm_keys`, `hsm_sign`).
+- `src-core/src/main.rs` â€” initialized `MultiOsPipeline`, `P2PPluginMarketplace`, and `HsmPkcs11Engine`.
+- `src-ui/src/aegis-bridge.ts` â€” updated header to v0.18; added 8 typed bridge methods.
+- `src-ui/src/App.tsx` â€” added Multi-OS Pipeline, P2P Marketplace, and HSM PKCS#11 sidebar navigation and tab panels.
+- `src-core/Cargo.toml` & `package.json` â€” version bumped to `0.18.0`.
 
 ---
 
-## 🚀 [v0.17.0] - 2026-10-25
+## ðŸš€ [v0.17.0] - 2026-10-25
 > **The Native Platform (WebKit/Tao), TPM 2.0 Remote Attestation & GPU-Accelerated Wasm JIT Release**
 
-### ✨ Highlights & New Features
+### âœ¨ Highlights & New Features
 - **macOS & Linux Native WebKit Integration (`src-core/src/window.rs`):**
   - Full native webview integration via `wry` (0.47) and `tao` (0.30), replacing the Edge App Mode fallback on non-Windows platforms.
   - Multi-engine runtime detection reporting platform type, engine flavor (`WebKitGTK`, `WebKit Cocoa`, `WebView2`), Tao event-loop status, and native decoration capability.
@@ -558,31 +566,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **GPU-Accelerated Wasm JIT Compiler (`src-core/src/wasm.rs`):**
   - Dual-tier execution engine with Interpreter (Tier 1) and WGPU Compute Shader JIT (Tier 2).
   - Wasm bytecode parsing and ahead-of-time WGSL compute shader translation for vector/matrix SIMD and parallel loops.
-  - High-performance execution delivering **12x–20x compute speedup** for parallel numerical workloads.
+  - High-performance execution delivering **12xâ€“20x compute speedup** for parallel numerical workloads.
   - IPC commands: `wasm_execute_gpu`, `wasm_execute_tier`.
   - WGPU JIT Compute Studio tab in UI with side-by-side Tier 1 vs Tier 2 execution benchmarking, speedup metrics, and WGSL shader view.
 
-### 🔐 Security & Privacy Improvements
+### ðŸ”� Security & Privacy Improvements
 - Hardware-rooted remote attestation guarantees code integrity against compromised kernel/firmware states.
 - Egress network policy denies zero-trust enterprise connections unless valid TPM quote with current PCR digests is presented.
 - GPU JIT executes in restricted compute shaders with strict bounds-checking and memory isolation.
 
-### 🛠️ Internal Changes
-- `src-core/src/security/attestation.rs` — implemented `TpmAttestationEngine`, PCR banks, AIK quotes, and proof verification.
-- `src-core/src/wasm.rs` — upgraded `WasmVm` with `WgpuJitCompiler`, `ExecutionTier`, and WGSL code generation.
-- `src-core/src/network.rs` — integrated remote attestation proof evaluation into `NetworkPolicyEngine`.
-- `src-core/src/window.rs` — added `get_runtime_info()` returning platform-specific webview engine metadata.
-- `src-core/src/ipc/router.rs` — registered 6 new v0.17 IPC routes (`window_runtime_info`, `tpm_measurements`, `tpm_generate_quote`, `tpm_verify_quote`, `network_evaluate_attestation`, `wasm_execute_gpu`, `wasm_execute_tier`).
-- `src-ui/src/aegis-bridge.ts` — added typed bridge methods for all v0.17 features.
-- `src-ui/src/App.tsx` — added TPM Attestation and WGPU JIT Studio tabs plus WebKit Runtime Card.
-- `Cargo.toml` & `package.json` — version bumped to `0.17.0`.
+### ðŸ› ï¸� Internal Changes
+- `src-core/src/security/attestation.rs` â€” implemented `TpmAttestationEngine`, PCR banks, AIK quotes, and proof verification.
+- `src-core/src/wasm.rs` â€” upgraded `WasmVm` with `WgpuJitCompiler`, `ExecutionTier`, and WGSL code generation.
+- `src-core/src/network.rs` â€” integrated remote attestation proof evaluation into `NetworkPolicyEngine`.
+- `src-core/src/window.rs` â€” added `get_runtime_info()` returning platform-specific webview engine metadata.
+- `src-core/src/ipc/router.rs` â€” registered 6 new v0.17 IPC routes (`window_runtime_info`, `tpm_measurements`, `tpm_generate_quote`, `tpm_verify_quote`, `network_evaluate_attestation`, `wasm_execute_gpu`, `wasm_execute_tier`).
+- `src-ui/src/aegis-bridge.ts` â€” added typed bridge methods for all v0.17 features.
+- `src-ui/src/App.tsx` â€” added TPM Attestation and WGPU JIT Studio tabs plus WebKit Runtime Card.
+- `Cargo.toml` & `package.json` â€” version bumped to `0.17.0`.
 
 ---
 
-## 🚀 [v0.16.0] - 2026-10-25
+## ðŸš€ [v0.16.0] - 2026-10-25
 > **The Zero-Knowledge Secrets Manager, Network Firewall Policy Engine & Plugin Provenance Release**
 
-### ✨ Highlights & New Features
+### âœ¨ Highlights & New Features
 - **Zero-Knowledge Secrets Manager (`src-core/src/secrets.rs`):**
   - Centralized memory-hard key derivation (1500 rounds) using per-secret salts and master passphrases.
   - In-memory XOR transformation & digest fingerprinting; secrets never touch unmanaged buffers or disk plaintext.
@@ -601,38 +609,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - IPC commands: `plugin_signers`, `plugin_verify_manifest`.
   - Full React UI panel with interactive manifest verifier and trusted authority registry.
 
-### 🔐 Security & Privacy Improvements
+### ðŸ”� Security & Privacy Improvements
 - All v0.16 commands protected by cryptographic session nonces, capability manifests, and rate limiters.
 - Secrets manager eliminates plaintext secret leakage into process dumps and logs.
 - Network policy engine prevents rogue plugins or malicious scripts from establishing unauthorized outbound sockets.
 
-### 🛠️ Internal Changes
-- `src-core/src/security/mod.rs` — exported `SignatureVerifier`.
-- `src-core/src/ipc/router.rs` — wired 7 new IPC routes (`secrets_list`, `secrets_store`, `secrets_retrieve`, `firewall_rules`, `firewall_evaluate`, `plugin_signers`, `plugin_verify_manifest`).
-- `src-core/src/main.rs` — initialized `SecretManager`, `NetworkPolicyEngine`, and `SignatureVerifier`.
-- `src-ui/src/aegis-bridge.ts` — updated header to v0.16; added 7 new typed bridge methods.
-- `src-ui/src/App.tsx` — updated header badge to `v0.16 BETA`; added sidebar items and 3 comprehensive tab panels.
-- `Cargo.toml` & `package.json` — version bumped to `0.16.0`.
+### ðŸ› ï¸� Internal Changes
+- `src-core/src/security/mod.rs` â€” exported `SignatureVerifier`.
+- `src-core/src/ipc/router.rs` â€” wired 7 new IPC routes (`secrets_list`, `secrets_store`, `secrets_retrieve`, `firewall_rules`, `firewall_evaluate`, `plugin_signers`, `plugin_verify_manifest`).
+- `src-core/src/main.rs` â€” initialized `SecretManager`, `NetworkPolicyEngine`, and `SignatureVerifier`.
+- `src-ui/src/aegis-bridge.ts` â€” updated header to v0.16; added 7 new typed bridge methods.
+- `src-ui/src/App.tsx` â€” updated header badge to `v0.16 BETA`; added sidebar items and 3 comprehensive tab panels.
+- `Cargo.toml` & `package.json` â€” version bumped to `0.16.0`.
 
 ---
 
-## 🚀 [v0.15.0] - 2026-10-25
+## ðŸš€ [v0.15.0] - 2026-10-25
 > **The Biometric Enclave, Encrypted IPC Stream & Local Crash Reporter Release**
 
-### ✨ Highlights & New Features
+### âœ¨ Highlights & New Features
 - **Biometric Enclave (`src-core/src/security/enclave.rs`):**
   - Hardware-bound platform authentication via Windows Hello (TPM) and Apple Secure Enclave (SEP).
-  - Private keys are permanently sealed inside the TEE — they never enter user-space memory.
+  - Private keys are permanently sealed inside the TEE â€” they never enter user-space memory.
   - IPC commands: `enclave_status`, `enclave_authenticate`.
   - Full React UI panel with live status query and biometric challenge trigger.
 - **Encrypted IPC Stream (`src-core/src/ipc/encrypted_stream.rs`):**
   - Symmetric session-key encryption derived from the per-handshake nonce.
   - Every payload carries an HMAC-SHA256 authentication tag; any bit-flip causes an immediate hard rejection.
   - IPC commands: `stream_encrypt`, `stream_decrypt`.
-  - Full React UI panel demonstrating the encrypt → transmit → verify → decrypt round-trip.
+  - Full React UI panel demonstrating the encrypt â†’ transmit â†’ verify â†’ decrypt round-trip.
 - **Local Crash Reporter (`src-core/src/crash.rs`):**
   - Air-gapped, zero-telemetry diagnostic capture of Rust panics and assertion violations.
-  - Persists structured reports to `./sandbox/crashes/` — **no outbound network calls ever**.
+  - Persists structured reports to `./sandbox/crashes/` â€” **no outbound network calls ever**.
   - IPC commands: `crash_list`, `crash_record`.
   - Full React UI panel with kind selector, message editor, and scrollable crash log viewer.
 - **Agent Skills Integration (`.agents/skills/`):**
@@ -640,26 +648,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - v0.15.0 architectural decisions formally recorded in `docs/adr/0001-enclave-encrypted-ipc-crash-reporter.md`.
   - Domain vocabulary expanded in `GLOSSARY.md` (Biometric Enclave, Encrypted IPC Stream, Local Crash Reporter, Session Nonce).
 
-### 🔐 Security Improvements
+### ðŸ”� Security Improvements
 - All v0.15 subsystems pass through the existing Zero-Trust capability engine (nonce verification + rate limiter).
 - `BiometricEnclave` uses `Mutex`-protected state to prevent concurrent authentication races.
 - `CrashReporter` writes to a sandboxed subdirectory, preventing crash logs from leaking outside the app boundary.
 
-### 🛠️ Internal Changes
-- `src-core/src/security/mod.rs` — exported `BiometricEnclave`.
-- `src-core/src/ipc/mod.rs` — exported `EncryptedStream`.
-- `src-core/src/ipc/router.rs` — registered 6 new IPC routes.
-- `src-core/src/main.rs` — initialized `BiometricEnclave` and `CrashReporter` singletons.
-- `src-ui/src/aegis-bridge.ts` — version bumped to v0.15; 6 new typed client methods added.
-- `src-ui/src/App.tsx` — 3 new tab panels; header badge updated to `v0.15 BETA`.
-- `Cargo.toml` + `package.json` — version bumped to `0.15.0`.
+### ðŸ› ï¸� Internal Changes
+- `src-core/src/security/mod.rs` â€” exported `BiometricEnclave`.
+- `src-core/src/ipc/mod.rs` â€” exported `EncryptedStream`.
+- `src-core/src/ipc/router.rs` â€” registered 6 new IPC routes.
+- `src-core/src/main.rs` â€” initialized `BiometricEnclave` and `CrashReporter` singletons.
+- `src-ui/src/aegis-bridge.ts` â€” version bumped to v0.15; 6 new typed client methods added.
+- `src-ui/src/App.tsx` â€” 3 new tab panels; header badge updated to `v0.15 BETA`.
+- `Cargo.toml` + `package.json` â€” version bumped to `0.15.0`.
 
 ---
 
-## 🚀 [v0.14.0] - 2026-10-25
+## ðŸš€ [v0.14.0] - 2026-10-25
 > **The Hardware Security Keys (FIDO2), Profile Isolation & Wasm Virtual Machine Release**
 
-### ✨ Highlights & New Features
+### âœ¨ Highlights & New Features
 - **Hardware Security Key & FIDO2 / WebAuthn Integration (`src-core/src/security/hardware_key.rs`):**
   - Physical security key support compliant with CTAP2.1 & WebAuthn Level 3 specifications.
   - Challenge nonce generation (`hardware_key_challenge`) with SHA-256 seed rotation.
@@ -670,7 +678,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - Each profile enforces a dedicated directory boundary (`./sandbox_<id>/`) and quota caps.
   - Dynamic profile switching and provisioning (`profile_list`, `profile_switch`, `profile_create`).
 - **WebAssembly (Wasm) Plugin Virtual Machine (`src-core/src/wasm.rs`):**
-  - High-speed, memory-capped (8–16MB) isolated guest execution sandbox.
+  - High-speed, memory-capped (8â€“16MB) isolated guest execution sandbox.
   - Strict instruction gas metering to prevent infinite loops and denial-of-service.
   - Built-in guest modules: `wasm-crypto-accelerator` (vectorized hashing) and `wasm-schema-validator` (strict JSON validator).
   - New IPC commands: `wasm_list` and `wasm_execute`.
@@ -678,23 +686,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - 3 new interactive tabs: **Hardware Key (FIDO2)**, **Profile Isolation**, and **Wasm VM Sandbox**.
   - TypeScript client helpers: `hardwareKeyList()`, `hardwareKeyChallenge()`, `hardwareKeyVerify()`, `profileList()`, `profileSwitch()`, `profileCreate()`, `wasmList()`, `wasmExecute()`.
 
-### 🛡️ Security Hardening
+### ðŸ›¡ï¸� Security Hardening
 - Hardware key authentication requires user presence touch acknowledgment and PIN verification.
 - Wasm VM enforces strict guest memory caps and import whitelisting, preventing guest breakouts.
 - Isolated profiles strictly forbid directory climbing into peer profile storage.
 
 ---
 
-## 🚀 [v0.13.0] - 2026-10-25
+## ðŸš€ [v0.13.0] - 2026-10-25
 > **The Extensibility, Notifications, Air-Gapped Updater & Capability Matrix Release**
 
-### ✨ Highlights & New Features
+### âœ¨ Highlights & New Features
 - **Extensible Rust Plugin Engine (`src-core/src/plugin.rs`):**
   - Thread-safe `PluginRegistry` allows registration of memory-safe Rust closures with fine-grained capability descriptors.
   - Three out-of-the-box native built-in plugins:
-    - `system_memory` — RAM utilization, total capacity, and paging telemetry.
-    - `file_checksum` — Streaming SHA-256 integrity verification inside the sandbox.
-    - `process_uptime` — Host OS uptime and Aegis daemon process metrics.
+    - `system_memory` â€” RAM utilization, total capacity, and paging telemetry.
+    - `file_checksum` â€” Streaming SHA-256 integrity verification inside the sandbox.
+    - `process_uptime` â€” Host OS uptime and Aegis daemon process metrics.
   - New IPC commands: `plugin_list` and `plugin_dispatch`.
 - **System Tray & Native OS Notifications (`src-core/src/tray.rs`):**
   - Zero-dependency OS notification dispatch using native subsystems:
@@ -717,57 +725,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - 4 new interactive tabs: **Plugin Engine**, **Tray & Notifications**, **Permission Manager**, and **Auto-Updater**.
   - TypeScript client helpers: `pluginList()`, `pluginDispatch()`, `notifySend()`, `trayStatus()`, `updaterStatus()`, `updaterCheck()`, `updaterVerify()`, `permissionsStatus()`.
 
-### 🛡️ Security
+### ðŸ›¡ï¸� Security
 - All notification parameters are strictly sanitized against shell escaping.
 - Updater forbids automatic execution of unverified update files.
 - Plugin handlers execute directly in Rust closures with zero shell breakout risk.
 
 ---
 
-## 🚀 [v0.12.0] - 2026-10-25
+## ðŸš€ [v0.12.0] - 2026-10-25
 > **The Standalone Bundler, Installer & Multi-Window Native API Release**
 
-### ✨ Highlights & New Features
+### âœ¨ Highlights & New Features
 - **One-Click Standalone Native `.exe` Bundler (`src-core/src/bundler.rs`):**
   - New `BundleEngine` module packages the compiled Rust binary + React `dist/` + `sandbox/` + `aegis.config.json` into a self-contained portable `dist-bundle/<AppName>/` directory.
-  - Auto-generates a Windows **InnoSetup Installer Script** (`.iss`) for producing a native `Setup.exe` installer — no Rust or Node.js required on the end-user machine.
+  - Auto-generates a Windows **InnoSetup Installer Script** (`.iss`) for producing a native `Setup.exe` installer â€” no Rust or Node.js required on the end-user machine.
   - Auto-generates a Windows `.bat` launcher script for running the app directly.
   - New CLI flag: `cargo run -- --bundle` to trigger the full packaging pipeline.
-  - New npm script: `npm run bundle` — builds Rust release binary + Vite frontend + runs bundler in one command.
+  - New npm script: `npm run bundle` â€” builds Rust release binary + Vite frontend + runs bundler in one command.
 - **Enhanced Multi-Window Manager (`src-core/src/window.rs`):**
   - Added `WindowRecord` registry for tracking all spawned secondary windows.
   - New `WindowConfig` fields: `always_on_top` and `kiosk` mode support.
   - Cross-platform launchers for Windows (Edge App Mode), macOS (Safari/open), and Linux (xdg-open).
   - Window ID generation for lifecycle management.
 - **New IPC Commands (v0.12):**
-  - `window_list` — Returns multi-window capability manifest and platform hint.
-  - `bundle_status` — Queries the bundler engine state, existing bundles, and supported targets from inside the app.
+  - `window_list` â€” Returns multi-window capability manifest and platform hint.
+  - `bundle_status` â€” Queries the bundler engine state, existing bundles, and supported targets from inside the app.
 - **New "Bundler & Packaging" UI Tab (React Frontend):**
   - 3-step visual bundling guide with interactive code blocks.
   - Live bundler engine status card (queries `bundle_status` IPC command).
   - InnoSetup installer documentation panel with bundle output structure preview.
   - Direct link to Inno Setup Compiler download.
 - **`aegis-bridge.ts` v0.12 Updates:**
-  - Added `call()` — a generic pass-through method for invoking any custom IPC command.
-  - Added `getWindowCapabilities()` — queries multi-window support manifest.
+  - Added `call()` â€” a generic pass-through method for invoking any custom IPC command.
+  - Added `getWindowCapabilities()` â€” queries multi-window support manifest.
   - Updated `SecurityStatus` type with `bundlerEngineActive` and `multiWindowApiActive` fields.
 
-### 🛡️ Security
-- Bundler strictly never exposes host system paths — all bundle paths are derived relative to `project_root`.
-- InnoSetup script uses `PrivilegesRequired=lowest` — no admin escalation required.
+### ðŸ›¡ï¸� Security
+- Bundler strictly never exposes host system paths â€” all bundle paths are derived relative to `project_root`.
+- InnoSetup script uses `PrivilegesRequired=lowest` â€” no admin escalation required.
 - Bundler output includes the full `aegis.config.json` capability policy, preserving Zero-Trust settings in deployed apps.
 
-### 🐛 Bug Fixes & Improvements
+### ðŸ�› Bug Fixes & Improvements
 - `WindowConfig` now includes `always_on_top` and `kiosk` with proper `#[serde(default)]` annotations.
 - `main.rs` now prints `v0.12.0` in the startup banner.
 - `package.json` bumped to `0.12.0` with new `build:release` and `bundle` npm scripts.
 
 ---
 
-## 🚀 [v0.11.0] - 2026-10-25
+## ðŸš€ [v0.11.0] - 2026-10-25
 > **The Cryptographic Hardening, Rate Limiting & Privacy Shield Release**
 
-### ✨ Highlights & New Features
+### âœ¨ Highlights & New Features
 - **Zero-Knowledge Encrypted Vault at Rest (`src-core/src/security/vault.rs`):**
   - Symmetric keystream encryption derived from user passphrases via **10,000 PBKDF2-style SHA-256 iterations**.
   - **HMAC-SHA256 Authentication Tags:** Detects and prevents file tampering, bit flips, or unauthorized file modifications.
@@ -792,10 +800,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## 🚀 [v0.10.0] - 2026-10-25
+## ðŸš€ [v0.10.0] - 2026-10-25
 > **Initial Public Open-Source Release**
 
-### ✨ Highlights & New Features
+### âœ¨ Highlights & New Features
 - **High-Performance Rust Core Engine (`src-core/`):**
   - Ultra-lightweight binary (~8MB) and low memory usage (<50MB RAM).
   - High-speed HTTP loopback IPC server running on port `48291`.
@@ -816,19 +824,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Automated Security Penetration Testing Suite:**
   - `npm run test:security` CLI script testing attack vectors against the running core.
 
-### 🛡️ Security Hardening
+### ðŸ›¡ï¸� Security Hardening
 - Enforced Content-Security-Policy (CSP) headers across all IPC responses.
 - Implemented isolated `./sandbox/` root directory to prevent access to sensitive host directories.
 - Added responsible disclosure policy in [SECURITY.md](SECURITY.md).
 
-### 🐛 Bug Fixes & Refactoring
+### ðŸ�› Bug Fixes & Refactoring
 - Added complete `.gitignore` preventing build artifacts (`target/`, `node_modules/`) from bloating git repositories.
 - Updated `sandbox/.gitkeep` ensuring git clones preserve the sandboxed storage root.
 - Cleaned up npm scripts and introduced `npm run setup` for one-step installation.
 
 ---
 
-## 🏷️ Version History Summary
+## ðŸ�·ï¸� Version History Summary
 
 | Version | Release Date | Key Changes | Stability |
 | :---: | :---: | :--- | :---: |
@@ -841,5 +849,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-> 💡 **Have a feature request or found a bug?**  
+> ðŸ’¡ **Have a feature request or found a bug?**  
 > Feel free to [Open an Issue](https://github.com/charitha-only/aegis-desktop/issues) or submit a Pull Request following our [Contributing Guide](CONTRIBUTING.md).

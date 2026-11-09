@@ -64,12 +64,30 @@ if ($confirm -notmatch "^[Yy]$") {
     exit 0
 }
 
-# ── 5. Update package.json ───────────────────────────────────
-Write-Host "`n📝 Updating package.json..." -ForegroundColor Cyan
+# ── 5. Update version files ──────────────────────────────────
+Write-Host "`n📝 Updating version in project files..." -ForegroundColor Cyan
 $pkgRaw = Get-Content $pkgPath -Raw
 $pkgRaw = $pkgRaw -replace '"version": "' + [regex]::Escape($currentVersion) + '"', '"version": "' + $newVersion + '"'
 Set-Content -Path $pkgPath -Value $pkgRaw -NoNewline
 Write-Host "   ✅ package.json → $newVersion"
+
+$cargoPath = Join-Path $root "src-core\Cargo.toml"
+if (Test-Path $cargoPath) {
+    $cargoRaw = Get-Content $cargoPath -Raw
+    $cargoRaw = $cargoRaw -replace 'version = "' + [regex]::Escape($currentVersion) + '"', "version = `"$newVersion`""
+    # Also handle previous versions if they diverged
+    $cargoRaw = [regex]::Replace($cargoRaw, '(?m)^version = "\d+\.\d+\.\d+"', "version = `"$newVersion`"")
+    Set-Content -Path $cargoPath -Value $cargoRaw -NoNewline
+    Write-Host "   ✅ src-core/Cargo.toml → $newVersion"
+}
+
+$uiPkgPath = Join-Path $root "src-ui\package.json"
+if (Test-Path $uiPkgPath) {
+    $uiPkgRaw = Get-Content $uiPkgPath -Raw
+    $uiPkgRaw = [regex]::Replace($uiPkgRaw, '"version": "\d+\.\d+\.\d+"', "`"version`": `"$newVersion`"")
+    Set-Content -Path $uiPkgPath -Value $uiPkgRaw -NoNewline
+    Write-Host "   ✅ src-ui/package.json → $newVersion"
+}
 
 # ── 6. Ask for release notes ─────────────────────────────────
 Write-Host "`n📄 Enter release notes (press Enter twice when done):" -ForegroundColor Cyan
@@ -99,7 +117,7 @@ Write-Host "   ✅ CHANGELOG.md updated"
 
 # ── 8. Git commit ────────────────────────────────────────────
 Write-Host "`n📦 Creating git commit..." -ForegroundColor Cyan
-git add package.json CHANGELOG.md
+git add package.json src-core/Cargo.toml src-ui/package.json CHANGELOG.md
 git commit -m "chore: bump version to v$newVersion"
 Write-Host "   ✅ Committed"
 
@@ -114,5 +132,18 @@ git push origin main
 git push origin "v$newVersion"
 Write-Host "   ✅ Pushed to GitHub" -ForegroundColor Green
 
+# ── 11. Create GitHub Release via gh CLI ─────────────────────
+Write-Host "`n📢 Publishing GitHub Release..." -ForegroundColor Cyan
+try {
+    gh release create "v$newVersion" --title "v$newVersion" --notes "$releaseNotes" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        gh release edit "v$newVersion" --title "v$newVersion" --notes "$releaseNotes" 2>$null
+    }
+    Write-Host "   ✅ GitHub Release published" -ForegroundColor Green
+} catch {
+    Write-Host "   ⚠️ Could not publish GitHub Release via gh CLI: $_" -ForegroundColor Yellow
+}
+
 Write-Host "`n✨ Done! v$newVersion is now live on GitHub." -ForegroundColor Green
 Write-Host "   https://github.com/charitha-only/aegis-desktop/releases/tag/v$newVersion`n" -ForegroundColor Blue
+
