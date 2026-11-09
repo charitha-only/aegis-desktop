@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.29.19-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.29.19-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.29.20-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.29.20-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -16,7 +16,7 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.29.19 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
+[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.29.20 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
 
 </div>
 
@@ -92,7 +92,7 @@ See [performance tooling and physical device procedure](docs/PERFORMANCE_EVIDENC
 
 ## 📜 Version & Release Notes (`v0.29.19`)
 
-The current source version is **`v0.29.19` (Experimental)**. Published tags and completed checks are recorded in the [verification ledger](docs/IMPLEMENTATION_STATUS.md).
+The current source version is **`v0.29.20` (Experimental)**. Published tags and completed checks are recorded in the [verification ledger](docs/IMPLEMENTATION_STATUS.md).
 
 The **v0.27** performance tooling still requires whole-app/low-resource measurements. The current **v0.28** distribution tooling preview still requires native installer parity, signing and authenticated updates. The **v0.29** developer tooling preview adds `npm run doctor` and `npm run package` (locked release build, portable bundle and file-integrity verification). Stable typed API/plugin contracts remain open. **v1.0** requires stable APIs plus physical-device and independent audit evidence. These are acceptance goals, not completed features.
 
