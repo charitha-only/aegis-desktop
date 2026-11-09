@@ -39,6 +39,7 @@ pub struct IpcRouter {
     network_engine: Arc<NetworkPolicyEngine>,
     sig_verifier: Arc<SignatureVerifier>,
     tpm_engine: Arc<TpmAttestationEngine>,
+    #[allow(dead_code)]
     package_pipeline: Arc<MultiOsPipeline>,
     p2p_market: Arc<P2PPluginMarketplace>,
     hsm_engine: Arc<HsmPkcs11Engine>,

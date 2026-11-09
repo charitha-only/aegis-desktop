@@ -34,6 +34,7 @@ pub struct NetworkEvaluation {
 /// a real provider.
 pub struct NetworkPolicyEngine {
     rules: Mutex<Vec<FirewallRule>>,
+    #[allow(dead_code)]
     allowed_domains: Mutex<HashSet<String>>,
 }
 
@@ -101,6 +102,7 @@ impl NetworkPolicyEngine {
     }
 
     /// Evaluate connection with standard zero-trust rules
+    #[allow(dead_code)]
     pub fn evaluate_connection(&self, host: &str, port: u16) -> NetworkEvaluation {
         self.evaluate_connection_internal(host, port, None, None, "")
     }
@@ -232,6 +234,7 @@ impl NetworkPolicyEngine {
         self.rules.lock().unwrap().clone()
     }
 
+    #[allow(dead_code)]
     pub fn add_rule(&self, rule: FirewallRule) {
         let mut rules = self.rules.lock().unwrap();
         rules.push(rule);

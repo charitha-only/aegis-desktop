@@ -214,6 +214,7 @@ impl PluginRegistry {
     }
 
     /// Check if a plugin exists by name.
+    #[allow(dead_code)]
     pub fn has_plugin(&self, name: &str) -> bool {
         let map = self.plugins.read().unwrap();
         map.contains_key(name)

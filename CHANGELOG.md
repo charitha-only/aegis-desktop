@@ -1,3 +1,10 @@
+# v0.29.24 — 2026-11-09
+
+- Zero-Warning Clean Compilation: Comprehensive compiler hygiene across default core and native-desktop targets with strict feature guards on network, plugin, updater, WASM, and multi-OS packaging pipelines.
+- Production Subsystem Alignment: Guard public helper methods on `NetworkPolicyEngine`, `PluginRegistry`, `HardwareKeyEngine`, and `MultiOsPipeline` to keep clean modular interfaces.
+- Enhanced Release Pipeline: `scripts/release.ps1` now atomically checks and commits `aegis.config.json` alongside core and UI manifests.
+- All 108 tests passed; verified dev and native-desktop compiles with zero warnings.
+
 # v0.29.23 — 2026-11-09
 
 - Comprehensive Static Asset MIME Mapping: Add typed mapping for WebAssembly (`.wasm`), JSON (`.json`), icons (`.ico`), WebP (`.webp`), JPEG, and modern web fonts (`.woff`, `.woff2`, `.ttf`), preventing instantiation and rendering failures in embedded WebViews.

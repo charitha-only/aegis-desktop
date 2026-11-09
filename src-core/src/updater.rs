@@ -123,6 +123,7 @@ impl AutoUpdater {
 
     /// Stage a downloaded update binary into the quarantine directory.
     /// The update is NOT applied until `verify_integrity` passes.
+    #[allow(dead_code)]
     pub fn stage_update(&self, source_path: &Path, version: &str) -> Result<StagedUpdate, String> {
         fs::create_dir_all(&self.update_dir)
             .map_err(|e| format!("Cannot create update staging dir: {}", e))?;
@@ -197,6 +198,7 @@ pub enum UpdateCheckResult {
     ParseError { reason: String },
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StagedUpdate {
     pub staged_path: String,

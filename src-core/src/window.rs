@@ -54,6 +54,7 @@ impl Default for WindowConfig {
 
 // ─── Native Webview Runtime Info ───────────────────────────────────────────
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum WebviewBackend {
     WryTaoWebKitMacos,
@@ -76,6 +77,7 @@ pub struct WebviewRuntimeInfo {
 
 // ─── Wry/Tao Window Descriptor ─────────────────────────────────────────────
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WryTaoWindowDescriptor {
     pub title: String,
@@ -94,6 +96,7 @@ pub struct WryTaoWindowDescriptor {
 
 // ─── Window Record ─────────────────────────────────────────────────────────
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowRecord {
     pub id: String,
@@ -233,6 +236,7 @@ impl WindowManager {
     }
     /// Prepare the currently implemented simple Windows message-box helper.
     /// Preparation does not execute a process or open a desktop dialog.
+    #[allow(dead_code)]
     pub fn prepare_dialog(
         platform: crate::platform::Platform,
         title: &str,

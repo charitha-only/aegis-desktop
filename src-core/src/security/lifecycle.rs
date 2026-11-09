@@ -2,10 +2,12 @@
 use super::vault_session::VaultSessions;
 use std::sync::Weak;
 
+#[allow(dead_code)]
 pub struct LifecycleObserver {
     sessions: Weak<VaultSessions>,
 }
 
+#[allow(dead_code)]
 impl LifecycleObserver {
     pub fn new(sessions: Weak<VaultSessions>) -> Self {
         Self { sessions }

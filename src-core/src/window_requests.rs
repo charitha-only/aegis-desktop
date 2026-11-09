@@ -109,6 +109,7 @@ impl WindowClient {
     }
 }
 impl WindowHost {
+    #[allow(dead_code)]
     pub fn next(&self) -> Option<WindowRequest> {
         while let Ok(request) = self.receiver.try_recv() {
             if !request.cancelled.load(Ordering::Acquire) {

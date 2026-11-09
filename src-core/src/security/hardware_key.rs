@@ -47,12 +47,14 @@ impl HardwareKeyEngine {
     pub fn scan_and_detect_keys(&self) -> Vec<HardwareKeyInfo> {
         vec![]
     }
+    #[allow(dead_code)]
     pub fn list_keys(&self) -> Vec<HardwareKeyInfo> {
         vec![]
     }
     pub fn enroll_key(&self, _id: &str, _pin: &str) -> Result<HardwareKeyInfo, String> {
         Err("UNAVAILABLE: A real hardware provider is not configured; no simulated verification is permitted.".into())
     }
+    #[allow(dead_code)]
     pub fn set_pin(&self, _old: &str, _new: &str) -> Result<(), String> {
         Err("UNAVAILABLE: A real hardware provider is not configured; no simulated verification is permitted.".into())
     }

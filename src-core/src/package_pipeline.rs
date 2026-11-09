@@ -7,6 +7,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TargetPlatform {
     Windows,
@@ -15,6 +16,7 @@ pub enum TargetPlatform {
     LinuxDebian,
 }
 
+#[allow(dead_code)]
 impl TargetPlatform {
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {

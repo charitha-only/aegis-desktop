@@ -18,6 +18,7 @@ pub struct WasmModuleInfo {
     pub execution_count: u64,
     /// Legacy metadata field. Runtime-returned metadata leaves raw bytecode empty.
     #[serde(skip_serializing, default)]
+    #[allow(dead_code)]
     pub bytecode: Vec<u8>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -195,6 +196,7 @@ impl WasmSandbox {
         );
         Ok(info)
     }
+    #[allow(dead_code)]
     pub fn execute_module(&self, id: &str, input: &Value) -> Result<WasmExecutionResult, String> {
         self.execute_module_with_tier(id, input, ExecutionTier::Auto)
     }
