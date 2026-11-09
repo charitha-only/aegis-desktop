@@ -54,6 +54,7 @@ impl IpcRouter {
             && self.managed_windows.lock().is_ok_and(|host| host.is_some())
     }
 
+    #[allow(dead_code)]
     pub fn attach_window_host(
         &self,
         client: crate::window_requests::WindowClient,

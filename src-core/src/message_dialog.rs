@@ -101,6 +101,7 @@ pub struct MessageRequest {
 }
 
 impl MessageRequest {
+    #[allow(dead_code)]
     pub fn linux_command(&self) -> Result<std::process::Command, String> {
         Self::new(&self.title, &self.message, &self.kind)?;
         let mut command = std::process::Command::new("zenity");

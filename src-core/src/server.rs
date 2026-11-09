@@ -263,7 +263,7 @@ impl CoreServer {
                         "csp": self.csp,
                         "server": "Aegis Core v0.11 (Rust)",
                         "rateLimiter": "Active (30 req/s window)",
-                        "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
+                        "timestamp": self.session.created_at() / 1000
                     })
                     .to_string();
 

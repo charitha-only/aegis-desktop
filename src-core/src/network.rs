@@ -135,7 +135,6 @@ impl NetworkPolicyEngine {
 
         // 1. Evaluate explicit BLOCK rules
         for rule in rules.iter().filter(|r| r.action == "BLOCK") {
-            let pat = rule.domain_pattern.replace("*", "");
             if domain_matches(host, &rule.domain_pattern) {
                 return NetworkEvaluation {
                     target_host: host.to_string(),
@@ -154,7 +153,6 @@ impl NetworkPolicyEngine {
 
         // 2. Evaluate explicit ALLOW rules
         for rule in rules.iter().filter(|r| r.action == "ALLOW") {
-            let pat = rule.domain_pattern.replace("*", "");
             if domain_matches(host, &rule.domain_pattern) {
                 // If rule requires enterprise TPM remote attestation:
                 if rule.requires_tpm_attestation {

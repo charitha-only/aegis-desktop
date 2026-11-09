@@ -1,3 +1,11 @@
+# v0.29.22 — 2026-11-09
+
+- O(1) Pre-normalized Origin Validation: Replace linear vector traversal and per-request trimming allocations with pre-normalized `HashSet<String>` lookups in `OriginValidator`.
+- Cryptographic Handshake Timestamping: Expose `created_at()` on `HandshakeSession` and report the authenticated creation timestamp in `/handshake` payload.
+- Zero-Allocation Network Rule Evaluation: Remove redundant heap string allocations during firewall allow/block pattern matching in `NetworkPolicyEngine`.
+- Compiler Warning Cleanup: Add targeted `#[allow(dead_code)]` and `#[allow(unused_imports)]` guards on conditional-feature structures, keeping core build diagnostics clean across default and native-desktop targets.
+- All 108 tests passed; verified dev and native-desktop compiles.
+
 # v0.29.21 — 2026-11-09
 
 - Multi-threaded IPC Server: Replace single-threaded blocking event loop with a scoped worker thread pool (`worker_thread_count()`, 2-4 threads) via `std::thread::scope`, enabling concurrent request processing without latency spikes.

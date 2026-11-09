@@ -10,11 +10,13 @@ pub mod ratelimit;
 pub mod validator;
 pub mod vault;
 
+#[allow(unused_imports)]
 pub use attestation::{AttestationVerification, TpmAttestationEngine, TpmAttestationProof};
 pub use capabilities::{CapabilityManifest, SecurityEngine};
 pub use enclave::BiometricEnclave;
 pub use handshake::HandshakeSession;
 pub use hardware_key::HardwareKeyEngine;
+#[allow(unused_imports)]
 pub use hsm_pkcs11::{HsmKeyObject, HsmPkcs11Engine, HsmSignatureResult, HsmSlotInfo};
 pub use plugin_sig::SignatureVerifier;
 pub use privacy::PrivacyShield;

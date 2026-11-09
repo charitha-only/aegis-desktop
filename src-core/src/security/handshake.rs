@@ -27,6 +27,10 @@ impl HandshakeSession {
         self.session_token.lock().unwrap().to_string()
     }
 
+    pub fn created_at(&self) -> u64 {
+        self.created_at
+    }
+
     pub fn validate_nonce(&self, incoming_nonce: &str) -> bool {
         let active = self.session_token.lock().unwrap();
         // Constant time comparison to prevent timing attacks

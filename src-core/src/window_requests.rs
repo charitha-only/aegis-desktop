@@ -7,6 +7,7 @@ use std::sync::{
 };
 use std::time::Duration;
 
+#[allow(dead_code)]
 pub enum WindowOperation {
     Create { url: String, config: WindowConfig },
     List,
@@ -14,12 +15,14 @@ pub enum WindowOperation {
     Focus(String),
     SetMinimized { id: String, minimized: bool },
 }
+#[allow(dead_code)]
 pub struct WindowRequest {
     pub operation: WindowOperation,
     reply: SyncSender<Result<serde_json::Value, String>>,
     cancelled: Arc<AtomicBool>,
 }
 impl WindowRequest {
+    #[allow(dead_code)]
     pub fn finish(self, result: Result<serde_json::Value, String>) {
         let _ = self.reply.try_send(result);
     }
@@ -29,6 +32,7 @@ pub struct WindowClient {
     policy: NativeWindowPolicy,
     sender: SyncSender<WindowRequest>,
 }
+#[allow(dead_code)]
 pub struct WindowHost {
     receiver: Receiver<WindowRequest>,
 }
@@ -37,6 +41,7 @@ pub struct WindowTicket {
     cancelled: Arc<AtomicBool>,
 }
 /// Owned transport only; a platform adapter must drain it on its UI event loop.
+#[allow(dead_code)]
 pub fn window_channel(policy: NativeWindowPolicy) -> (WindowClient, WindowHost) {
     let (sender, receiver) = mpsc::sync_channel(16);
     (WindowClient { policy, sender }, WindowHost { receiver })
