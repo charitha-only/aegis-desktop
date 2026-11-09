@@ -398,6 +398,14 @@ export class AegisBridge {
     return this.invoke<{ path: string; verified: boolean }>('fs_verify_integrity', { path, sha256 });
   }
 
+  public async rotateHandshake(): Promise<IpcResponse<{ rotated: boolean; sessionToken: string; createdAt: number }>> {
+    const res = await this.invoke<{ rotated: boolean; sessionToken: string; createdAt: number }>('handshake_rotate');
+    if (res.success && res.data?.sessionToken) {
+      this.sessionNonce = res.data.sessionToken;
+    }
+    return res;
+  }
+
   // Zero-Knowledge Encrypted Vault APIs
   public async vaultEncryptStore(filename: string, content: string, passphrase: string): Promise<IpcResponse<{ filename: string; status: string; envelopeLength: number }>> {
     return this.invoke('vault_encrypt_store', { filename, content, passphrase });

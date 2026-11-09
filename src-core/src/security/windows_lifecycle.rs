@@ -4,6 +4,25 @@ pub fn desktop_available() -> bool {
     false
 }
 
+#[cfg(not(windows))]
+#[allow(dead_code)]
+pub fn stop() {}
+
+#[cfg(windows)]
+#[allow(dead_code)]
+pub fn stop() {
+    use windows_sys::{
+        core::w,
+        Win32::UI::WindowsAndMessaging::{FindWindowW, PostMessageW, WM_CLOSE},
+    };
+    unsafe {
+        let window = FindWindowW(w!("AegisLifecycle"), w!("AegisLifecycle"));
+        if !window.is_null() {
+            PostMessageW(window, WM_CLOSE, 0, 0);
+        }
+    }
+}
+
 #[cfg(windows)]
 pub fn desktop_available() -> bool {
     use windows_sys::Win32::System::RemoteDesktop::*;

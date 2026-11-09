@@ -45,6 +45,9 @@ export function validCommandData(command: string, data: unknown): boolean {
     return record(data) && ['windows','linux','macos'].includes(data.os as string)
       && text(data.architecture) && booleans(data, ['embeddedWebview','lifecycleAdapterCompiled','installerAdapterCompiled','osKeyStore','encryptedFileStorage']);
   }
+  if (command === 'handshake_rotate') {
+    return record(data) && data.rotated === true && typeof data.sessionToken === 'string' && nonnegativeInteger(data.createdAt);
+  }
   if (command === 'platform_directories') {
     return record(data) && ['data','config','cache'].every(key => text(data[key]));
   }

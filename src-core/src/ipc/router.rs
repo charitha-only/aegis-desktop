@@ -322,6 +322,8 @@ impl IpcRouter {
                 let mut status = json!({
                     "engine": concat!("Aegis Core ",env!("CARGO_PKG_VERSION")," (Rust)"),
                     "nonceVerified": true,
+                    "sessionCreatedAt": self.session.created_at(),
+                    "sessionAgeMillis": self.session.age_millis(),
                     "windowsLifecycleMonitorActive": self.vault_sessions.platform_monitor_active(),
                     "windowsSessionAvailable": crate::security::windows_lifecycle::desktop_available(),
                     "sandboxEnforced": true,
@@ -382,6 +384,18 @@ impl IpcRouter {
             }
 
             "privacy_status" => IpcResponse::ok(&req.id, PrivacyShield::get_telemetry_audit()),
+
+            "handshake_rotate" => {
+                let new_token = self.session.rotate();
+                IpcResponse::ok(
+                    &req.id,
+                    json!({
+                        "rotated": true,
+                        "sessionToken": new_token,
+                        "createdAt": self.session.created_at()
+                    }),
+                )
+            }
 
             "vault_encrypt_store" => {
                 self.vault_sessions.lock();

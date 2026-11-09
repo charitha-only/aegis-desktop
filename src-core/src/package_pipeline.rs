@@ -54,7 +54,7 @@ impl Default for MultiOsPackageConfig {
         Self {
             app_id: "com.aegis.desktop".to_string(),
             name: "AegisApp".to_string(),
-            version: "0.18.0".to_string(),
+            version: "0.30.1".to_string(),
             author: "Aegis Desktop Contributors".to_string(),
             description: "Zero-Trust Secure Desktop Application".to_string(),
             icon: None,
@@ -115,9 +115,11 @@ impl MultiOsPipeline {
         };
         let report = crate::bundler::BundleEngine::bundle(root, &manifest)?;
         let dir = PathBuf::from(&report.output_dir);
-        let size = std::fs::metadata(dir.join("aegis-core.exe"))
+        let binary_path = dir.join("aegis-core.exe");
+        let size = std::fs::metadata(&binary_path)
             .map_err(|e| e.to_string())?
             .len();
+        let digest = crate::storage::file_sha256(&binary_path).unwrap_or_default();
         Ok(MultiOsPipelineReport {
             app_name: config.name.clone(),
             version: config.version.clone(),
@@ -128,7 +130,7 @@ impl MultiOsPipeline {
                 target_file_or_dir: report.output_dir,
                 size_estimate_bytes: size,
                 status: "PORTABLE_READY".into(),
-                manifest_digest: String::new(),
+                manifest_digest: digest,
             }],
             success: true,
             timestamp: std::time::SystemTime::now()

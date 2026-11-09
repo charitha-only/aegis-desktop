@@ -76,6 +76,7 @@ This is the release ledger for the roadmap. A source version does not certify pr
 | 0.29.28 | Validated source 4731ddc | Managed window ticket cancellation lifecycle (`WindowTicket::cancel`, `is_cancelled`) and race-free timeout reconciliation. All 110 tests passed. |
 | 0.29.29 | Validated source 3cecbe6 | Dynamic `Retry-After` backoff calculation and bounded anti-memory-exhaustion DoS shield. All 111 tests passed. |
 | 0.30.0 | Tagged production milestone | Production-ready zero-trust desktop framework: multi-threaded scoped IPC, zeroize-guarded crypto memory, atomic storage checksums, O(1) rate-limiter DoS shield, and 100% clean builds. All 112 Rust tests and 25 SDK smoke tests pass. |
+| 0.30.1 | Validated source | Cryptographic handshake rotation & session age tracking (`HandshakeSession::rotate`, `is_expired`), package pipeline streaming SHA-256 binary digest verification, and safe Windows lifecycle monitor disposal hook (`stop()`). All 112 Rust tests and 25 SDK smoke tests pass. |
 | 1.0 | External gates remain | Stable API evidence, physical device validation and independent reviewer report/retest required. |
 
 Independent review cannot be self-certified. Missing physical hardware or signing credentials must not be replaced by fabricated passing results. Keep implementing independent work while recording these gates.

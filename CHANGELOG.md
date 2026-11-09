@@ -1,3 +1,11 @@
+# v0.30.1 — 2026-11-10
+
+- Cryptographic Handshake Token Rotation & Expiry: Add dynamic `rotate()` and age/expiry calculation (`age_millis`, `is_expired`) on `HandshakeSession` with zeroized in-memory token replacement.
+- Active IPC Handshake Rotation & Client Auto-Update: Add authenticated `handshake_rotate` IPC command and automatic token synchronization in `AegisBridge.rotateHandshake()`.
+- Pipeline Manifest Digesting: Compute real streaming SHA-256 binary digests in multi-OS packaging pipeline reports.
+- Safe Lifecycle Disposal: Add explicit `stop()` hook in Windows lifecycle monitor for clean resource release on application termination.
+- Zero-Warning Quality Guarantee: All 112 Rust core tests and 25 SDK smoke tests pass with 0 compiler warnings.
+
 # v0.30.0 — 2026-11-09: Production Hardening & High-Performance Milestone
 
 - Multi-Threaded Scoped IPC Architecture: Upgraded IPC server to multi-threaded `std::thread::scope` worker pool with concurrent request dispatch across hardware cores.
