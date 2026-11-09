@@ -23,6 +23,8 @@ export function validCommandData(command: string, data: unknown): boolean {
   if (command === 'managed_window_create') return record(data) && managedWindowId(data.windowId) && data.backend === 'NATIVE_EMBEDDED' && data.documentReady === false;
   if (command === 'fs_read_file') return record(data) && text(data.path) && typeof data.content === 'string';
   if (command === 'fs_write_file') return record(data) && text(data.path) && nonnegativeInteger(data.bytesWritten);
+  if (command === 'fs_file_hash') return record(data) && text(data.path) && text(data.sha256);
+  if (command === 'fs_verify_integrity') return record(data) && text(data.path) && typeof data.verified === 'boolean';
   if (command === 'fs_list_sandbox') {
     return record(data) && Array.isArray(data.entries) && data.entries.length <= 4096
       && data.entries.every(entry => record(entry) && text(entry.name) && typeof entry.isDir === 'boolean' && nonnegativeInteger(entry.sizeBytes));

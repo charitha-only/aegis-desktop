@@ -85,6 +85,13 @@ fn replacement(path: &Path, data: &[u8]) -> Result<(), String> {
         file.write_all(data)
             .map_err(|_| "Cannot write temporary storage file")?;
         file.sync_all().map_err(|_| "Cannot flush storage file")?;
+        let written_len = file
+            .metadata()
+            .map_err(|_| "Cannot inspect temporary storage file")?
+            .len();
+        if written_len != data.len() as u64 {
+            return Err("Storage write verification failed: size mismatch".into());
+        }
         drop(file);
         fs::rename(&temp, path).map_err(|_| "Cannot atomically replace stored file")?;
         #[cfg(unix)]
@@ -152,4 +159,76 @@ fn write_inner(
         replacement(&backup_path(path), old.as_bytes())?;
     }
     replacement(path, data)
+}
+
+/// Computes hex-encoded SHA-256 digest of arbitrary memory bytes.
+pub fn compute_sha256(data: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    hex::encode(Sha256::digest(data))
+}
+
+/// Computes the hex-encoded SHA-256 digest of a stored file within the bounded file budget.
+pub fn file_sha256(path: &Path) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    no_link(path)?;
+    let file = File::open(path).map_err(|_| "Cannot open stored file for checksum calculation")?;
+    let metadata = file.metadata().map_err(|_| "Cannot inspect file")?;
+    if metadata.len() > MAX_FILE_BYTES as u64 {
+        return Err("Stored file exceeds size limit".into());
+    }
+    let mut take_reader = file.take(MAX_FILE_BYTES as u64 + 1);
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 8192];
+    let mut total_read = 0usize;
+    loop {
+        let n = take_reader
+            .read(&mut buffer)
+            .map_err(|_| "Cannot read stored file for checksum calculation")?;
+        if n == 0 {
+            break;
+        }
+        total_read += n;
+        if total_read > MAX_FILE_BYTES {
+            return Err("Stored file exceeds size limit".into());
+        }
+        hasher.update(&buffer[..n]);
+    }
+    Ok(hex::encode(hasher.finalize()))
+}
+
+/// Verifies that a stored file matches an expected hex SHA-256 digest.
+pub fn verify_file_sha256(path: &Path, expected_hex: &str) -> Result<bool, String> {
+    let actual_hex = file_sha256(path)?;
+    Ok(actual_hex.eq_ignore_ascii_case(expected_hex.trim()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compute_and_verify_sha256() {
+        let payload = b"Hello, Aegis Secure Zero-Trust Storage!";
+        let hash = compute_sha256(payload);
+        assert_eq!(hash.len(), 64);
+
+        let mut rnd = [0u8; 8];
+        let _ = getrandom::getrandom(&mut rnd);
+        let temp_dir = std::env::temp_dir().join(format!("aegis-storage-test-{}", hex::encode(rnd)));
+        let _ = fs::create_dir_all(&temp_dir);
+        let file_path = temp_dir.join("payload.dat");
+
+        atomic_write(&file_path, payload, false).expect("atomic write succeeds");
+        assert!(verify_file_sha256(&file_path, &hash).expect("verification succeeds"));
+        assert!(!verify_file_sha256(
+            &file_path,
+            "0000000000000000000000000000000000000000000000000000000000000000"
+        )
+        .unwrap());
+
+        let computed = file_sha256(&file_path).expect("file_sha256 succeeds");
+        assert_eq!(computed, hash);
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
 }

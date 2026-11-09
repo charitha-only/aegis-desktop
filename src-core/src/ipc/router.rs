@@ -731,11 +731,59 @@ impl IpcRouter {
                         match crate::storage::atomic_write(&safe_path, content.as_bytes(), false) {
                             Ok(_) => IpcResponse::ok(
                                 &req.id,
-                                json!({ "path": path, "bytesWritten": content.len() }),
+                                json!({
+                                    "path": path,
+                                    "bytesWritten": content.len(),
+                                    "sha256": crate::storage::compute_sha256(content.as_bytes())
+                                }),
                             ),
                             Err(err) => {
                                 IpcResponse::err(&req.id, &format!("Failed to write file: {}", err))
                             }
+                        }
+                    }
+                    Err(err) => IpcResponse::err(&req.id, &err),
+                }
+            }
+
+            "fs_file_hash" => {
+                let path = match req.payload.get("path").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'path' parameter"),
+                };
+                match self.security.check_fs_read(path) {
+                    Ok(safe_path) => match crate::storage::file_sha256(&safe_path) {
+                        Ok(hash) => {
+                            IpcResponse::ok(&req.id, json!({ "path": path, "sha256": hash }))
+                        }
+                        Err(err) => {
+                            IpcResponse::err(&req.id, &format!("Failed to hash file: {}", err))
+                        }
+                    },
+                    Err(err) => IpcResponse::err(&req.id, &err),
+                }
+            }
+
+            "fs_verify_integrity" => {
+                let path = match req.payload.get("path").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'path' parameter"),
+                };
+                let expected = match req.payload.get("sha256").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'sha256' parameter"),
+                };
+                match self.security.check_fs_read(path) {
+                    Ok(safe_path) => {
+                        match crate::storage::verify_file_sha256(&safe_path, expected) {
+                            Ok(verified) => IpcResponse::ok(
+                                &req.id,
+                                json!({ "path": path, "verified": verified }),
+                            ),
+                            Err(err) => IpcResponse::err(
+                                &req.id,
+                                &format!("Integrity verification failed: {}", err),
+                            ),
                         }
                     }
                     Err(err) => IpcResponse::err(&req.id, &err),

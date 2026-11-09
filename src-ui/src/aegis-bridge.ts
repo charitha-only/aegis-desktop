@@ -386,8 +386,16 @@ export class AegisBridge {
     return this.invoke<{ path: string; content: string }>('fs_read_file', { path });
   }
 
-  public async writeSandboxFile(path: string, content: string): Promise<IpcResponse<{ path: string; bytesWritten: number }>> {
-    return this.invoke<{ path: string; bytesWritten: number }>('fs_write_file', { path, content });
+  public async writeSandboxFile(path: string, content: string): Promise<IpcResponse<{ path: string; bytesWritten: number; sha256?: string }>> {
+    return this.invoke<{ path: string; bytesWritten: number; sha256?: string }>('fs_write_file', { path, content });
+  }
+
+  public async getFileHash(path: string): Promise<IpcResponse<{ path: string; sha256: string }>> {
+    return this.invoke<{ path: string; sha256: string }>('fs_file_hash', { path });
+  }
+
+  public async verifyFileIntegrity(path: string, sha256: string): Promise<IpcResponse<{ path: string; verified: boolean }>> {
+    return this.invoke<{ path: string; verified: boolean }>('fs_verify_integrity', { path, sha256 });
   }
 
   // Zero-Knowledge Encrypted Vault APIs

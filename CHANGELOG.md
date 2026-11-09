@@ -1,3 +1,10 @@
+# v0.29.27 — 2026-11-09
+
+- Atomic Storage Size & Integrity Verification: Validate written byte lengths against source payloads before atomic file replacement, preventing corrupted or truncated writes on disk exhaustion or filesystem errors.
+- Cryptographic File Checksum Utilities: Add bounded streaming `file_sha256` and `verify_file_sha256` in storage module, enforcing 2MB file bounds and rejecting symlink targets.
+- Cryptographic Receipts on File Operations: IPC `fs_write_file` now issues verified `sha256` hashes in write receipts; add `fs_file_hash` and `fs_verify_integrity` IPC commands for client-side zero-trust validation.
+- All 109 tests passed; clean build with 0 compiler warnings.
+
 # v0.29.26 — 2026-11-09
 
 - RFC 6585 Standardized Rate-Limit Signalling: Add standard `Retry-After: 1` on sliding-window limits and `Retry-After: 10` on brute-force lockouts, enabling predictable backoff for frontend SDK clients.
