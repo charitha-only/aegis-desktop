@@ -15,7 +15,10 @@
     "test:sensitive": "node aegis-cli/bin/sensitive-smoke.js",
     "test:sessions": "node aegis-cli/bin/session-smoke.js",
     "doctor": "node aegis-cli/bin/aegis.js doctor",
-    "package": "node aegis-cli/bin/aegis.js package"
+    "package": "node aegis-cli/bin/aegis.js package",
+    "release": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1",
+    "release:minor": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1 minor",
+    "release:major": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1 major"
   },
   "keywords": [
     "desktop",
