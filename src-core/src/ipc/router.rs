@@ -169,7 +169,6 @@ impl IpcRouter {
             || req.command.starts_with("p2p_")
             || req.command == "biometric_authenticate"
             || req.command.starts_with("stream_")
-            || req.command.starts_with("updater_")
             || req.command == "package_pipeline_stage"
         {
             return IpcResponse::err(&req.id, "UNAVAILABLE: This integration is disabled until a real provider is configured. No hardware verification, network installation or encrypted transport is claimed.");
@@ -1154,8 +1153,12 @@ impl IpcRouter {
 
             "updater_verify" => {
                 let file_path = match req.payload.get("filePath").and_then(|p| p.as_str()) {
-                    Some(p) => std::path::PathBuf::from(p),
+                    Some(p) => p,
                     None => return IpcResponse::err(&req.id, "Missing 'filePath' parameter"),
+                };
+                let verified_path = match self.security.check_fs_read(file_path) {
+                    Ok(p) => p,
+                    Err(e) => return IpcResponse::err(&req.id, &format!("Unauthorized file access: {e}")),
                 };
                 let expected_sha256 =
                     match req.payload.get("expectedSha256").and_then(|h| h.as_str()) {
@@ -1165,12 +1168,12 @@ impl IpcRouter {
                         }
                     };
 
-                match self.updater.verify_integrity(&file_path, expected_sha256) {
+                match self.updater.verify_integrity(&verified_path, expected_sha256) {
                     Ok(_) => IpcResponse::ok(
                         &req.id,
                         json!({
                             "verified": true,
-                            "filePath": file_path.to_string_lossy(),
+                            "filePath": file_path,
                             "sha256": expected_sha256
                         }),
                     ),

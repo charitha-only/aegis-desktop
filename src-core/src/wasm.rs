@@ -149,6 +149,25 @@ impl WasmSandbox {
         name: &str,
         bytes: Vec<u8>,
     ) -> Result<WasmModuleInfo, String> {
+        self.load_wasm_binary_with_limits(id, name, bytes, 16, 100_000)
+    }
+
+    pub fn load_wasm_binary_with_limits(
+        &self,
+        id: &str,
+        name: &str,
+        bytes: Vec<u8>,
+        memory_limit_mb: u32,
+        instruction_limit: u64,
+    ) -> Result<WasmModuleInfo, String> {
+        if memory_limit_mb == 0 || memory_limit_mb > 64 {
+            return Err("Wasm memory limit must be between 1 and 64 MB".into());
+        }
+        if instruction_limit < 1_000 || instruction_limit > 10_000_000 {
+            return Err(
+                "Wasm instruction limit must be between 1,000 and 10,000,000 instructions".into(),
+            );
+        }
         if id.is_empty()
             || id.len() > 128
             || !id
@@ -180,8 +199,8 @@ impl WasmSandbox {
             name: name.into(),
             version: "1.0.0".into(),
             sha256_hash: hex::encode(Sha256::digest(&bytes)),
-            memory_limit_mb: 16,
-            instruction_limit: 100_000,
+            memory_limit_mb,
+            instruction_limit,
             allowed_imports: vec![],
             status: "VALIDATED".into(),
             execution_count: 0,
@@ -221,7 +240,7 @@ impl WasmSandbox {
         };
         let started = Instant::now();
         let limits = StoreLimitsBuilder::new()
-            .memory_size(16 * 1024 * 1024)
+            .memory_size((info.memory_limit_mb as usize) * 1024 * 1024)
             .instances(1)
             .memories(1)
             .tables(1)
@@ -268,7 +287,7 @@ impl WasmSandbox {
             exit_code: 0,
             gas_consumed: info.instruction_limit - store.get_fuel().unwrap_or(0),
             memory_used_bytes: store.data().linear_memory_bytes,
-            output_payload: json!({"engine":"wasmi","tier":"INTERPRETER","bytecodeVerified":true,"stackResult":result,"fuelLimit":info.instruction_limit,"memoryLimitBytes":16*1024*1024,"memoryMeasurement":"guestLinearMemoryBytes","inputBytes":bytes.len(),"hostImportsAllowed":false}),
+            output_payload: json!({"engine":"wasmi","tier":"INTERPRETER","bytecodeVerified":true,"stackResult":result,"fuelLimit":info.instruction_limit,"memoryLimitBytes":(info.memory_limit_mb as usize)*1024*1024,"memoryMeasurement":"guestLinearMemoryBytes","inputBytes":bytes.len(),"hostImportsAllowed":false}),
             duration_us: started.elapsed().as_micros() as u64,
         })
     }
@@ -410,5 +429,22 @@ mod tests {
         assert!(WasmSandbox::new()
             .execute_module_with_tier("wasm-schema-validator", &json!({}), ExecutionTier::WgpuJit)
             .is_err());
+    }
+    #[test]
+    fn test_custom_limits_and_fuel_bounds() {
+        let vm = WasmSandbox::new();
+        let bytes = wat::parse_str(r#"(module (func (export "execute") (result i32) i32.const 42))"#).unwrap();
+        let info = vm.load_wasm_binary_with_limits("custom-fuel", "Custom Fuel Test", bytes.clone(), 32, 50_000).unwrap();
+        assert_eq!(info.memory_limit_mb, 32);
+        assert_eq!(info.instruction_limit, 50_000);
+        let res = vm.execute_module("custom-fuel", &json!({})).unwrap();
+        assert_eq!(res.output_payload["stackResult"], 42);
+        assert_eq!(res.output_payload["fuelLimit"], 50_000);
+        assert_eq!(res.output_payload["memoryLimitBytes"], 32 * 1024 * 1024);
+
+        assert!(vm.load_wasm_binary_with_limits("bad-mem", "Bad Mem", bytes.clone(), 0, 50_000).is_err());
+        assert!(vm.load_wasm_binary_with_limits("bad-mem-high", "Bad Mem", bytes.clone(), 128, 50_000).is_err());
+        assert!(vm.load_wasm_binary_with_limits("bad-fuel-low", "Bad Fuel", bytes.clone(), 16, 500).is_err());
+        assert!(vm.load_wasm_binary_with_limits("bad-fuel-high", "Bad Fuel", bytes, 16, 20_000_000).is_err());
     }
 }

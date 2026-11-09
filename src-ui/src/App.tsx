@@ -50,7 +50,7 @@ interface AuditLog {
   details: string;
 }
 
-const unavailableTabs: string[] = ['hardwareKey','enclave','stream','tpmAttestation','wgpuJit','p2pMarket','hsmPkcs11','updater','packagePipeline'];
+const unavailableTabs: string[] = ['hardwareKey','enclave','stream','tpmAttestation','wgpuJit','p2pMarket','hsmPkcs11','packagePipeline'];
 export default function App() {
   const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit' | 'packagePipeline' | 'p2pMarket' | 'hsmPkcs11'>('security');
   const [connected, setConnected] = useState(false);

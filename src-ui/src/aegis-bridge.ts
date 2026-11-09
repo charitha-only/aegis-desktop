@@ -197,6 +197,34 @@ export interface AttestationVerification {
   audit_log: string[];
 }
 
+export interface UpdaterStatus {
+  autoUpdaterVersion: string;
+  currentVersion: string;
+  stagingDir: string;
+  hasStagedUpdates: boolean;
+  stagedFiles: string[];
+  verificationAlgorithm: string;
+  securityPolicy: string;
+  airGapCompatible: boolean;
+  autoApply: boolean;
+  note: string;
+}
+
+export interface UpdateManifestInput {
+  version: string;
+  notes: string;
+  download_url: string;
+  sha256: string;
+  released_at: string;
+  min_version?: string;
+  mandatory?: boolean;
+}
+
+export type UpdateCheckResult =
+  | { status: 'update_available'; current: string; available: string; mandatory: boolean; notes: string }
+  | { status: 'up_to_date'; version: string }
+  | { status: 'parse_error'; reason: string };
+
 class ResponseLimitError extends Error {}
 
 /** Count actual decoded HTTP body bytes; Content-Length is not a trusted bound. */
@@ -404,6 +432,19 @@ export class AegisBridge {
       this.sessionNonce = res.data.sessionToken;
     }
     return res;
+  }
+
+  // Auto-Updater APIs
+  public async getUpdaterStatus(): Promise<IpcResponse<UpdaterStatus>> {
+    return this.invoke<UpdaterStatus>('updater_status');
+  }
+
+  public async checkForUpdates(manifest: UpdateManifestInput): Promise<IpcResponse<UpdateCheckResult>> {
+    return this.invoke<UpdateCheckResult>('updater_check', manifest);
+  }
+
+  public async verifyUpdatePayload(filePath: string, expectedSha256: string): Promise<IpcResponse<{ verified: boolean; filePath: string; sha256: string }>> {
+    return this.invoke<{ verified: boolean; filePath: string; sha256: string }>('updater_verify', { filePath, expectedSha256 });
   }
 
   // Zero-Knowledge Encrypted Vault APIs

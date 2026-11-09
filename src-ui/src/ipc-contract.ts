@@ -58,5 +58,18 @@ export function validCommandData(command: string, data: unknown): boolean {
       && booleans(data.activeCapabilities, ['fsRead','fsWrite','shellExecution','systemInfo','crypto'])
       && optionalBooleans(data.activeCapabilities, ['notifications','encryptedVault','bundler','multiWindow','multiOsPipeline','p2pPluginMarketplace','hsmPkcs11']);
   }
+  if (command === 'updater_status') {
+    return record(data) && text(data.autoUpdaterVersion) && text(data.currentVersion)
+      && text(data.stagingDir) && typeof data.hasStagedUpdates === 'boolean'
+      && Array.isArray(data.stagedFiles) && text(data.verificationAlgorithm)
+      && text(data.securityPolicy) && typeof data.airGapCompatible === 'boolean'
+      && typeof data.autoApply === 'boolean';
+  }
+  if (command === 'updater_check') {
+    return record(data) && ['update_available', 'up_to_date', 'parse_error'].includes(data.status as string);
+  }
+  if (command === 'updater_verify') {
+    return record(data) && typeof data.verified === 'boolean' && text(data.filePath) && text(data.sha256);
+  }
   return true;
 }

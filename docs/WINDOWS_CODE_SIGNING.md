@@ -176,3 +176,4 @@ $sig = Get-AuthenticodeSignature .\aegis-core.exe
 ```
 
 When signed with a trusted commercial CA, `Status` will report `Valid` and Windows will execute the software with **zero SmartScreen warnings**.
+

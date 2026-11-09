@@ -187,7 +187,7 @@ impl AutoUpdater {
         };
 
         serde_json::json!({
-            "autoUpdaterVersion": "v0.13.0",
+            "autoUpdaterVersion": format!("v{}", self.current_version),
             "currentVersion": self.current_version,
             "stagingDir": self.update_dir.to_string_lossy(),
             "hasStagedUpdates": updates_exist,

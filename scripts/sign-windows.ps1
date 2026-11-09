@@ -88,33 +88,33 @@ if (-not $VerifyOnly) {
       } else {
         throw 'No code signing certificate specified and none found in Certificate Stores'
       }
-    } else {
-      $certificate = Get-Item -LiteralPath ('Cert:/CurrentUser/My/' + $Thumbprint) -ErrorAction SilentlyContinue
-      $storeName = 'My'
-      $isLocalMachine = $false
-      if (-not $certificate) {
-        $certificate = Get-Item -LiteralPath ('Cert:/LocalMachine/My/' + $Thumbprint) -ErrorAction SilentlyContinue
-        $isLocalMachine = $true
-      }
-      if (-not $certificate) {
-        throw "Certificate with thumbprint $Thumbprint not found in CurrentUser\My or LocalMachine\My"
-      }
-      if (-not $certificate.HasPrivateKey -or $certificate.NotAfter -le (Get-Date)) {
-        throw 'A valid publisher code-signing certificate with a private key is required'
-      }
-      if (-not ($certificate.EnhancedKeyUsageList.ObjectId -contains '1.3.6.1.5.5.7.3.3')) {
-        throw 'Certificate must permit code signing (Enhanced Key Usage 1.3.6.1.5.5.7.3.3)'
-      }
+    }
 
-      if ($toolPath) {
-        $signArgs = @('sign', '/sha1', $Thumbprint, '/s', 'My', '/fd', 'SHA256', '/tr', $TimestampUrl, '/td', 'SHA256')
-        if ($isLocalMachine) { $signArgs += '/sm' }
-        $signArgs += $target
-        & $toolPath @signArgs
-        if ($LASTEXITCODE -ne 0) { throw 'Authenticode signing failed with signtool' }
-      } else {
-        Set-AuthenticodeSignature -FilePath $target -Certificate $certificate -TimestampServer $TimestampUrl -HashAlgorithm SHA256 | Out-Null
-      }
+    $certificate = Get-Item -LiteralPath ('Cert:/CurrentUser/My/' + $Thumbprint) -ErrorAction SilentlyContinue
+    $storeName = 'My'
+    $isLocalMachine = $false
+    if (-not $certificate) {
+      $certificate = Get-Item -LiteralPath ('Cert:/LocalMachine/My/' + $Thumbprint) -ErrorAction SilentlyContinue
+      $isLocalMachine = $true
+    }
+    if (-not $certificate) {
+      throw "Certificate with thumbprint $Thumbprint not found in CurrentUser\My or LocalMachine\My"
+    }
+    if (-not $certificate.HasPrivateKey -or $certificate.NotAfter -le (Get-Date)) {
+      throw 'A valid publisher code-signing certificate with a private key is required'
+    }
+    if (-not ($certificate.EnhancedKeyUsageList.ObjectId -contains '1.3.6.1.5.5.7.3.3')) {
+      throw 'Certificate must permit code signing (Enhanced Key Usage 1.3.6.1.5.5.7.3.3)'
+    }
+
+    if ($toolPath) {
+      $signArgs = @('sign', '/sha1', $Thumbprint, '/s', 'My', '/fd', 'SHA256', '/tr', $TimestampUrl, '/td', 'SHA256')
+      if ($isLocalMachine) { $signArgs += '/sm' }
+      $signArgs += $target
+      & $toolPath @signArgs
+      if ($LASTEXITCODE -ne 0) { throw 'Authenticode signing failed with signtool' }
+    } else {
+      Set-AuthenticodeSignature -FilePath $target -Certificate $certificate -TimestampServer $TimestampUrl -HashAlgorithm SHA256 | Out-Null
     }
   }
 }
