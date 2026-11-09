@@ -1,3 +1,7 @@
+# v0.29.20 — 2026-11-09
+
+- Version bump to v0.29.20; add automated release script (scripts/release.ps1) for version management and GitHub push workflow.
+
 # v0.29.19 â€” Native control requests (2026-11-05)
 
 - Add permission-controlled managed_window_focus and managed_window_set_minimized IPC requests with native UI-thread dispatch on Windows/macOS/Linux. Strictly validate the target/payload and reject unknown child IDs.
