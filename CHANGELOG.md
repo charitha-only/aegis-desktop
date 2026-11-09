@@ -1,3 +1,10 @@
+# v0.30.3 — 2026-11-10
+
+- Silent Windows Launcher & 64-Bit Inno Setup Hardening: Bundler now emits `Launch {name} (Silent).vbs` alongside `.bat` to launch GUI without command prompt flashing. Enhanced Inno Setup generator with `ArchitecturesInstallIn64BitMode=x64compatible`, `UninstallDisplayIcon`, and explicit `WorkingDir: "{app}"`.
+- Resilient Edge Browser Discovery: Extended Windows Edge browser detection across `ProgramFiles(x86)`, `ProgramFiles`, and per-user `LOCALAPPDATA` paths for locked-down enterprise environments.
+- Comprehensive HTTP Security Headers on Assets: Added `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Permissions-Policy: geolocation=(), camera=(), microphone=()` to all static asset responses.
+- Zero-Warning Quality Guarantee: All 118 Rust core tests and 76 SDK/CLI unit tests pass with 0 compiler warnings.
+
 # v0.30.2 — 2026-11-10
 
 - Dual-Engine Windows Authenticode Signing & Developer Tools: Eliminated Windows SDK dependency in `scripts/sign-windows.ps1` with native PowerShell fallback (`Set-AuthenticodeSignature`), added `-AllowSelfSigned` flag, and introduced `scripts/create-dev-cert.ps1` for development and CI testing.

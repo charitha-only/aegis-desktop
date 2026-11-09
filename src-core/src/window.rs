@@ -319,7 +319,7 @@ impl WindowManager {
         #[cfg(target_os = "windows")]
         {
             let mut found = false;
-            for var in ["ProgramFiles(x86)", "ProgramFiles"] {
+            for var in ["ProgramFiles(x86)", "ProgramFiles", "LOCALAPPDATA"] {
                 if let Some(root) = std::env::var_os(var) {
                     let edge = std::path::PathBuf::from(root)
                         .join("Microsoft/Edge/Application/msedge.exe");

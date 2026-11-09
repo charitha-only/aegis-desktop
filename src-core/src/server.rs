@@ -145,6 +145,21 @@ impl CoreServer {
                                         .with_header(
                                             Header::from_bytes("X-Content-Type-Options", "nosniff")
                                                 .unwrap(),
+                                        )
+                                        .with_header(
+                                            Header::from_bytes("X-Frame-Options", "DENY")
+                                                .unwrap(),
+                                        )
+                                        .with_header(
+                                            Header::from_bytes("Referrer-Policy", "no-referrer")
+                                                .unwrap(),
+                                        )
+                                        .with_header(
+                                            Header::from_bytes(
+                                                "Permissions-Policy",
+                                                "geolocation=(), camera=(), microphone=()",
+                                            )
+                                            .unwrap(),
                                         );
                                     let _ = respond(request, response);
                                     return;

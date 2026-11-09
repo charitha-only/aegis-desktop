@@ -259,6 +259,16 @@ impl BundleEngine {
             .files_bundled
             .push(launcher_path.to_string_lossy().into_owned());
 
+        if cfg!(windows) {
+            let silent_launcher_path = bundle_root.join(format!("Launch {} (Silent).vbs", manifest.name));
+            let vbs_content = "Set WshShell = CreateObject(\"WScript.Shell\")\r\nWshShell.Run chr(34) & \"aegis-core.exe\" & chr(34) & \" --spawn-window\", 0, False\r\n";
+            fs::write(&silent_launcher_path, vbs_content)
+                .map_err(|e| format!("Failed to write silent launcher: {e}"))?;
+            report
+                .files_bundled
+                .push(silent_launcher_path.to_string_lossy().into_owned());
+        }
+
         // Inno Setup is Windows-only; Unix output is an unsigned portable directory.
         let staged_sidecar = stage.join("installer.iss");
         if cfg!(windows) {
@@ -407,6 +417,9 @@ SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
+ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed=x64compatible
+UninstallDisplayIcon={{app}}\aegis-core.exe
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -418,8 +431,8 @@ Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "A
 Source: "{bundle_dir}\*"; DestDir: "{{app}}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{{group}}\{name}"; Filename: "{{app}}\aegis-core.exe"; Parameters: "--spawn-window"
-Name: "{{userdesktop}}\{name}"; Filename: "{{app}}\aegis-core.exe"; Parameters: "--spawn-window"; Tasks: desktopicon
+Name: "{{group}}\{name}"; Filename: "{{app}}\aegis-core.exe"; Parameters: "--spawn-window"; WorkingDir: "{{app}}"
+Name: "{{userdesktop}}\{name}"; Filename: "{{app}}\aegis-core.exe"; Parameters: "--spawn-window"; WorkingDir: "{{app}}"; Tasks: desktopicon
 
 [Run]
 Filename: "{{app}}\aegis-core.exe"; Parameters: "--spawn-window"; Description: "Launch {name}"; Flags: nowait postinstall skipifsilent shellexec
@@ -477,4 +490,64 @@ pub fn load_bundle_manifest(config_path: &Path) -> Result<BundleManifest, String
         icon,
         target_platforms: vec!["windows".into(), "linux".into(), "macos".into()],
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TempDir(std::path::PathBuf);
+    impl TempDir {
+        fn new() -> Self {
+            let mut bytes = [0u8; 16];
+            getrandom::getrandom(&mut bytes).expect("secure random");
+            let path = std::env::temp_dir().join(format!("aegis-bundle-test-{}", hex::encode(bytes)));
+            fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+        fn path(&self) -> &std::path::Path {
+            &self.0
+        }
+    }
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn test_generate_innosetup_script_contains_64bit_and_icon() {
+        let manifest = BundleManifest {
+            name: "TestApp".into(),
+            version: "1.0.0".into(),
+            author: "Aegis Corp".into(),
+            description: "Test description".into(),
+            icon: None,
+            target_platforms: vec!["windows".into()],
+        };
+        let script = BundleEngine::generate_innosetup_script(&manifest, Path::new("C:/bundle/TestApp"));
+        assert!(script.contains("ArchitecturesInstallIn64BitMode=x64compatible"));
+        assert!(script.contains("ArchitecturesAllowed=x64compatible"));
+        assert!(script.contains("UninstallDisplayIcon={app}\\aegis-core.exe"));
+        assert!(script.contains("WorkingDir: \"{app}\""));
+        assert!(script.contains("AppName=TestApp"));
+        assert!(script.contains("AppVersion=1.0.0"));
+    }
+
+    #[test]
+    fn test_load_bundle_manifest_validation() {
+        let temp = TempDir::new();
+        let cfg = temp.path().join("aegis.config.json");
+
+        // Missing required name
+        fs::write(&cfg, r#"{"version": "1.0.0"}"#).unwrap();
+        assert!(load_bundle_manifest(&cfg).is_err());
+
+        // Valid with defaults
+        fs::write(&cfg, r#"{"name": "My Secure App", "version": "0.30.3"}"#).unwrap();
+        let manifest = load_bundle_manifest(&cfg).unwrap();
+        assert_eq!(manifest.name, "MySecureApp");
+        assert_eq!(manifest.version, "0.30.3");
+        assert_eq!(manifest.author, "Aegis Developer");
+    }
 }
