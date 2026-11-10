@@ -137,5 +137,7 @@ try{const command=process.argv[2]||'dev';
    const plan=await releaseBuildPlan(root,{bundle:true});
    if(process.argv[3]==='--print-plan') console.log(JSON.stringify(plan));else await executePlan(plan);
  }
- else if(command==='test-security')await securityTest();else throw new Error('Unknown command: '+command);
+ else if(command==='test-security')await securityTest();
+  else if(command==='test-smoke')await import('./smoke-suite.js');
+  else throw new Error('Unknown command: '+command);
 }catch(e){console.error(e.message);process.exitCode=1;}

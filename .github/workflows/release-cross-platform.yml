@@ -68,12 +68,8 @@ jobs:
       - name: Build and Sign Inno Setup Installer
         shell: pwsh
         run: |
-          ./scripts/build-installer.ps1 -ExpectedThumbprint '${{ steps.cert.outputs.thumbprint }}'
-          $installer = Get-ChildItem './dist-bundle/installers/*-Setup-*.exe' | Select-Object -First 1
-          if ($installer) {
-            $allowSelfSigned = if ('${{ steps.cert.outputs.has_cert }}' -eq 'true') { @() } else { @('-AllowSelfSigned') }
-            ./scripts/sign-windows.ps1 -Path $installer.FullName -Thumbprint '${{ steps.cert.outputs.thumbprint }}' @allowSelfSigned
-          }
+          $allowSelfSigned = if ('${{ steps.cert.outputs.has_cert }}' -eq 'true') { @() } else { @('-AllowSelfSigned') }
+          ./scripts/build-installer.ps1 -ExpectedThumbprint '${{ steps.cert.outputs.thumbprint }}' @allowSelfSigned
 
       - name: Compress Standalone Zip Bundle
         shell: pwsh
@@ -112,13 +108,19 @@ jobs:
         run: |
           npm run bundle
           node scripts/package-cross-platform.mjs
+          TAG="${{ github.ref_name }}"
+          if [[ -z "$TAG" || "$TAG" == refs/* ]]; then TAG="${{ github.event.inputs.tag_name }}"; fi
+          if [[ -z "$TAG" ]]; then TAG="v0.30.7"; fi
+          tar -czvf "dist-bundle/AegisDesktopApplication-$TAG-linux-x64.tar.gz" -C dist-bundle/AegisDesktopApplication .
         env:
           DEBIAN_FRONTEND: noninteractive
 
       - uses: actions/upload-artifact@v4
         with:
           name: linux-artifacts
-          path: dist-bundle/*.deb
+          path: |
+            dist-bundle/*.deb
+            dist-bundle/*.tar.gz
           if-no-files-found: ignore
 
   # ─── 3. MACOS UNIVERSAL (Native .pkg Packager) ─────────────────────────────
@@ -140,11 +142,17 @@ jobs:
         run: |
           npm run bundle
           node scripts/package-cross-platform.mjs
+          TAG="${{ github.ref_name }}"
+          if [[ -z "$TAG" || "$TAG" == refs/* ]]; then TAG="${{ github.event.inputs.tag_name }}"; fi
+          if [[ -z "$TAG" ]]; then TAG="v0.30.7"; fi
+          tar -czvf "dist-bundle/AegisDesktopApplication-$TAG-macos-universal.tar.gz" -C dist-bundle/AegisDesktopApplication .
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos-artifacts
-          path: dist-bundle/*.pkg
+          path: |
+            dist-bundle/*.pkg
+            dist-bundle/*.tar.gz
           if-no-files-found: ignore
 
   # ─── 4. PUBLISH RELEASE ASSETS ─────────────────────────────────────────────

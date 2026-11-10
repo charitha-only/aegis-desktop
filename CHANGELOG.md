@@ -1,10 +1,15 @@
 # v0.30.7 — 2026-11-10
 
+- Multi-OS CI/CD Release Matrix: Implemented `.github/workflows/release-cross-platform.yml` with automated parallel builds for Windows x64 (Authenticode signed binaries + Inno Setup installer), Linux x64 (native Debian `.deb` + `.tar.gz`), and macOS universal (native `.pkg` + `.tar.gz`) with GitHub Release publishing.
+- Commercial CA Code Signing Integration: Automated GitHub Actions secrets ingestion (`AEGIS_SIGNING_PFX_BASE64`, `AEGIS_SIGNING_PFX_PASSWORD`, Azure Trusted Signing) with dual-signing fallback for seamless SmartScreen reputation build.
 - Transactional Auto-Updater Journal & Crash-Resilient Rollback: Introduced `UpdateJournal` state machine (`IDLE`, `STAGED`, `VERIFIED`, `ROLLED_BACK`) serialized to `sandbox/updates/journal.json`, with atomic rollback and payload quarantine (`rollback_staged`).
 - Auto-Updater IPC Command Suite: Added `updater_stage`, `updater_rollback`, and `updater_journal` commands to `src-core/src/ipc/router.rs`, backed by sandbox read verification.
 - Frontend Telemetry & Interactive Controls: Exposed live journal state telemetry badge and an interactive "Quarantine & Rollback Staged Update" action in `src-ui/src/App.tsx`.
+- Automated Live Smoke Suite: Created `aegis-cli/bin/smoke-suite.js` orchestrating live ephemeral core executions for `sensitive-smoke.js` and `session-smoke.js`, exposed via `aegis test-smoke` and `npm run test:smoke`.
+- Physical Low-Resource Performance Baseline: Verified core cold startup latency (p50: **25.8 ms**), IPC roundtrip latency (p50: **1.6 ms**), and resident memory footprint (**8.8 MiB** vs 50 MiB budget) on physical hardware, documented in `docs/LOW_RESOURCE_BASELINE.md`.
+- OWASP ASVS 5.0 Security Audit Report: Formally documented STRIDE threat modeling, chapter-by-chapter ASVS controls, Wasm sandbox limits, and vulnerability disclosure policies in `docs/SECURITY_AUDIT_REPORT.md`.
 - Strict IPC Schema Contracts & Typed Bridge: Added runtime schema validation in `src-ui/src/ipc-contract.ts` and typed methods in `src-ui/src/aegis-bridge.ts`.
-- Zero-Warning Quality Guarantee: All 124 Rust core tests pass with 0 compiler warnings.
+- Zero-Warning Quality Guarantee: All 124 Rust core tests, 76 CLI tests, and live smoke tests pass with 0 compiler warnings.
 
 # v0.30.6 — 2026-11-10
 
