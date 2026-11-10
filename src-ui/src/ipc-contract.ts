@@ -87,5 +87,17 @@ export function validCommandData(command: string, data: unknown): boolean {
   if (command === 'updater_stage') {
     return record(data) && text(data.staged_path) && text(data.version) && typeof data.ready_to_apply === 'boolean';
   }
+  if (command === 'plugin_manifest_list') {
+    return record(data) && Array.isArray(data.manifests) && typeof data.count === 'number';
+  }
+  if (command === 'plugin_manifest_validate') {
+    return record(data) && typeof data.valid === 'boolean';
+  }
+  if (command === 'plugin_manifest_register') {
+    return record(data) && data.registered === true && text(data.pluginId);
+  }
+  if (command === 'plugin_sandboxed_execute') {
+    return record(data) && text(data.pluginId) && text(data.action) && 'result' in data;
+  }
   return true;
 }

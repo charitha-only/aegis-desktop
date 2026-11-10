@@ -142,7 +142,24 @@ if (process.platform === 'win32') {
   }
 }
 
+// 4b. Software Bill of Materials (SBOM) Generation
+console.log('\n[Step 4/5] Generating Software Bill of Materials (SBOM)...');
+try {
+  execFileSync('node', [path.join(root, 'scripts', 'generate-sbom.mjs')], { cwd: root, stdio: 'inherit' });
+  const distSbom = path.join(root, 'dist', 'sbom.spdx.json');
+  if (fs.existsSync(distSbom)) {
+    fs.copyFileSync(distSbom, path.join(distBundleDir, 'sbom.spdx.json'));
+    const distSha = path.join(root, 'dist', 'sbom.spdx.json.sha256');
+    if (fs.existsSync(distSha)) {
+      fs.copyFileSync(distSha, path.join(distBundleDir, 'sbom.spdx.json.sha256'));
+    }
+    console.log('[SBOM] Bundled sbom.spdx.json and cryptographic digest into dist-bundle/');
+  }
+} catch (e) {
+  console.warn('[SBOM Warning]:', e.message);
+}
+
 // 5. Final Package Summary
-console.log('\n[Step 4/4] Package Verification & Summary:');
-console.log(`All packaging artifacts and specs staged in: ${distBundleDir}`);
+console.log('\n[Step 5/5] Package Verification & Summary:');
+console.log(`All packaging artifacts, SBOM, and specs staged in: ${distBundleDir}`);
 console.log('Cross-platform packaging pipeline completed successfully.\n');

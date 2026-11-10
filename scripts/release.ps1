@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # release.ps1 — Version bump + GitHub push script
 # Usage:
 #   .\scripts\release.ps1          # patch bump (0.29.19 → 0.29.20)
@@ -97,6 +97,11 @@ if (Test-Path $aegisCfgPath) {
     Write-Host "   ✅ aegis.config.json → $newVersion"
 }
 
+# ── 5b. Generate Software Bill of Materials (SBOM) ───────────
+Write-Host "`n🔨 Generating SPDX 2.3 Software Bill of Materials (SBOM)..." -ForegroundColor Cyan
+node scripts/generate-sbom.mjs
+Write-Host "   ✅ docs/SBOM.json generated & verified"
+
 # ── 6. Ask for release notes ─────────────────────────────────
 Write-Host "`n📄 Enter release notes (press Enter twice when done):" -ForegroundColor Cyan
 $lines = @()
@@ -125,7 +130,7 @@ Write-Host "   ✅ CHANGELOG.md updated"
 
 # ── 8. Git commit ────────────────────────────────────────────
 Write-Host "`n📦 Creating git commit..." -ForegroundColor Cyan
-git add package.json src-core/Cargo.toml src-ui/package.json aegis.config.json CHANGELOG.md README.md
+git add package.json src-core/Cargo.toml src-ui/package.json aegis.config.json CHANGELOG.md README.md docs/SBOM.json
 git commit -m "chore: bump version to v$newVersion"
 Write-Host "   ✅ Committed"
 

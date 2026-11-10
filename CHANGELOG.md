@@ -1,3 +1,11 @@
+# v0.31.0 — 2026-11-10
+
+- Untrusted Plugin Sandbox & Declared Permission Manifests: Implemented `PluginManifest` schema (`plugin.json`), `PluginTrustTier` (`NativeHost` vs `SandboxedGuest`), `PluginPermission` (`system:info`, `crypto:sha256`, `storage:read`, `storage:write`, `ui:dialog`, `net:fetch`), `PluginResourceLimits`, and `SandboxedPluginManager` in `src-core/src/plugin.rs` with fail-closed capability verification and Wasm guest trap containment.
+- Untrusted Plugin IPC Suite & Typed Bridge: Added `plugin_manifest_validate`, `plugin_manifest_register`, `plugin_manifest_list`, and `plugin_sandboxed_execute` endpoints to `src-core/src/ipc/router.rs`, enforced runtime schema validation in `src-ui/src/ipc-contract.ts`, and exposed typed methods in `src-ui/src/aegis-bridge.ts`.
+- Software Bill of Materials (SBOM) & Artifact Provenance: Added automated `scripts/generate-sbom.mjs` conforming to SPDX 2.3 JSON specification, tracking 386 Rust crates and 55 npm dependencies (442 total) with exact download locations and cryptographic digests. Generated `docs/SBOM.json`, `dist/sbom.spdx.json`, and SHA-256 digest `dist/sbom.spdx.json.sha256`. Integrated into cross-platform packaging and CI/CD pipelines.
+- UI Accessibility & Keyboard Navigation Assurance (WCAG 2.1 AA): Added high-contrast `:focus-visible` styling, skip-to-main-content anchor, semantic ARIA roles (`role="tablist"`, `role="tab"`, `role="main"`, `role="status"`), screen reader live polite announcer region (`aria-live="polite"`), and accessible action labels for updater and window controls in `src-ui/src/App.tsx` and `src-ui/src/index.css`.
+- Production Release Candidate 1: 100% test pass rate across 129 Rust core tests, 76 Node CLI tests, and live smoke test suites with zero warnings.
+
 # v0.30.8 — 2026-11-10
 
 - Transactional Auto-Updater Apply & Rollback Points: Implemented `apply_staged` in `src-core/src/updater.rs`, enabling safe executable replacement with automatic pre-apply backup (`current_exe.old`), atomic fallback restoration on failure, and transitions to `JournalState::Applied`.

@@ -54,6 +54,7 @@ const unavailableTabs: string[] = ['hardwareKey','enclave','stream','tpmAttestat
 export default function App() {
   const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit' | 'packagePipeline' | 'p2pMarket' | 'hsmPkcs11'>('security');
   const [connected, setConnected] = useState(false);
+  const [srAnnouncement, setSrAnnouncement] = useState('Aegis Desktop Dashboard Ready');
   const [nonce, setNonce] = useState<string | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
   const [sysInfo, setSysInfo] = useState<SystemInfo | null>(null);
@@ -517,6 +518,7 @@ export default function App() {
     const res = await aegis.call('updater_rollback', {});
     if (res.success) {
       addLog('INFO', 'updater_rollback', 'Staged update quarantined and rolled back');
+      setSrAnnouncement('Staged update quarantined and rolled back.');
       await refreshUpdaterStatus();
     } else {
       addLog('BLOCKED', 'updater_rollback', res.error || 'Rollback failed');
@@ -529,6 +531,7 @@ export default function App() {
     const res = await aegis.call('updater_apply', {});
     if (res.success) {
       addLog('SUCCESS', 'updater_apply', `Update applied successfully! Target version: ${res.data?.targetVersion}. Restart recommended.`);
+      setSrAnnouncement(`Update applied successfully! Target version: ${res.data?.targetVersion}. Restart recommended.`);
       await refreshUpdaterStatus();
     } else {
       addLog('BLOCKED', 'updater_apply', res.error || 'Apply failed');
@@ -956,6 +959,26 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', background: 'radial-gradient(circle at 50% 10%, #1e1e38 0%, #0a0b14 100%)' }}>
+      {/* Skip to Main Content Link for Keyboard Navigation (WCAG 2.1 AA) */}
+      <a
+        href="#main-content"
+        className="sr-only"
+        style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          zIndex: 9999,
+          background: '#1e293b',
+          color: '#60a5fa',
+          padding: '8px 16px',
+          borderRadius: '4px',
+          textDecoration: 'none',
+          fontWeight: 600,
+        }}
+      >
+        Skip to main content
+      </a>
+
       {/* Custom Window Titlebar */}
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(10, 12, 22, 0.85)', backdropFilter: 'blur(10px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -964,7 +987,7 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
-              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v0.18 BETA</span>
+              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v1.0 RC1</span>
             </div>
             <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Sandboxed Framework</div>
           </div>
@@ -972,7 +995,11 @@ export default function App() {
 
         {/* Connection & Nonce Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: connected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', border: `1px solid ${connected ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`, padding: '4px 12px', borderRadius: '20px' }}>
+          <div
+            role="status"
+            aria-live="polite"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: connected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', border: `1px solid ${connected ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`, padding: '4px 12px', borderRadius: '20px' }}
+          >
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: connected ? '#10b981' : '#ef4444', boxShadow: connected ? '0 0 8px #10b981' : 'none' }}></div>
             <span style={{ fontSize: '12px', fontWeight: 500, color: connected ? '#34d399' : '#f87171' }}>
               {connected ? 'Rust Core Connected' : 'Core Offline'}
@@ -981,7 +1008,8 @@ export default function App() {
 
           <button
             onClick={connectToCore}
-            title="Reconnect"
+            title="Reconnect to Rust Core"
+            aria-label="Reconnect to Rust Core"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#94a3b8' }}
           >
             <RefreshCw style={{ width: '14px', height: '14px' }} />
@@ -992,7 +1020,11 @@ export default function App() {
       {/* Main Layout */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Navigation Sidebar */}
-        <nav style={{ width: '240px', background: 'rgba(12, 15, 29, 0.95)', borderRight: '1px solid rgba(255,255,255,0.06)', padding: '20px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <nav
+          role="tablist"
+          aria-label="Framework Controls"
+          style={{ width: '240px', background: 'rgba(12, 15, 29, 0.95)', borderRight: '1px solid rgba(255,255,255,0.06)', padding: '20px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}
+        >
           <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 12px 8px' }}>
             Framework Controls
           </div>
@@ -1425,7 +1457,17 @@ export default function App() {
         </nav>
 
         {/* Content Area */}
-        <main style={{ flex: 1, padding: '24px 32px', overflowY: 'auto' }}>
+        <main
+          id="main-content"
+          role="main"
+          tabIndex={-1}
+          aria-label="Application Dashboard"
+          style={{ flex: 1, padding: '24px 32px', overflowY: 'auto' }}
+        >
+          {/* Live Accessibility Announcer for Screen Readers (WCAG 2.1 AA) */}
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {srAnnouncement}
+          </div>
           {/* TAB 1: SECURITY & DEFENSE */}
           {unavailableTabs.includes(activeTab) && (
  <section role="status" style={{padding:32,color:'#f8fafc',background:'#172033',borderRadius:12}}>
@@ -2362,6 +2404,7 @@ export default function App() {
                           {updaterStatus.journal.state === 'VERIFIED' && (
                             <button
                               onClick={handleApplyUpdate}
+                              aria-label="Apply verified update and restart application"
                               style={{ background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#6ee7b7', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
                             >
                               🚀 Apply Update & Restart Application
@@ -2369,6 +2412,7 @@ export default function App() {
                           )}
                           <button
                             onClick={handleRollbackUpdate}
+                            aria-label="Quarantine and rollback staged update payload"
                             style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 500 }}
                           >
                             Quarantine & Rollback Staged Update

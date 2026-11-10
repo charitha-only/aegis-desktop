@@ -1123,6 +1123,80 @@ impl IpcRouter {
                 }
             }
 
+            // ─── UNTRUSTED PLUGIN SANDBOX & MANIFEST IPC (v0.30.9 / v1.0.0-rc1) ─────
+            "plugin_manifest_validate" => {
+                let manifest_val = match req.payload.get("manifest") {
+                    Some(m) => m,
+                    None => return IpcResponse::err(&req.id, "Missing 'manifest' parameter"),
+                };
+                let manifest: Result<crate::plugin::PluginManifest, _> =
+                    serde_json::from_value(manifest_val.clone());
+                match manifest {
+                    Ok(m) => match m.validate() {
+                        Ok(()) => IpcResponse::ok(&req.id, json!({ "valid": true, "manifest": m })),
+                        Err(err) => IpcResponse::ok(&req.id, json!({ "valid": false, "error": err })),
+                    },
+                    Err(err) => IpcResponse::ok(
+                        &req.id,
+                        json!({ "valid": false, "error": format!("Invalid manifest schema: {err}") }),
+                    ),
+                }
+            }
+
+            "plugin_manifest_register" => {
+                let manifest_val = match req.payload.get("manifest") {
+                    Some(m) => m,
+                    None => return IpcResponse::err(&req.id, "Missing 'manifest' parameter"),
+                };
+                let manifest: crate::plugin::PluginManifest =
+                    match serde_json::from_value(manifest_val.clone()) {
+                        Ok(m) => m,
+                        Err(err) => {
+                            return IpcResponse::err(&req.id, &format!("Invalid manifest schema: {err}"))
+                        }
+                    };
+                let plugin_id = manifest.id.clone();
+                match self.plugins.sandboxed().register_manifest(manifest) {
+                    Ok(()) => {
+                        IpcResponse::ok(&req.id, json!({ "registered": true, "pluginId": plugin_id }))
+                    }
+                    Err(err) => IpcResponse::err(&req.id, &err),
+                }
+            }
+
+            "plugin_manifest_list" => {
+                let manifests = self.plugins.sandboxed().list_manifests();
+                IpcResponse::ok(
+                    &req.id,
+                    json!({ "manifests": manifests, "count": manifests.len() }),
+                )
+            }
+
+            "plugin_sandboxed_execute" => {
+                let plugin_id = match req.payload.get("pluginId").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'pluginId' parameter"),
+                };
+                let action = match req.payload.get("action").and_then(|a| a.as_str()) {
+                    Some(a) => a,
+                    None => return IpcResponse::err(&req.id, "Missing 'action' parameter"),
+                };
+                let payload = req.payload.get("payload").cloned().unwrap_or(json!({}));
+                match self.plugins.sandboxed().execute_sandboxed_action(
+                    plugin_id,
+                    action,
+                    &payload,
+                    &self.security,
+                    &self.wasm_sandbox,
+                ) {
+                    Ok(res) => IpcResponse::ok(
+                        &req.id,
+                        json!({ "pluginId": plugin_id, "action": action, "result": res }),
+                    ),
+                    Err(err) => IpcResponse::err(&req.id, &err),
+                }
+            }
+
             // ─── NOTIFICATION ENGINE IPC (v0.13) ───────────────────────────
             "notify_send" | "notify_poll" | "notify_cancel" => {
                 if let Err(error) = self.security.check_notifications() {

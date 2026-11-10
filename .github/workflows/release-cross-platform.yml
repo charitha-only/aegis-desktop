@@ -79,12 +79,17 @@ jobs:
           if (-not $ver) { $ver = 'v0.30.7' }
           Compress-Archive -Path dist-bundle\AegisDesktopApplication\* -DestinationPath "dist-bundle/AegisDesktopApplication-$ver-windows-x64.zip" -Force
 
+      - name: Generate Software Bill of Materials (SBOM)
+        run: node scripts/generate-sbom.mjs
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-artifacts
           path: |
             dist-bundle/AegisDesktopApplication-*-windows-x64.zip
             dist-bundle/installers/*-Setup-*.exe
+            dist/sbom.spdx.json
+            dist/sbom.spdx.json.sha256
 
   # ─── 2. LINUX X64 (Debian .deb Packager) ──────────────────────────────────
   build-linux:

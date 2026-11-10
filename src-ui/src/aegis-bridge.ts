@@ -625,6 +625,22 @@ export class AegisBridge {
     return this.invoke('plugin_dispatch', { plugin: name, payload });
   }
 
+  public async pluginManifestList(): Promise<IpcResponse<{ manifests: any[]; count: number }>> {
+    return this.invoke('plugin_manifest_list');
+  }
+
+  public async pluginManifestValidate(manifest: any): Promise<IpcResponse<{ valid: boolean; manifest?: any; error?: string }>> {
+    return this.invoke('plugin_manifest_validate', { manifest });
+  }
+
+  public async pluginManifestRegister(manifest: any): Promise<IpcResponse<{ registered: boolean; pluginId: string }>> {
+    return this.invoke('plugin_manifest_register', { manifest });
+  }
+
+  public async pluginSandboxedExecute(pluginId: string, action: string, payload: Record<string, any> = {}): Promise<IpcResponse<{ pluginId: string; action: string; result: any }>> {
+    return this.invoke('plugin_sandboxed_execute', { pluginId, action, payload });
+  }
+
   public async notifySend(title: string, body: string, urgency: 'low' | 'normal' | 'critical' = 'normal', timeoutMs?: number): Promise<IpcResponse<NotificationSubmission>> {
     return this.invoke('notify_send', { title, body, urgency, ...(timeoutMs === undefined ? {} : {timeout_ms: timeoutMs}) });
   }
