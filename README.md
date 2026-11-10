@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.30.7-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.30.7-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.30.8-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.30.8-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -16,11 +16,11 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.30.7 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
+[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.30.8 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
 
 </div>
 
-> **v0.30.7 — production-hardened framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock and Linux Debian/macOS package install/upgrade/reinstall data-preservation acceptance run on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
+> **v0.30.8 — production-hardened framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock and Linux Debian/macOS package install/upgrade/reinstall data-preservation acceptance run on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
 >
 > **Latest verified tooling:** Source `829411d` passed three-OS portable/native and Windows installer checks on attempt 1, including three required fresh Windows GUI runs. The [typed managed-window SDK](docs/MANAGED_WINDOW_SDK.md) has 23 SDK tests per hosted OS. [Startup stage timings](docs/NATIVE_STARTUP_OBSERVATION.md) are now retained; the earlier timeout remains unexplained, not fixed. See the [exact-source ledger](docs/IMPLEMENTATION_STATUS.md).
 >

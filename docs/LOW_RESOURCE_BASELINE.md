@@ -45,3 +45,4 @@ npm run test:benchmark
 ```
 
 Aegis fails closed with an error code if resident memory exceeds the allocated threshold ($50\text{ MiB}$) or IPC $p_{95}$ exceeds $10\text{ ms}$.
+

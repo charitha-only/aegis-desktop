@@ -12,32 +12,41 @@ import {withBenchmarkCore} from '../lib/benchmark-core.js';
 const args=process.argv.slice(2);
 const requestedBinary=args[0] && !args[0].startsWith('--') ? args.shift() : undefined;
 let budget;
-if(args.length) {
-  if(args.length!==1 || !args[0].startsWith('--budget=') || args[0].length<=9) throw new Error('Usage: benchmark.js [binary] [--budget=file.json]');
-  const filename=args[0].slice(9);
-  if((await stat(filename)).size>65536) throw new Error('Budget file exceeds 64 KiB');
-  budget=JSON.parse(await readFile(filename,'utf8'));
-  evaluatePerformanceBudget({schemaVersion:2},budget); // Validate before launching any fixture.
+let includeTree = false;
+
+for (const arg of args) {
+  if (arg === '--process-tree' || arg === '--whole-app') {
+    includeTree = true;
+  } else if (arg.startsWith('--budget=') && arg.length > 9) {
+    const filename = arg.slice(9);
+    if ((await stat(filename)).size > 65536) throw new Error('Budget file exceeds 64 KiB');
+    budget = JSON.parse(await readFile(filename, 'utf8'));
+    evaluatePerformanceBudget({ schemaVersion: 2 }, budget);
+  } else {
+    throw new Error('Usage: benchmark.js [binary] [--process-tree] [--budget=file.json]');
+  }
 }
 const binary = path.resolve(requestedBinary || `src-core/target/release/aegis-core${process.platform === 'win32' ? '.exe' : ''}`);
 const trials = 5;
 const withCore=run=>withBenchmarkCore({binary},run);
 
-function sampleProcess(pid) {
+function sampleProcess(pid, { includeTree = false } = {}) {
   if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Invalid owned process ID');
   if (process.platform === 'win32') {
-    const result = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command',
-      `Get-Process -Id ${pid} | Select-Object WorkingSet64,PeakWorkingSet64,CPU | ConvertTo-Json -Compress`], {encoding: 'utf8', windowsHide: true, timeout: 10000});
-    if (result.status !== 0) return null;
+    const cmd = includeTree
+      ? `$pids = @(${pid}); $children = Get-CimInstance Win32_Process -Filter "ParentProcessId=${pid}" -ErrorAction SilentlyContinue; if ($children) { $pids += $children.ProcessId }; $procs = Get-Process -Id $pids -ErrorAction SilentlyContinue; if ($procs) { [PSCustomObject]@{ WorkingSet64 = ($procs | Measure-Object WorkingSet64 -Sum).Sum; PeakWorkingSet64 = ($procs | Measure-Object PeakWorkingSet64 -Maximum).Maximum; CPU = ($procs | Measure-Object CPU -Sum).Sum; ProcessCount = $procs.Count } | ConvertTo-Json -Compress }`
+      : `Get-Process -Id ${pid} | Select-Object WorkingSet64,PeakWorkingSet64,CPU | ConvertTo-Json -Compress`;
+    const result = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', cmd], {encoding: 'utf8', windowsHide: true, timeout: 10000});
+    if (result.status !== 0 || !result.stdout.trim()) return null;
     const value = JSON.parse(result.stdout);
-    return {rssBytes: value.WorkingSet64, peakRssBytes: value.PeakWorkingSet64, cpuSeconds: value.CPU || 0};
+    return {rssBytes: value.WorkingSet64, peakRssBytes: value.PeakWorkingSet64, cpuSeconds: value.CPU || 0, processCount: value.ProcessCount || 1};
   }
   const result = spawnSync('ps', ['-o', 'rss=,time=', '-p', String(pid)], {encoding: 'utf8', timeout: 5000});
   if (result.status !== 0) return null;
   const [rss, time] = result.stdout.trim().split(/\s+/);
   const [days, clock] = time.includes('-') ? time.split('-') : ['0', time];
   const seconds = clock.split(':').reduce((sum, part) => sum * 60 + Number(part), 0) + Number(days) * 86400;
-  return {rssBytes: Number(rss) * 1024, peakRssBytes: null, cpuSeconds: seconds};
+  return {rssBytes: Number(rss) * 1024, peakRssBytes: null, cpuSeconds: seconds, processCount: 1};
 }
 
 const startup = [];
@@ -52,13 +61,14 @@ const workload = await withCore(async ({base, pid}) => {
     if (!response.success) throw new Error('Benchmark IPC request failed');
     ipc.push(performance.now() - start);
   }
-  const before = sampleProcess(pid);
+  const before = sampleProcess(pid, { includeTree });
   const start = performance.now();
   await new Promise(resolve => setTimeout(resolve, 2000));
-  const after = sampleProcess(pid);
+  const after = sampleProcess(pid, { includeTree });
   const elapsedMs = performance.now() - start;
   return {ipc: latencySummary(ipc), ipcSamplesMs:ipc, idle: before && after ? {
     durationMs: elapsedMs, rssBytes: after.rssBytes, peakRssBytes: after.peakRssBytes,
+    processCount: after.processCount,
     cpuPercentOfOneLogicalCore: Math.max(0, after.cpuSeconds - before.cpuSeconds) / (elapsedMs / 1000) * 100,
   } : {unavailable: true}};
 });

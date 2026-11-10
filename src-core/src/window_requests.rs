@@ -14,6 +14,9 @@ pub enum WindowOperation {
     Close(String),
     Focus(String),
     SetMinimized { id: String, minimized: bool },
+    SetMaximized { id: String, maximized: bool },
+    SetFullscreen { id: String, fullscreen: bool },
+    SetTitle { id: String, title: String },
 }
 #[allow(dead_code)]
 pub struct WindowRequest {
@@ -92,6 +95,48 @@ impl WindowClient {
         self.submit(WindowOperation::SetMinimized {
             id: id.into(),
             minimized,
+        })
+    }
+    pub fn set_maximized(&self, id: &str, maximized: bool) -> Result<WindowTicket, String> {
+        if !id.starts_with("child-")
+            || id.len() > 32
+            || id.len() == 6
+            || !id[6..].bytes().all(|b| b.is_ascii_digit())
+        {
+            return Err("Invalid managed window ID".into());
+        }
+        self.submit(WindowOperation::SetMaximized {
+            id: id.into(),
+            maximized,
+        })
+    }
+    pub fn set_fullscreen(&self, id: &str, fullscreen: bool) -> Result<WindowTicket, String> {
+        if !id.starts_with("child-")
+            || id.len() > 32
+            || id.len() == 6
+            || !id[6..].bytes().all(|b| b.is_ascii_digit())
+        {
+            return Err("Invalid managed window ID".into());
+        }
+        self.submit(WindowOperation::SetFullscreen {
+            id: id.into(),
+            fullscreen,
+        })
+    }
+    pub fn set_title(&self, id: &str, title: &str) -> Result<WindowTicket, String> {
+        if !id.starts_with("child-")
+            || id.len() > 32
+            || id.len() == 6
+            || !id[6..].bytes().all(|b| b.is_ascii_digit())
+        {
+            return Err("Invalid managed window ID".into());
+        }
+        if title.is_empty() || title.len() > 256 || title.chars().any(|c| c.is_control()) {
+            return Err("Invalid window title".into());
+        }
+        self.submit(WindowOperation::SetTitle {
+            id: id.into(),
+            title: title.into(),
         })
     }
     fn submit(&self, operation: WindowOperation) -> Result<WindowTicket, String> {
@@ -294,5 +339,36 @@ mod tests {
         ticket.cancel();
         assert!(ticket.is_cancelled());
         assert!(host.next().is_none());
+    }
+
+    #[test]
+    fn test_maximize_fullscreen_and_title_requests() {
+        let policy =
+            NativeWindowPolicy::new("http://127.0.0.1:48291/", &WindowConfig::default()).unwrap();
+        let (client, host) = window_channel(policy);
+
+        // Maximize
+        let ticket = client.set_maximized("child-1", true).unwrap();
+        let req = host.next().unwrap();
+        assert!(matches!(&req.operation, WindowOperation::SetMaximized { id, maximized: true } if id == "child-1"));
+        req.finish(Ok(serde_json::json!({"windowId":"child-1","action":"setMaximized","requested":true,"requestedMaximized":true,"stateConfirmed":false})));
+        let res = ticket.wait(Duration::from_secs(1)).unwrap();
+        assert_eq!(res["action"], "setMaximized");
+
+        // Fullscreen
+        let ticket = client.set_fullscreen("child-1", true).unwrap();
+        let req = host.next().unwrap();
+        assert!(matches!(&req.operation, WindowOperation::SetFullscreen { id, fullscreen: true } if id == "child-1"));
+        req.finish(Ok(serde_json::json!({"windowId":"child-1","action":"setFullscreen","requested":true,"requestedFullscreen":true,"stateConfirmed":false})));
+        let res = ticket.wait(Duration::from_secs(1)).unwrap();
+        assert_eq!(res["action"], "setFullscreen");
+
+        // Title
+        let ticket = client.set_title("child-1", "New Secure Title").unwrap();
+        let req = host.next().unwrap();
+        assert!(matches!(&req.operation, WindowOperation::SetTitle { id, title } if id == "child-1" && title == "New Secure Title"));
+        req.finish(Ok(serde_json::json!({"windowId":"child-1","action":"setTitle","requested":true,"title":"New Secure Title","stateConfirmed":false})));
+        let res = ticket.wait(Duration::from_secs(1)).unwrap();
+        assert_eq!(res["title"], "New Secure Title");
     }
 }

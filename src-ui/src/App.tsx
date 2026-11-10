@@ -524,6 +524,18 @@ export default function App() {
     setUpdaterLoading(false);
   };
 
+  const handleApplyUpdate = async () => {
+    setUpdaterLoading(true);
+    const res = await aegis.call('updater_apply', {});
+    if (res.success) {
+      addLog('SUCCESS', 'updater_apply', `Update applied successfully! Target version: ${res.data?.targetVersion}. Restart recommended.`);
+      await refreshUpdaterStatus();
+    } else {
+      addLog('BLOCKED', 'updater_apply', res.error || 'Apply failed');
+    }
+    setUpdaterLoading(false);
+  };
+
   // v0.14 Handlers
   const refreshHardwareKeys = async () => {
     setHwKeyLoading(true);
@@ -2346,7 +2358,15 @@ export default function App() {
                         <span style={{ fontSize: '12px', fontWeight: 600, color: '#34d399' }}>Full Local File Support</span>
                       </div>
                       {updaterStatus?.journal && updaterStatus.journal.state !== 'IDLE' && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px', gap: '8px' }}>
+                          {updaterStatus.journal.state === 'VERIFIED' && (
+                            <button
+                              onClick={handleApplyUpdate}
+                              style={{ background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#6ee7b7', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
+                            >
+                              🚀 Apply Update & Restart Application
+                            </button>
+                          )}
                           <button
                             onClick={handleRollbackUpdate}
                             style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 500 }}

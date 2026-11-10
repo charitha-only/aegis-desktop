@@ -17,6 +17,9 @@ export function validCommandData(command: string, data: unknown): boolean {
     && record(data.capabilities) && booleans(data.capabilities, ['modal','kiosk','alwaysOnTop','customSize','customUrl']);
   if (command === 'managed_window_focus') return record(data) && managedWindowId(data.windowId) && data.action === 'focus' && data.requested === true && data.stateConfirmed === false;
   if (command === 'managed_window_set_minimized') return record(data) && managedWindowId(data.windowId) && data.action === 'setMinimized' && data.requested === true && typeof data.requestedMinimized === 'boolean' && data.stateConfirmed === false;
+  if (command === 'managed_window_set_maximized') return record(data) && managedWindowId(data.windowId) && data.action === 'setMaximized' && data.requested === true && typeof data.requestedMaximized === 'boolean' && data.stateConfirmed === false;
+  if (command === 'managed_window_set_fullscreen') return record(data) && managedWindowId(data.windowId) && data.action === 'setFullscreen' && data.requested === true && typeof data.requestedFullscreen === 'boolean' && data.stateConfirmed === false;
+  if (command === 'managed_window_set_title') return record(data) && managedWindowId(data.windowId) && data.action === 'setTitle' && data.requested === true && text(data.title) && data.stateConfirmed === false;
   if (command === 'managed_window_list') return record(data) && Array.isArray(data.windowIds) && data.windowIds.length <= 8
     && data.windowIds.every(managedWindowId) && new Set(data.windowIds).size === data.windowIds.length;
   if (command === 'managed_window_close') return record(data) && managedWindowId(data.windowId) && data.closed === true;
@@ -72,11 +75,14 @@ export function validCommandData(command: string, data: unknown): boolean {
     return record(data) && typeof data.verified === 'boolean' && text(data.filePath) && text(data.sha256);
   }
   if (command === 'updater_journal') {
-    return record(data) && ['IDLE', 'STAGED', 'VERIFIED', 'ROLLED_BACK'].includes(data.state as string)
+    return record(data) && ['IDLE', 'STAGED', 'VERIFIED', 'APPLIED', 'ROLLED_BACK'].includes(data.state as string)
       && text(data.active_version);
   }
   if (command === 'updater_rollback') {
     return record(data) && data.rolledBack === true;
+  }
+  if (command === 'updater_apply') {
+    return record(data) && data.applied === true && text(data.targetVersion);
   }
   if (command === 'updater_stage') {
     return record(data) && text(data.staged_path) && text(data.version) && typeof data.ready_to_apply === 'boolean';

@@ -1,3 +1,11 @@
+# v0.30.8 — 2026-11-10
+
+- Transactional Auto-Updater Apply & Rollback Points: Implemented `apply_staged` in `src-core/src/updater.rs`, enabling safe executable replacement with automatic pre-apply backup (`current_exe.old`), atomic fallback restoration on failure, and transitions to `JournalState::Applied`.
+- Auto-Updater Apply IPC & Frontend Control: Exposed `updater_apply` in `src-core/src/ipc/router.rs`, added typed bridge method `applyUpdate()` in `aegis-bridge.ts`, and activated an interactive "Apply Update & Restart Application" action button in `src-ui/src/App.tsx` when an update is in the `VERIFIED` state.
+- Native Windowing Control Extensions: Added `SetMaximized`, `SetFullscreen`, and `SetTitle` operations to `src-core/src/window_requests.rs`, wired handlers across `winit` (Windows/macOS) and `gtk` (Linux) in `src-core/src/native_window.rs`, and exposed typed bridge methods in `aegis-bridge.ts`.
+- Whole-App Process Tree Memory Profiling: Enhanced `aegis-cli/bin/benchmark.js` with `--process-tree` flag to recursively monitor child process memory trees on Windows and Linux, capturing aggregate working set (`processTreeRssBytes`) and process count.
+- Zero-Warning Quality Guarantee: All 126 Rust core tests, 76 Node CLI tests, and live smoke tests pass with 0 compiler warnings.
+
 # v0.30.7 — 2026-11-10
 
 - Multi-OS CI/CD Release Matrix: Implemented `.github/workflows/release-cross-platform.yml` with automated parallel builds for Windows x64 (Authenticode signed binaries + Inno Setup installer), Linux x64 (native Debian `.deb` + `.tar.gz`), and macOS universal (native `.pkg` + `.tar.gz`) with GitHub Release publishing.

@@ -51,6 +51,27 @@ export interface ManagedMinimizeRequest {
   requestedMinimized: boolean;
   stateConfirmed: false;
 }
+export interface ManagedMaximizeRequest {
+  windowId: ManagedWindowId;
+  action: 'setMaximized';
+  requested: true;
+  requestedMaximized: boolean;
+  stateConfirmed: false;
+}
+export interface ManagedFullscreenRequest {
+  windowId: ManagedWindowId;
+  action: 'setFullscreen';
+  requested: true;
+  requestedFullscreen: boolean;
+  stateConfirmed: false;
+}
+export interface ManagedTitleRequest {
+  windowId: ManagedWindowId;
+  action: 'setTitle';
+  requested: true;
+  title: string;
+  stateConfirmed: false;
+}
 export interface WindowCapabilities {
   responseKind: 'capabilities';
   multiWindowSupported: boolean;
@@ -199,11 +220,12 @@ export interface AttestationVerification {
 
 export interface UpdateJournal {
   journal_version: number;
-  state: 'IDLE' | 'STAGED' | 'VERIFIED' | 'ROLLED_BACK';
+  state: 'IDLE' | 'STAGED' | 'VERIFIED' | 'APPLIED' | 'ROLLED_BACK';
   active_version: string;
   target_version?: string;
   staged_file?: string;
   staged_sha256?: string;
+  backup_file?: string;
   last_status: string;
 }
 
@@ -470,6 +492,10 @@ export class AegisBridge {
     return this.invoke<{ staged_path: string; version: string; ready_to_apply: boolean }>('updater_stage', { filePath, version, expectedSha256 });
   }
 
+  public async applyUpdate(): Promise<IpcResponse<{ applied: boolean; targetVersion: string; executable: string; backupFile: string; restartRequired: boolean; journal: UpdateJournal }>> {
+    return this.invoke<{ applied: boolean; targetVersion: string; executable: string; backupFile: string; restartRequired: boolean; journal: UpdateJournal }>('updater_apply');
+  }
+
   // Zero-Knowledge Encrypted Vault APIs
   public async vaultEncryptStore(filename: string, content: string, passphrase: string): Promise<IpcResponse<{ filename: string; status: string; envelopeLength: number }>> {
     return this.invoke('vault_encrypt_store', { filename, content, passphrase });
@@ -528,6 +554,24 @@ export class AegisBridge {
   public async setManagedWindowMinimized(windowId: ManagedWindowId, minimized: boolean): Promise<IpcResponse<ManagedMinimizeRequest>> {
     const result = await this.invoke<ManagedMinimizeRequest>('managed_window_set_minimized', {windowId, minimized});
     if (result.success && (result.data?.windowId !== windowId || result.data?.requestedMinimized !== minimized)) return {id: result.id, success: false, error: 'Minimize receipt does not match requested window/state', errorCode: 'INVALID_RESPONSE'};
+    return result;
+  }
+
+  public async setManagedWindowMaximized(windowId: ManagedWindowId, maximized: boolean): Promise<IpcResponse<ManagedMaximizeRequest>> {
+    const result = await this.invoke<ManagedMaximizeRequest>('managed_window_set_maximized', {windowId, maximized});
+    if (result.success && (result.data?.windowId !== windowId || result.data?.requestedMaximized !== maximized)) return {id: result.id, success: false, error: 'Maximize receipt does not match requested window/state', errorCode: 'INVALID_RESPONSE'};
+    return result;
+  }
+
+  public async setManagedWindowFullscreen(windowId: ManagedWindowId, fullscreen: boolean): Promise<IpcResponse<ManagedFullscreenRequest>> {
+    const result = await this.invoke<ManagedFullscreenRequest>('managed_window_set_fullscreen', {windowId, fullscreen});
+    if (result.success && (result.data?.windowId !== windowId || result.data?.requestedFullscreen !== fullscreen)) return {id: result.id, success: false, error: 'Fullscreen receipt does not match requested window/state', errorCode: 'INVALID_RESPONSE'};
+    return result;
+  }
+
+  public async setManagedWindowTitle(windowId: ManagedWindowId, title: string): Promise<IpcResponse<ManagedTitleRequest>> {
+    const result = await this.invoke<ManagedTitleRequest>('managed_window_set_title', {windowId, title});
+    if (result.success && (result.data?.windowId !== windowId || result.data?.title !== title)) return {id: result.id, success: false, error: 'Title receipt does not match requested window/title', errorCode: 'INVALID_RESPONSE'};
     return result;
   }
 

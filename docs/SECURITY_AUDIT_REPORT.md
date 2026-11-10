@@ -71,3 +71,4 @@ Every commit is gated on comprehensive test suites:
 
 * **Security Contact**: Vulnerabilities should be reported responsibly to the repository security team or via GitHub Private Vulnerability Reporting.
 * **Patch SLA**: Critical security advisories are evaluated within 24 hours, with hotfixes published alongside updated GitHub Release assets.
+

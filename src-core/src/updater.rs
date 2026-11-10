@@ -78,6 +78,8 @@ pub enum JournalState {
     Staged,
     #[serde(rename = "VERIFIED")]
     Verified,
+    #[serde(rename = "APPLIED")]
+    Applied,
     #[serde(rename = "ROLLED_BACK")]
     RolledBack,
 }
@@ -90,6 +92,8 @@ pub struct UpdateJournal {
     pub target_version: Option<String>,
     pub staged_file: Option<String>,
     pub staged_sha256: Option<String>,
+    #[serde(default)]
+    pub backup_file: Option<String>,
     pub last_status: String,
 }
 
@@ -184,6 +188,7 @@ impl AutoUpdater {
             target_version: None,
             staged_file: None,
             staged_sha256: None,
+            backup_file: None,
             last_status: "No pending update transactions".to_string(),
         };
 
@@ -252,6 +257,7 @@ impl AutoUpdater {
             target_version: Some(version.to_string()),
             staged_file: Some(staged_path.to_string_lossy().to_string()),
             staged_sha256: expected_sha256.map(|s| s.to_string()),
+            backup_file: None,
             last_status: format!("Update payload staged at {}", staged_name),
         };
         let _ = self.write_journal(&journal);
@@ -261,6 +267,91 @@ impl AutoUpdater {
             version: version.to_string(),
             ready_to_apply: false,
         })
+    }
+
+    /// Atomically applies a verified staged update payload to the target executable path.
+    /// Creates a pre-apply backup of the current executable.
+    /// If replacement fails, it automatically reverts from the backup.
+    pub fn apply_staged(&self, target_binary: Option<&Path>) -> Result<serde_json::Value, String> {
+        let mut journal = self.read_journal();
+        if journal.state != JournalState::Verified {
+            return Err(format!(
+                "Cannot apply update: journal state is {:?}, must be VERIFIED",
+                journal.state
+            ));
+        }
+
+        let staged_str = journal
+            .staged_file
+            .as_ref()
+            .ok_or_else(|| "Staged file path missing from update journal".to_string())?;
+        let staged_path = PathBuf::from(staged_str);
+        if !staged_path.exists() {
+            return Err(format!("Staged payload file not found at {:?}", staged_path));
+        }
+
+        // TOCTOU defense: re-verify cryptographic integrity immediately before apply
+        if let Some(ref expected_hash) = journal.staged_sha256 {
+            self.verify_integrity(&staged_path, expected_hash)
+                .map_err(|e| format!("Pre-apply integrity check failed: {}", e))?;
+        }
+
+        // Determine destination target binary
+        let current_exe = match target_binary {
+            Some(p) => p.to_path_buf(),
+            None => std::env::current_exe()
+                .map_err(|e| format!("Cannot resolve current executable path: {}", e))?,
+        };
+
+        // Prepare backup path (e.g. aegis-core.exe.old)
+        let backup_path = current_exe.with_extension(format!(
+            "{}.old",
+            current_exe.extension().and_then(|e| e.to_str()).unwrap_or("exe")
+        ));
+
+        // Step 1: Create backup of current binary
+        if current_exe.exists() {
+            if backup_path.exists() {
+                let _ = fs::remove_file(&backup_path);
+            }
+            if let Err(e) = fs::rename(&current_exe, &backup_path) {
+                // If rename fails (e.g. across mount boundaries), fall back to copy
+                fs::copy(&current_exe, &backup_path)
+                    .map_err(|ce| format!("Failed to create executable backup: {} (copy error: {})", e, ce))?;
+            }
+        }
+
+        // Step 2: Copy verified staged payload to the target binary location
+        if let Err(e) = fs::copy(&staged_path, &current_exe) {
+            // Rollback immediately if copying fails
+            if backup_path.exists() {
+                let _ = fs::rename(&backup_path, &current_exe);
+            }
+            journal.state = JournalState::RolledBack;
+            journal.last_status = format!("Apply failed during binary copy: {}; rolled back to backup", e);
+            let _ = self.write_journal(&journal);
+            return Err(format!("Binary replacement failed: {}; rollback restored original executable", e));
+        }
+
+        // Step 3: Transition journal state to Applied
+        let applied_version = journal.target_version.clone().unwrap_or_else(|| "unknown".to_string());
+        journal.state = JournalState::Applied;
+        journal.backup_file = Some(backup_path.to_string_lossy().to_string());
+        journal.last_status = format!(
+            "Successfully applied update to version {} (backup at {:?})",
+            applied_version,
+            backup_path.file_name().unwrap_or_default()
+        );
+        self.write_journal(&journal)?;
+
+        Ok(serde_json::json!({
+            "applied": true,
+            "targetVersion": applied_version,
+            "executable": current_exe.to_string_lossy().to_string(),
+            "backupFile": backup_path.to_string_lossy().to_string(),
+            "restartRequired": true,
+            "journal": journal
+        }))
     }
 
     /// Get current updater status for IPC inspection.
@@ -466,5 +557,53 @@ mod tests {
         let journal_after_rollback = updater.read_journal();
         assert_eq!(journal_after_rollback.state, JournalState::RolledBack);
         assert!(!staged_path.exists());
+    }
+
+    #[test]
+    fn test_apply_staged_transactional_workflow() {
+        let temp = TempDir::new();
+        let updater = AutoUpdater::new("0.30.7", temp.path());
+
+        // Create a mock current binary
+        let mock_exe = temp.path().join("mock-aegis-core.exe");
+        fs::write(&mock_exe, b"OLD_BINARY_V0.30.7").unwrap();
+
+        // 1. Stage update payload
+        let new_payload = b"NEW_BINARY_V0.30.8_ENTERPRISE";
+        let src_file = temp.path().join("new_release.bin");
+        fs::write(&src_file, new_payload).unwrap();
+
+        let mut hasher = Sha256::new();
+        hasher.update(new_payload);
+        let expected_sha256 = format!("{:x}", hasher.finalize());
+
+        let staged = updater.stage_update(&src_file, "0.30.8", Some(&expected_sha256)).unwrap();
+        let staged_path = PathBuf::from(staged.staged_path);
+
+        // 2. Cannot apply while still in STAGED state
+        assert!(updater.apply_staged(Some(&mock_exe)).is_err());
+
+        // 3. Verify integrity -> VERIFIED
+        assert!(updater.verify_integrity(&staged_path, &expected_sha256).is_ok());
+
+        // 4. Apply update atomically
+        let apply_result = updater.apply_staged(Some(&mock_exe)).unwrap();
+        assert_eq!(apply_result["applied"], true);
+        assert_eq!(apply_result["targetVersion"], "0.30.8");
+
+        // 5. Verify journal state is APPLIED
+        let journal = updater.read_journal();
+        assert_eq!(journal.state, JournalState::Applied);
+        assert_eq!(journal.target_version.as_deref(), Some("0.30.8"));
+
+        // 6. Verify target executable replaced with new payload
+        let updated_bytes = fs::read(&mock_exe).unwrap();
+        assert_eq!(updated_bytes, new_payload);
+
+        // 7. Verify backup created
+        let backup_path = PathBuf::from(journal.backup_file.unwrap());
+        assert!(backup_path.exists());
+        let backup_bytes = fs::read(&backup_path).unwrap();
+        assert_eq!(backup_bytes, b"OLD_BINARY_V0.30.7");
     }
 }

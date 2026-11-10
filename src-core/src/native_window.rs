@@ -85,6 +85,39 @@ pub fn run(
                             None => Err("Unknown managed window ID".into()),
                         }
                     }
+                    WindowOperation::SetMaximized { id, maximized } => {
+                        match self.children.get(id) {
+                            Some((_, window)) => {
+                                window.set_maximized(*maximized);
+                                Ok(
+                                    serde_json::json!({"windowId":id,"action":"setMaximized","requested":true,"requestedMaximized":maximized,"stateConfirmed":false}),
+                                )
+                            }
+                            None => Err("Unknown managed window ID".into()),
+                        }
+                    }
+                    WindowOperation::SetFullscreen { id, fullscreen } => {
+                        match self.children.get(id) {
+                            Some((_, window)) => {
+                                window.set_fullscreen(if *fullscreen { Some(winit::window::Fullscreen::Borderless(None)) } else { None });
+                                Ok(
+                                    serde_json::json!({"windowId":id,"action":"setFullscreen","requested":true,"requestedFullscreen":fullscreen,"stateConfirmed":false}),
+                                )
+                            }
+                            None => Err("Unknown managed window ID".into()),
+                        }
+                    }
+                    WindowOperation::SetTitle { id, title } => {
+                        match self.children.get(id) {
+                            Some((_, window)) => {
+                                window.set_title(title);
+                                Ok(
+                                    serde_json::json!({"windowId":id,"action":"setTitle","requested":true,"title":title,"stateConfirmed":false}),
+                                )
+                            }
+                            None => Err("Unknown managed window ID".into()),
+                        }
+                    }
                     WindowOperation::Focus(id) => match self.children.get(id) {
                         Some((_, window)) => {
                             window.focus_window();
@@ -377,6 +410,18 @@ pub fn run(
                 ),
                     WindowOperation::SetMinimized {id,minimized} => match child_map.borrow().get(id) {
                     Some((window,_)) => {if *minimized {window.minimize();}else{window.unminimize();}Ok(serde_json::json!({"windowId":id,"action":"setMinimized","requested":true,"requestedMinimized":minimized,"stateConfirmed":false}))},
+                    None => Err("Unknown managed window ID".into()),
+                },
+                WindowOperation::SetMaximized {id,maximized} => match child_map.borrow().get(id) {
+                    Some((window,_)) => {if *maximized {window.maximize();}else{window.unmaximize();}Ok(serde_json::json!({"windowId":id,"action":"setMaximized","requested":true,"requestedMaximized":maximized,"stateConfirmed":false}))},
+                    None => Err("Unknown managed window ID".into()),
+                },
+                WindowOperation::SetFullscreen {id,fullscreen} => match child_map.borrow().get(id) {
+                    Some((window,_)) => {if *fullscreen {window.fullscreen();}else{window.unfullscreen();}Ok(serde_json::json!({"windowId":id,"action":"setFullscreen","requested":true,"requestedFullscreen":fullscreen,"stateConfirmed":false}))},
+                    None => Err("Unknown managed window ID".into()),
+                },
+                WindowOperation::SetTitle {id,title} => match child_map.borrow().get(id) {
+                    Some((window,_)) => {window.set_title(Some(title));Ok(serde_json::json!({"windowId":id,"action":"setTitle","requested":true,"title":title,"stateConfirmed":false}))},
                     None => Err("Unknown managed window ID".into()),
                 },
                 WindowOperation::Focus(id) => match child_map.borrow().get(id) {

@@ -830,7 +830,10 @@ impl IpcRouter {
             | "managed_window_list"
             | "managed_window_close"
             | "managed_window_focus"
-            | "managed_window_set_minimized" => {
+            | "managed_window_set_minimized"
+            | "managed_window_set_maximized"
+            | "managed_window_set_fullscreen"
+            | "managed_window_set_title" => {
                 if let Err(error) = self.security.check_managed_windows() {
                     return IpcResponse::err(&req.id, &error);
                 }
@@ -869,6 +872,48 @@ impl IpcRouter {
                                 }
                             },
                             None => Err("Minimize requires only windowId and minimized".into()),
+                        }
+                    }
+                    "managed_window_set_maximized" => {
+                        match req.payload.as_object().filter(|p| p.len() == 2) {
+                            Some(options) => match (
+                                options.get("windowId").and_then(|v| v.as_str()),
+                                options.get("maximized").and_then(|v| v.as_bool()),
+                            ) {
+                                (Some(id), Some(maximized)) => client.set_maximized(id, maximized),
+                                _ => {
+                                    Err("Maximize requires windowId and a boolean maximized".into())
+                                }
+                            },
+                            None => Err("Maximize requires only windowId and maximized".into()),
+                        }
+                    }
+                    "managed_window_set_fullscreen" => {
+                        match req.payload.as_object().filter(|p| p.len() == 2) {
+                            Some(options) => match (
+                                options.get("windowId").and_then(|v| v.as_str()),
+                                options.get("fullscreen").and_then(|v| v.as_bool()),
+                            ) {
+                                (Some(id), Some(fullscreen)) => client.set_fullscreen(id, fullscreen),
+                                _ => {
+                                    Err("Fullscreen requires windowId and a boolean fullscreen".into())
+                                }
+                            },
+                            None => Err("Fullscreen requires only windowId and fullscreen".into()),
+                        }
+                    }
+                    "managed_window_set_title" => {
+                        match req.payload.as_object().filter(|p| p.len() == 2) {
+                            Some(options) => match (
+                                options.get("windowId").and_then(|v| v.as_str()),
+                                options.get("title").and_then(|v| v.as_str()),
+                            ) {
+                                (Some(id), Some(title)) => client.set_title(id, title),
+                                _ => {
+                                    Err("SetTitle requires windowId and a string title".into())
+                                }
+                            },
+                            None => Err("SetTitle requires only windowId and title".into()),
                         }
                     }
                     _ => match req
@@ -1203,6 +1248,11 @@ impl IpcRouter {
             }
 
             "updater_rollback" => match self.updater.rollback_staged() {
+                Ok(res) => IpcResponse::ok(&req.id, res),
+                Err(e) => IpcResponse::err(&req.id, &e),
+            },
+
+            "updater_apply" => match self.updater.apply_staged(None) {
                 Ok(res) => IpcResponse::ok(&req.id, res),
                 Err(e) => IpcResponse::err(&req.id, &e),
             },
