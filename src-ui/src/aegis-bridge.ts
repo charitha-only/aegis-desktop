@@ -492,6 +492,65 @@ export class AegisBridge {
     return this.invoke<{ staged_path: string; version: string; ready_to_apply: boolean }>('updater_stage', { filePath, version, expectedSha256 });
   }
 
+  public async stageUpdateBytes(filename: string, base64Data: string, version: string, expectedSha256?: string): Promise<IpcResponse<{ staged_path: string; version: string; ready_to_apply: boolean }>> {
+    return this.invoke<{ staged_path: string; version: string; ready_to_apply: boolean }>('updater_stage_bytes', { filename, base64Data, version, expectedSha256 });
+  }
+
+  public async fetchLatestGitHubRelease(repo = 'charitha-only/aegis-desktop'): Promise<{
+    tagName: string;
+    version: string;
+    name: string;
+    body: string;
+    publishedAt: string;
+    htmlUrl: string;
+    assets: Array<{ name: string; size: number; downloadUrl: string; contentType: string }>;
+    isNewer: boolean;
+  }> {
+    const url = `https://api.github.com/repos/${repo}/releases/latest`;
+    const res = await fetch(url, {
+      headers: {
+        Accept: 'application/vnd.github.v3+json',
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`GitHub Releases API responded with status ${res.status}: ${res.statusText}`);
+    }
+    const data = await res.json();
+    const tagName = data.tag_name || '';
+    const cleanVer = tagName.replace(/^v/, '');
+    const currentStatus = await this.getUpdaterStatus();
+    const currentVer = currentStatus.data?.currentVersion || '1.0.0';
+
+    const parse = (v: string) => v.replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+    const pa = parse(cleanVer);
+    const pb = parse(currentVer);
+    let isNewer = false;
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const na = pa[i] || 0;
+      const nb = pb[i] || 0;
+      if (na > nb) { isNewer = true; break; }
+      if (na < nb) { isNewer = false; break; }
+    }
+
+    const assets = (data.assets || []).map((a: any) => ({
+      name: a.name,
+      size: a.size,
+      downloadUrl: a.browser_download_url,
+      contentType: a.content_type,
+    }));
+
+    return {
+      tagName,
+      version: cleanVer,
+      name: data.name || tagName,
+      body: data.body || '',
+      publishedAt: data.published_at || '',
+      htmlUrl: data.html_url || '',
+      assets,
+      isNewer,
+    };
+  }
+
   public async applyUpdate(): Promise<IpcResponse<{ applied: boolean; targetVersion: string; executable: string; backupFile: string; restartRequired: boolean; journal: UpdateJournal }>> {
     return this.invoke<{ applied: boolean; targetVersion: string; executable: string; backupFile: string; restartRequired: boolean; journal: UpdateJournal }>('updater_apply');
   }

@@ -4,7 +4,12 @@
 
 Only UTF-8 text writes are exposed. Input is limited to 65,536 bytes and embedded NUL is rejected to avoid platform-dependent truncation. There is no clipboard read API, HTML/image support, history control or automatic secret expiry. Responses and provider errors do not echo clipboard text.
 
-The provider is arboard with image dependencies disabled. Windows and macOS use native clipboard providers. Linux uses X11 (including suitable XWayland environments); native Wayland data-control support is not enabled. Missing display/clipboard access returns an error. The provider is opened lazily and retained in the router because X11 clipboard ownership requires a live instance. Quitting may remove X11 clipboard availability.
+The provider operates with a multi-tier fallback architecture:
+* **Windows & macOS**: Native Win32 and NSPasteboard clipboard providers via `arboard`.
+* **Linux (X11 & XWayland)**: X11 clipboard protocol ownership via `arboard`.
+* **Linux (Pure Wayland)**: When running under a pure Wayland compositor (detected via `WAYLAND_DISPLAY` or `XDG_SESSION_TYPE=wayland`), the engine automatically routes writes through the native Wayland Data-Device protocol via the standard `wl-copy` utility, falling back to XWayland if unavailable. If neither backend is reachable, a clear diagnostic error instructs the user or environment to provide `wl-clipboard`.
+
+The provider is opened lazily and retained in the router because X11 clipboard ownership requires a live instance. Quitting may remove X11 clipboard availability.
 
 Clipboard data is shared with other applications and may be retained by OS clipboard history, remote desktop or clipboard managers. Vault locking does not retract copied text; this preview does not claim secure password-copy lifecycle or memory erasure of provider/OS copies. Application authors must disclose this when offering copy actions for secrets.
 

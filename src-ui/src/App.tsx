@@ -32,6 +32,7 @@ import {
   Package,
   Share2,
   HardDrive,
+  Download,
 } from 'lucide-react';
 import {
   aegis,
@@ -94,6 +95,11 @@ export default function App() {
   // Auto-Updater State (v0.13)
   const [updaterStatus, setUpdaterStatus] = useState<any>(null);
   const [updaterLoading, setUpdaterLoading] = useState(false);
+  const [ghRelease, setGhRelease] = useState<any>(null);
+  const [ghChecking, setGhChecking] = useState(false);
+  const [ghError, setGhError] = useState<string | null>(null);
+  const [stageProgress, setStageProgress] = useState<string | null>(null);
+  const [localUpdatePath, setLocalUpdatePath] = useState('');
 
   // Hardware Security Key / FIDO2 State (v0.14)
   const [hwKeys, setHwKeys] = useState<any[]>([]);
@@ -566,6 +572,38 @@ export default function App() {
       await refreshUpdaterStatus();
     } else {
       addLog('BLOCKED', 'updater_apply', res.error || 'Apply failed');
+    }
+    setUpdaterLoading(false);
+  };
+
+  const handleCheckGitHubReleases = async () => {
+    setGhChecking(true);
+    setGhError(null);
+    try {
+      addLog('INFO', 'github_updater', 'Querying GitHub Releases API (charitha-only/aegis-desktop)...');
+      const info = await aegis.fetchLatestGitHubRelease('charitha-only/aegis-desktop');
+      setGhRelease(info);
+      addLog('SUCCESS', 'github_updater', `Latest release retrieved: ${info.tagName} (${info.isNewer ? 'NEW UPDATE AVAILABLE' : 'Up to date'})`);
+      setSrAnnouncement(`Latest GitHub release is ${info.tagName}. ${info.isNewer ? 'New update available.' : 'System is up to date.'}`);
+    } catch (err: any) {
+      const msg = err.message || 'Failed to query GitHub Releases API';
+      setGhError(msg);
+      addLog('BLOCKED', 'github_updater', msg);
+    } finally {
+      setGhChecking(false);
+    }
+  };
+
+  const handleStageLocalUpdate = async () => {
+    if (!localUpdatePath) return;
+    setUpdaterLoading(true);
+    const res = await aegis.stageUpdate(localUpdatePath, '1.0.1');
+    if (res.success) {
+      addLog('SUCCESS', 'updater_stage', `Local update staged at ${res.data?.staged_path}`);
+      setSrAnnouncement('Local update payload staged successfully.');
+      await refreshUpdaterStatus();
+    } else {
+      addLog('BLOCKED', 'updater_stage', res.error || 'Staging failed');
     }
     setUpdaterLoading(false);
   };
@@ -2517,7 +2555,7 @@ export default function App() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
                         <span style={{ fontSize: '12px', color: '#94a3b8' }}>Current Installed Version:</span>
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#38bdf8' }}>{updaterStatus?.currentVersion || '0.30.6'}</span>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#38bdf8' }}>{updaterStatus?.currentVersion || '1.0.0'}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px' }}>
                         <span style={{ fontSize: '12px', color: '#94a3b8' }}>Staging Directory:</span>
@@ -2592,6 +2630,155 @@ export default function App() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* GitHub Releases In-App Remote Updater Card */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', gridColumn: 'span 2' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Globe style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                        GitHub Releases In-App Auto-Updater (charitha-only/aegis-desktop)
+                      </h3>
+                      <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                        Directly queries official GitHub releases API, streams release assets, and stages payloads for verification.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleCheckGitHubReleases}
+                      disabled={ghChecking}
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(14, 165, 233, 0.3))',
+                        border: '1px solid rgba(56, 189, 248, 0.4)',
+                        color: '#7dd3fc',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: ghChecking ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <RefreshCw style={{ width: '13px', height: '13px', animation: ghChecking ? 'spin 1s linear infinite' : 'none' }} />
+                      {ghChecking ? 'Checking GitHub...' : 'Check GitHub for Updates'}
+                    </button>
+                  </div>
+
+                  {ghError && (
+                    <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', color: '#fca5a5', fontSize: '12px', marginBottom: '12px' }}>
+                      ⚠️ {ghError}
+                    </div>
+                  )}
+
+                  {stageProgress && (
+                    <div style={{ padding: '10px 14px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '6px', color: '#7dd3fc', fontSize: '12px', marginBottom: '12px' }}>
+                      ⏳ {stageProgress}
+                    </div>
+                  )}
+
+                  {ghRelease ? (
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>{ghRelease.tagName}</span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: ghRelease.isNewer ? 'rgba(56, 189, 248, 0.2)' : 'rgba(52, 211, 153, 0.2)',
+                            color: ghRelease.isNewer ? '#7dd3fc' : '#6ee7b7',
+                            border: `1px solid ${ghRelease.isNewer ? 'rgba(56, 189, 248, 0.4)' : 'rgba(52, 211, 153, 0.4)'}`,
+                          }}>
+                            {ghRelease.isNewer ? '🚀 NEW VERSION AVAILABLE' : '✓ UP TO DATE'}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>
+                          Published: {ghRelease.publishedAt ? new Date(ghRelease.publishedAt).toLocaleDateString() : 'N/A'}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '12px', color: '#cbd5e1', marginBottom: '14px', whiteSpace: 'pre-line', maxHeight: '120px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '6px' }}>
+                        {ghRelease.body || 'No release notes provided.'}
+                      </div>
+
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '8px' }}>
+                        Release Artifacts ({ghRelease.assets.length}):
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '8px' }}>
+                        {ghRelease.assets.map((asset: any) => (
+                          <div key={asset.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px' }}>
+                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
+                              <div style={{ fontSize: '12px', fontWeight: 500, color: '#e2e8f0', textOverflow: 'ellipsis', overflow: 'hidden' }}>{asset.name}</div>
+                              <div style={{ fontSize: '10px', color: '#64748b' }}>{Math.round(asset.size / 1024)} KB</div>
+                            </div>
+                            <a
+                              href={asset.downloadUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                background: 'rgba(56, 189, 248, 0.1)',
+                                border: '1px solid rgba(56, 189, 248, 0.3)',
+                                color: '#7dd3fc',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                textDecoration: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              <Download style={{ width: '12px', height: '12px' }} />
+                              Download
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontSize: '12px' }}>
+                      Click "Check GitHub for Updates" to connect to GitHub Releases API and retrieve the latest binary manifests.
+                    </div>
+                  )}
+
+                  {/* Air-gapped manual staging */}
+                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#94a3b8', whiteSpace: 'nowrap' }}>Manual / Air-Gapped Path:</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. dist-bundle/AegisDesktopApplication/aegis-core.exe"
+                      value={localUpdatePath}
+                      onChange={(e) => setLocalUpdatePath(e.target.value)}
+                      style={{
+                        flex: 1,
+                        background: 'rgba(0,0,0,0.3)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '6px',
+                        padding: '6px 10px',
+                        fontSize: '12px',
+                        color: '#f8fafc',
+                      }}
+                    />
+                    <button
+                      onClick={handleStageLocalUpdate}
+                      disabled={!localUpdatePath || updaterLoading}
+                      style={{
+                        background: 'rgba(148, 163, 184, 0.15)',
+                        border: '1px solid rgba(148, 163, 184, 0.3)',
+                        color: '#cbd5e1',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        cursor: (!localUpdatePath || updaterLoading) ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Stage Local Payload
+                    </button>
                   </div>
                 </div>
               </div>

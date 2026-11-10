@@ -1321,6 +1321,34 @@ impl IpcRouter {
                 }
             }
 
+            "updater_stage_bytes" => {
+                let filename = req.payload.get("filename").and_then(|f| f.as_str()).unwrap_or("update.bin");
+                let base64_payload = match req.payload.get("base64Data").and_then(|b| b.as_str()) {
+                    Some(b) => b,
+                    None => return IpcResponse::err(&req.id, "Missing 'base64Data' parameter"),
+                };
+                let version = match req.payload.get("version").and_then(|v| v.as_str()) {
+                    Some(v) => v,
+                    None => return IpcResponse::err(&req.id, "Missing 'version' parameter"),
+                };
+                let expected_sha256 = req.payload.get("expectedSha256").and_then(|h| h.as_str());
+
+                let bytes = match crate::updater::decode_base64(base64_payload) {
+                    Ok(b) => b,
+                    Err(e) => return IpcResponse::err(&req.id, &format!("Invalid base64 payload: {e}")),
+                };
+
+                // Enforce maximum size limit of 100 MB
+                if bytes.len() > 100 * 1024 * 1024 {
+                    return IpcResponse::err(&req.id, "Update payload exceeds maximum size limit (100MB)");
+                }
+
+                match self.updater.stage_update_bytes(filename, &bytes, version, expected_sha256) {
+                    Ok(staged) => IpcResponse::ok(&req.id, serde_json::to_value(&staged).unwrap_or(json!({}))),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
             "updater_rollback" => match self.updater.rollback_staged() {
                 Ok(res) => IpcResponse::ok(&req.id, res),
                 Err(e) => IpcResponse::err(&req.id, &e),

@@ -84,7 +84,7 @@ export function validCommandData(command: string, data: unknown): boolean {
   if (command === 'updater_apply') {
     return record(data) && data.applied === true && text(data.targetVersion);
   }
-  if (command === 'updater_stage') {
+  if (command === 'updater_stage' || command === 'updater_stage_bytes') {
     return record(data) && text(data.staged_path) && text(data.version) && typeof data.ready_to_apply === 'boolean';
   }
   if (command === 'plugin_manifest_list') {

@@ -20,6 +20,38 @@ fn constant_time_eq_ascii(a: &str, b: &str) -> bool {
     diff == 0
 }
 
+/// Constant-time, zero-dependency RFC 4648 standard Base64 decoder for update payloads
+pub fn decode_base64(input: &str) -> Result<Vec<u8>, String> {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let input = input.trim();
+    let mut clean = Vec::with_capacity(input.len());
+    for b in input.bytes() {
+        if b == b'=' {
+            break;
+        }
+        if !b.is_ascii_whitespace() {
+            clean.push(b);
+        }
+    }
+    let mut out = Vec::with_capacity((clean.len() * 3) / 4);
+    let mut buf = 0u32;
+    let mut bits = 0;
+    for &b in &clean {
+        let val = TABLE
+            .iter()
+            .position(|&t| t == b)
+            .ok_or_else(|| format!("Invalid base64 character: {}", b as char))? as u32;
+        buf = (buf << 6) | val;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((buf >> bits) as u8);
+            buf &= (1 << bits) - 1;
+        }
+    }
+    Ok(out)
+}
+
 // ─── Update Manifest ───────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -266,6 +298,77 @@ impl AutoUpdater {
             staged_path: staged_path.to_string_lossy().to_string(),
             version: version.to_string(),
             ready_to_apply: false,
+        })
+    }
+
+    /// Stages an in-memory update payload (e.g. downloaded over HTTPS via the UI updater client)
+    /// into the quarantine directory, validates cryptographic hash if supplied, and updates journal.
+    pub fn stage_update_bytes(
+        &self,
+        filename: &str,
+        bytes: &[u8],
+        version: &str,
+        expected_sha256: Option<&str>,
+    ) -> Result<StagedUpdate, String> {
+        fs::create_dir_all(&self.update_dir)
+            .map_err(|e| format!("Cannot create update staging dir: {}", e))?;
+
+        let clean_filename: String = filename
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
+            .collect();
+        let safe_filename = if clean_filename.is_empty() {
+            "update_payload.bin".to_string()
+        } else {
+            clean_filename
+        };
+
+        let safe_ver = version.replace(|c: char| !c.is_alphanumeric() && c != '.', "_");
+        let staged_name = format!("aegis-update-{}-{}", safe_ver, safe_filename);
+        let staged_path = self.update_dir.join(&staged_name);
+
+        fs::write(&staged_path, bytes)
+            .map_err(|e| format!("Failed to write staged update payload: {}", e))?;
+
+        let mut journal = UpdateJournal {
+            journal_version: 1,
+            state: JournalState::Staged,
+            active_version: self.current_version.clone(),
+            target_version: Some(version.to_string()),
+            staged_file: Some(staged_path.to_string_lossy().to_string()),
+            staged_sha256: expected_sha256.map(|s| s.to_string()),
+            backup_file: None,
+            last_status: format!("Update payload staged at {}", staged_name),
+        };
+
+        let mut ready_to_apply = false;
+        if let Some(expected) = expected_sha256 {
+            let mut hasher = Sha256::new();
+            hasher.update(bytes);
+            let computed = format!("{:x}", hasher.finalize());
+
+            if constant_time_eq_ascii(&computed, expected.trim()) {
+                journal.state = JournalState::Verified;
+                journal.last_status = "Cryptographic integrity verified; ready for install".to_string();
+                ready_to_apply = true;
+            } else {
+                let _ = fs::remove_file(&staged_path);
+                journal.state = JournalState::RolledBack;
+                journal.last_status = format!(
+                    "SECURITY VIOLATION: SHA-256 mismatch!\nExpected:  {}\nComputed:  {}\nUpdate payload rejected and quarantined.",
+                    expected, computed
+                );
+                let _ = self.write_journal(&journal);
+                return Err(journal.last_status);
+            }
+        }
+
+        let _ = self.write_journal(&journal);
+
+        Ok(StagedUpdate {
+            staged_path: staged_path.to_string_lossy().to_string(),
+            version: version.to_string(),
+            ready_to_apply,
         })
     }
 
@@ -605,5 +708,35 @@ mod tests {
         assert!(backup_path.exists());
         let backup_bytes = fs::read(&backup_path).unwrap();
         assert_eq!(backup_bytes, b"OLD_BINARY_V0.30.7");
+    }
+
+    #[test]
+    fn test_stage_update_bytes_workflow() {
+        let temp = TempDir::new();
+        let updater = AutoUpdater::new("1.0.0", temp.path());
+
+        let payload = b"Aegis In-Memory Binary Payload v1.0.1";
+        let mut hasher = Sha256::new();
+        hasher.update(payload);
+        let expected_sha256 = format!("{:x}", hasher.finalize());
+
+        // 1. Valid hash: stages and verifies immediately
+        let res = updater
+            .stage_update_bytes("aegis-release.zip", payload, "1.0.1", Some(&expected_sha256))
+            .unwrap();
+        assert_eq!(res.version, "1.0.1");
+        assert!(res.ready_to_apply);
+
+        let journal = updater.read_journal();
+        assert_eq!(journal.state, JournalState::Verified);
+        assert_eq!(journal.target_version.as_deref(), Some("1.0.1"));
+
+        // 2. Invalid hash: rejected and rolled back
+        let tampered_hash = "f".repeat(64);
+        let bad_res = updater.stage_update_bytes("bad.zip", payload, "1.0.2", Some(&tampered_hash));
+        assert!(bad_res.is_err());
+
+        let journal_bad = updater.read_journal();
+        assert_eq!(journal_bad.state, JournalState::RolledBack);
     }
 }
