@@ -1,5 +1,6 @@
 #![recursion_limit = "256"]
 
+mod banking;
 mod bundler;
 mod clipboard;
 mod crash;

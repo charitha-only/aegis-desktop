@@ -43,6 +43,7 @@ pub struct IpcRouter {
     package_pipeline: Arc<MultiOsPipeline>,
     p2p_market: Arc<P2PPluginMarketplace>,
     hsm_engine: Arc<HsmPkcs11Engine>,
+    banking: Arc<crate::banking::BankingEngine>,
     sensitive_limiter: crate::security::RateLimiter,
     vault_sessions: Arc<crate::security::vault_session::VaultSessions>,
     dispatch: std::sync::Mutex<()>,
@@ -127,6 +128,7 @@ impl IpcRouter {
             package_pipeline,
             p2p_market,
             hsm_engine,
+            banking: Arc::new(crate::banking::BankingEngine::new()),
             sensitive_limiter: crate::security::RateLimiter::new(20, 60, 60),
         }
     }
@@ -1983,6 +1985,170 @@ impl IpcRouter {
                 };
                 match self.hsm_engine.sign_payload(slot_id, key_id, payload) {
                     Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ─── BANKING-GRADE FINANCIAL SUITE IPC ──────────────────────────
+            "banking_screen_protection_set" => {
+                let enable = req
+                    .payload
+                    .get("protected")
+                    .and_then(|p| p.as_bool())
+                    .unwrap_or(true);
+                match self.banking.screen_protection.set_protection(enable) {
+                    Ok(status) => IpcResponse::ok(&req.id, json!(status)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "banking_screen_protection_status" => {
+                IpcResponse::ok(&req.id, json!(self.banking.screen_protection.get_status()))
+            }
+
+            "banking_biometric_hardware_status" => {
+                IpcResponse::ok(&req.id, json!(self.banking.step_up.get_hardware_status()))
+            }
+
+            "banking_biometric_challenge_request" => {
+                let user_id = match req.payload.get("userId").and_then(|u| u.as_str()) {
+                    Some(u) => u,
+                    None => return IpcResponse::err(&req.id, "Missing 'userId' parameter"),
+                };
+                let operation = req
+                    .payload
+                    .get("operation")
+                    .and_then(|o| o.as_str())
+                    .unwrap_or("FINANCIAL_OPERATION");
+                let amount = req
+                    .payload
+                    .get("amount")
+                    .and_then(|a| a.as_f64())
+                    .unwrap_or(0.0);
+                let currency = req
+                    .payload
+                    .get("currency")
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("USD");
+
+                match self.banking.step_up.request_challenge(user_id, operation, amount, currency) {
+                    Ok(chal) => IpcResponse::ok(&req.id, json!(chal)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "banking_biometric_verify" => {
+                let challenge_id = match req.payload.get("challengeId").and_then(|c| c.as_str()) {
+                    Some(c) => c,
+                    None => return IpcResponse::err(&req.id, "Missing 'challengeId' parameter"),
+                };
+                let user_id = match req.payload.get("userId").and_then(|u| u.as_str()) {
+                    Some(u) => u,
+                    None => return IpcResponse::err(&req.id, "Missing 'userId' parameter"),
+                };
+                let payload = match req.payload.get("biometricPayload").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'biometricPayload' parameter"),
+                };
+
+                match self.banking.step_up.verify_biometric(challenge_id, user_id, payload) {
+                    Ok(token) => IpcResponse::ok(&req.id, json!(token)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "banking_transaction_propose" => {
+                let maker_id = match req.payload.get("makerId").and_then(|m| m.as_str()) {
+                    Some(m) => m,
+                    None => return IpcResponse::err(&req.id, "Missing 'makerId' parameter"),
+                };
+                let from_account = match req.payload.get("fromAccount").and_then(|f| f.as_str()) {
+                    Some(f) => f,
+                    None => return IpcResponse::err(&req.id, "Missing 'fromAccount' parameter"),
+                };
+                let to_account = match req.payload.get("toAccount").and_then(|t| t.as_str()) {
+                    Some(t) => t,
+                    None => return IpcResponse::err(&req.id, "Missing 'toAccount' parameter"),
+                };
+                let amount = match req.payload.get("amount").and_then(|a| a.as_f64()) {
+                    Some(a) => a,
+                    None => return IpcResponse::err(&req.id, "Missing 'amount' parameter"),
+                };
+                let currency = req
+                    .payload
+                    .get("currency")
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("USD");
+                let reference = req
+                    .payload
+                    .get("reference")
+                    .and_then(|r| r.as_str())
+                    .unwrap_or("Standard Banking Transfer");
+
+                match self.banking.maker_checker.propose_transaction(
+                    maker_id,
+                    from_account,
+                    to_account,
+                    amount,
+                    currency,
+                    reference,
+                ) {
+                    Ok(tx) => IpcResponse::ok(&req.id, json!(tx)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "banking_transaction_approve" => {
+                let tx_id = match req.payload.get("txId").and_then(|t| t.as_str()) {
+                    Some(t) => t,
+                    None => return IpcResponse::err(&req.id, "Missing 'txId' parameter"),
+                };
+                let checker_id = match req.payload.get("checkerId").and_then(|c| c.as_str()) {
+                    Some(c) => c,
+                    None => return IpcResponse::err(&req.id, "Missing 'checkerId' parameter"),
+                };
+                let step_up_token = req.payload.get("stepUpToken").and_then(|s| s.as_str());
+
+                match self.banking.maker_checker.approve_transaction(tx_id, checker_id, step_up_token) {
+                    Ok(tx) => IpcResponse::ok(&req.id, json!(tx)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "banking_transaction_reject" => {
+                let tx_id = match req.payload.get("txId").and_then(|t| t.as_str()) {
+                    Some(t) => t,
+                    None => return IpcResponse::err(&req.id, "Missing 'txId' parameter"),
+                };
+                let checker_id = match req.payload.get("checkerId").and_then(|c| c.as_str()) {
+                    Some(c) => c,
+                    None => return IpcResponse::err(&req.id, "Missing 'checkerId' parameter"),
+                };
+                let reason = req
+                    .payload
+                    .get("reason")
+                    .and_then(|r| r.as_str())
+                    .unwrap_or("Rejected by compliance checker");
+
+                match self.banking.maker_checker.reject_transaction(tx_id, checker_id, reason) {
+                    Ok(tx) => IpcResponse::ok(&req.id, json!(tx)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "banking_transaction_list" => {
+                let txs = self.banking.maker_checker.list_transactions();
+                IpcResponse::ok(&req.id, json!({ "transactions": txs, "count": txs.len() }))
+            }
+
+            "banking_ledger_get" => {
+                let blocks = self.banking.maker_checker.get_ledger();
+                IpcResponse::ok(&req.id, json!({ "ledger": blocks, "blockCount": blocks.len() }))
+            }
+
+            "banking_ledger_verify" => {
+                match self.banking.maker_checker.verify_ledger_integrity() {
+                    Ok(report) => IpcResponse::ok(&req.id, json!(report)),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }

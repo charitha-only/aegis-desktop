@@ -187,7 +187,7 @@ Independent external cybersecurity testing firms (e.g. Trail of Bits, Cure53, NC
 ### 8.2 Security Audit Fixtures
 The repository includes dedicated regression and security test suites designed for automated reproducibility:
 ```bash
-# 1. Run full Rust core security test suite (134 tests)
+# 1. Run full Rust core security test suite (138 tests)
 cargo test --manifest-path src-core/Cargo.toml
 
 # 2. Run Node.js CLI security and isolation tests (76 tests)
@@ -205,6 +205,33 @@ Security researchers and auditors finding vulnerabilities are requested to submi
 
 ---
 
+## 9. Banking-Grade Financial Protection Engine
+
+For deployments in commercial banking, corporate treasury, fintech, and critical defense operations, Aegis Desktop includes a dedicated Financial Protection Suite enforcing strict isolation, dual-authorization, and non-repudiation.
+
+### 9.1 Hardware-Enforced Anti-Screen Capture Protection
+To prevent financial espionage, account harvesting, and surveillance via malware or screen recording tools (OBS Studio, TeamViewer, Zoom, Snipping Tool, AnyDesk):
+- **Windows OS Level**: Integrates with the Desktop Window Manager (DWM) using the Win32 `SetWindowDisplayAffinity` API with `WDA_EXCLUDEFROMCAPTURE` (0x00000011) / `WDA_MONITOR` (0x00000001).
+- **Zero-Footprint DWM Masking**: When screen protection is active, DWM renders a pure black frame or completely omits the application window from any screen-capture or video encoding pipeline without degrading native GPU rendering on the user's primary display.
+- **Fail-Closed Runtime State**: Toggling state is verified through active Win32 window handle enumeration (`EnumWindows`), ensuring protection covers all associated top-level windows.
+
+### 9.2 Maker-Checker Dual-Control Authorization Engine (Four-Eyes Principle)
+Complying with Basel Committee Corporate Governance Principles and PCI-DSS Requirement 10:
+- **Segregation of Duties (SOD)**: Any financial transaction, balance adjustment, or high-value configuration must be proposed by an authenticated "Maker" and independently verified by a distinct "Checker". Self-approval is cryptographically and logically prohibited (`checker_id != maker_id`).
+- **Cryptographic Chained Audit Ledger**: Approved and rejected transactions are committed into an immutable SHA-256 chained transaction log where each record binds:
+  $$\text{Block Hash} = \text{SHA256}(\text{Index} \parallel \text{PrevHash} \parallel \text{TxID} \parallel \text{Maker} \parallel \text{Checker} \parallel \text{Amount} \parallel \text{Status} \parallel \text{Timestamp})$$
+  Any ledger tampering or historical record manipulation results in immediate cryptographic validation failure.
+- **Ed25519 Threshold Signing**: Approvals and proposals are signed with asymmetric keypairs, guaranteeing non-repudiation across multi-tenant banking clusters.
+
+### 9.3 Biometric Step-Up Authentication (Windows Hello / FIDO2 / Touch ID)
+For high-value or sensitive operations:
+- **High-Value Threshold Policy**: Any financial transaction meeting or exceeding the high-value threshold (default: \$10,000.00 USD) requires mandatory biometric presence confirmation before Checker approval is authorized.
+- **Cryptographic Challenge-Response**: Generates a 256-bit cryptographically secure pseudorandom challenge (`OsRng`) with a strict 120-second validity window.
+- **Single-Use Ephemeral Step-Up Tokens**: Upon successful biometric hardware verification, a single-use `StepUpAuthToken` is issued with a 60-second time-to-live (TTL). The token is consumed and immediately purged upon transaction execution to prevent replay attacks.
+
+---
+
 **Certified for Enterprise Deployment:**  
 Aegis Desktop Application Framework  
 Official Repository: `https://github.com/charitha-only/aegis-desktop`
+

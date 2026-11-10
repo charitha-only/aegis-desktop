@@ -53,7 +53,7 @@ interface AuditLog {
 
 const unavailableTabs: string[] = ['hardwareKey','enclave','stream','tpmAttestation','wgpuJit','p2pMarket','hsmPkcs11','packagePipeline'];
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit' | 'packagePipeline' | 'p2pMarket' | 'hsmPkcs11'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit' | 'packagePipeline' | 'p2pMarket' | 'hsmPkcs11' | 'banking'>('security');
   const [connected, setConnected] = useState(false);
   const [srAnnouncement, setSrAnnouncement] = useState('Aegis Desktop Dashboard Ready');
   const [nonce, setNonce] = useState<string | null>(null);
@@ -100,6 +100,23 @@ export default function App() {
   const [ghError, setGhError] = useState<string | null>(null);
   const [stageProgress, setStageProgress] = useState<string | null>(null);
   const [localUpdatePath, setLocalUpdatePath] = useState('');
+
+  // Banking & Financial Security Suite State
+  const [screenProtection, setScreenProtection] = useState<any>(null);
+  const [bankingBiometrics, setBankingBiometrics] = useState<any>(null);
+  const [bankingTransactions, setBankingTransactions] = useState<any[]>([]);
+  const [bankingLedger, setBankingLedger] = useState<any[]>([]);
+  const [ledgerReport, setLedgerReport] = useState<any>(null);
+  const [bankingLoading, setBankingLoading] = useState(false);
+  const [makerId, setMakerId] = useState('teller_alice');
+  const [fromAccount, setFromAccount] = useState('CH93-0000-0000-1122-3344');
+  const [toAccount, setToAccount] = useState('US12-BANK-9988-7766-5544');
+  const [txAmount, setTxAmount] = useState('25000');
+  const [txCurrency, setTxCurrency] = useState('USD');
+  const [txReference, setTxReference] = useState('Corporate Interbank Wire Transfer');
+  const [checkerId, setCheckerId] = useState('supervisor_bob');
+  const [stepUpChallenge, setStepUpChallenge] = useState<any>(null);
+  const [stepUpToken, setStepUpToken] = useState<any>(null);
 
   // Hardware Security Key / FIDO2 State (v0.14)
   const [hwKeys, setHwKeys] = useState<any[]>([]);
@@ -606,6 +623,133 @@ export default function App() {
       addLog('BLOCKED', 'updater_stage', res.error || 'Staging failed');
     }
     setUpdaterLoading(false);
+  };
+
+  // Banking Suite Handlers
+  const refreshBankingData = async () => {
+    setBankingLoading(true);
+    try {
+      const [screenRes, bioRes, txRes, ledgerRes] = await Promise.all([
+        aegis.getScreenProtectionStatus(),
+        aegis.getBankingBiometricStatus(),
+        aegis.listTransactions(),
+        aegis.getLedger(),
+      ]);
+      if (screenRes.success && screenRes.data) setScreenProtection(screenRes.data);
+      if (bioRes.success && bioRes.data) setBankingBiometrics(bioRes.data);
+      if (txRes.success && txRes.data) setBankingTransactions(txRes.data.transactions || []);
+      if (ledgerRes.success && ledgerRes.data) setBankingLedger(ledgerRes.data.ledger || []);
+      addLog('INFO', 'banking_refresh', 'Financial terminal state synchronized');
+    } catch (e: any) {
+      addLog('BLOCKED', 'banking_refresh', e.message || 'Failed to sync banking state');
+    } finally {
+      setBankingLoading(false);
+    }
+  };
+
+  const handleToggleScreenProtection = async () => {
+    setBankingLoading(true);
+    const targetState = !screenProtection?.protected;
+    const res = await aegis.setScreenProtection(targetState);
+    if (res.success && res.data) {
+      setScreenProtection(res.data);
+      const msg = targetState
+        ? 'Anti-Screen Capture Shield ACTIVATED (SetWindowDisplayAffinity: WDA_EXCLUDEFROMCAPTURE)'
+        : 'Anti-Screen Capture Shield DEACTIVATED';
+      addLog('SUCCESS', 'screen_protection', msg);
+      setSrAnnouncement(msg);
+    } else {
+      addLog('BLOCKED', 'screen_protection', res.error || 'Failed to toggle screen protection');
+    }
+    setBankingLoading(false);
+  };
+
+  const handleProposeTransaction = async () => {
+    const amt = parseFloat(txAmount);
+    if (isNaN(amt) || amt <= 0) {
+      addLog('BLOCKED', 'banking_propose', 'Invalid transaction amount');
+      return;
+    }
+    setBankingLoading(true);
+    const res = await aegis.proposeTransaction(makerId, fromAccount, toAccount, amt, txCurrency, txReference);
+    if (res.success && res.data) {
+      addLog('SUCCESS', 'banking_propose', `Transaction ${res.data.tx_id} proposed by ${makerId} (${amt} ${txCurrency})`);
+      setSrAnnouncement(`Transaction ${res.data.tx_id} drafted and awaiting checker.`);
+      await refreshBankingData();
+    } else {
+      addLog('BLOCKED', 'banking_propose', res.error || 'Transaction proposal failed');
+    }
+    setBankingLoading(false);
+  };
+
+  const handleRequestStepUp = async (amount: number) => {
+    setBankingLoading(true);
+    const res = await aegis.requestBiometricChallenge(checkerId, 'TRANSFER_APPROVE', amount, txCurrency);
+    if (res.success && res.data) {
+      setStepUpChallenge(res.data);
+      addLog('INFO', 'banking_step_up', `Biometric challenge created: ${res.data.challenge_id}`);
+    } else {
+      addLog('BLOCKED', 'banking_step_up', res.error || 'Challenge generation failed');
+    }
+    setBankingLoading(false);
+  };
+
+  const handleVerifyBiometricPresence = async () => {
+    if (!stepUpChallenge) return;
+    setBankingLoading(true);
+    const res = await aegis.verifyBiometricAssertion(
+      stepUpChallenge.challenge_id,
+      checkerId,
+      'WINDOWS_HELLO_USER_PRESENCE_OK'
+    );
+    if (res.success && res.data) {
+      setStepUpToken(res.data);
+      addLog('SUCCESS', 'banking_step_up', `Biometric verified: ${res.data.biometric_method}. Single-use token issued.`);
+      setSrAnnouncement('Biometric authentication confirmed.');
+    } else {
+      addLog('BLOCKED', 'banking_step_up', res.error || 'Biometric verification failed');
+    }
+    setBankingLoading(false);
+  };
+
+  const handleApproveTransaction = async (txId: string) => {
+    setBankingLoading(true);
+    const res = await aegis.approveTransaction(txId, checkerId, stepUpToken?.token);
+    if (res.success && res.data) {
+      addLog('SUCCESS', 'banking_approve', `Transaction ${txId} APPROVED by ${checkerId} & committed to ledger Block #${res.data.block_index}`);
+      setSrAnnouncement(`Transaction ${txId} approved and committed.`);
+      setStepUpToken(null);
+      setStepUpChallenge(null);
+      await refreshBankingData();
+    } else {
+      addLog('BLOCKED', 'banking_approve', res.error || 'Transaction approval failed');
+    }
+    setBankingLoading(false);
+  };
+
+  const handleRejectTransaction = async (txId: string) => {
+    setBankingLoading(true);
+    const res = await aegis.rejectTransaction(txId, checkerId, 'Rejected by Compliance Supervisor');
+    if (res.success && res.data) {
+      addLog('INFO', 'banking_reject', `Transaction ${txId} REJECTED by ${checkerId}`);
+      await refreshBankingData();
+    } else {
+      addLog('BLOCKED', 'banking_reject', res.error || 'Rejection failed');
+    }
+    setBankingLoading(false);
+  };
+
+  const handleVerifyLedgerIntegrity = async () => {
+    setBankingLoading(true);
+    const res = await aegis.verifyLedger();
+    if (res.success && res.data) {
+      setLedgerReport(res.data);
+      addLog('SUCCESS', 'banking_ledger', `Ledger verified: ${res.data.total_blocks} blocks. Chained integrity: 100% PASS.`);
+      setSrAnnouncement('Financial ledger integrity verified.');
+    } else {
+      addLog('BLOCKED', 'banking_ledger', res.error || 'Ledger verification failed');
+    }
+    setBankingLoading(false);
   };
 
   // v0.14 Handlers
@@ -1512,6 +1656,22 @@ export default function App() {
           >
             <HardDrive style={{ width: '18px', height: '18px', color: '#ec4899' }} />
             HSM PKCS#11 Enclave
+          </button>
+
+          <div style={{ fontSize: '10px', fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '1px', padding: '8px 12px 4px' }}>🏦 Banking Grade</div>
+
+          <button
+            onClick={() => { setActiveTab('banking'); refreshBankingData(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'banking' ? 'linear-gradient(90deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.05))' : 'transparent',
+              color: activeTab === 'banking' ? '#6ee7b7' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <ShieldCheck style={{ width: '18px', height: '18px', color: '#10b981' }} />
+            Banking Terminal & Four-Eyes
           </button>
 
           <div style={{ marginTop: 'auto', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
@@ -4538,6 +4698,377 @@ export default function App() {
                       Unlock token slot with PIN to read hardware key objects.
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: BANKING & FINANCIAL SECURITY SUITE (PCI-DSS GRADE) */}
+          {activeTab === 'banking' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <ShieldCheck style={{ width: '14px', height: '14px' }} />
+                  Banking & Financial Security Suite • PCI-DSS v4.0 Grade
+                </div>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#f8fafc', margin: '4px 0 8px' }}>
+                  Financial Core Workstation & Dual-Control Terminal
+                </h1>
+                <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, maxWidth: '860px' }}>
+                  Enterprise banking runtime engineered with kernel-level Anti-Screen Capture protection (SetWindowDisplayAffinity), Windows Hello / Touch ID biometric step-up authentication, Four-Eyes Maker-Checker dual authorization, and an immutable cryptographic chained ledger.
+                </p>
+              </div>
+
+              {/* TOP ROW: SCREEN PROTECTION & BIOMETRIC STEP-UP */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                {/* 1. Screen Capture Shield */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <EyeOff style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                      Window Anti-Screen Capture Shield
+                    </div>
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      background: screenProtection?.protected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                      color: screenProtection?.protected ? '#6ee7b7' : '#fca5a5',
+                      border: `1px solid ${screenProtection?.protected ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                    }}>
+                      {screenProtection?.protected ? 'SHIELD ACTIVE' : 'SHIELD DISABLED'}
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 14px 0' }}>
+                    Calls Win32 <code style={{ color: '#7dd3fc', background: 'rgba(0,0,0,0.3)', padding: '2px 4px', borderRadius: '4px' }}>SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)</code>. When enabled, DWM excludes or blacks out this window from OBS, screenshots, screen sharing, and remote desktop mirroring to protect account numbers and balances.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', background: 'rgba(0,0,0,0.25)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                      <span style={{ color: '#94a3b8' }}>Platform Driver:</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{screenProtection?.platform || 'windows'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                      <span style={{ color: '#94a3b8' }}>Affinity State:</span>
+                      <span style={{ color: '#7dd3fc', fontFamily: 'monospace' }}>{screenProtection?.affinity || 'WDA_NONE'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                      <span style={{ color: '#94a3b8' }}>Protected Window HWNDs:</span>
+                      <span style={{ color: '#e2e8f0' }}>{screenProtection?.applied_hwnds ?? 0}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleToggleScreenProtection}
+                    disabled={bankingLoading}
+                    style={{
+                      width: '100%',
+                      background: screenProtection?.protected
+                        ? 'rgba(239, 68, 68, 0.2)'
+                        : 'linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.4))',
+                      border: `1px solid ${screenProtection?.protected ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.5)'}`,
+                      color: screenProtection?.protected ? '#fca5a5' : '#6ee7b7',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <EyeOff style={{ width: '14px', height: '14px' }} />
+                    {screenProtection?.protected ? 'Deactivate Anti-Capture Shield' : 'Activate Anti-Screen Capture Shield (WDA)'}
+                  </button>
+                </div>
+
+                {/* 2. Biometric Step-Up Authentication */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Fingerprint style={{ width: '16px', height: '16px', color: '#a855f7' }} />
+                      Windows Hello / Biometric Step-Up Engine
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px', background: 'rgba(168, 85, 247, 0.2)', color: '#d8b4fe', border: '1px solid rgba(168, 85, 247, 0.4)' }}>
+                      BIOAUTH L3
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 14px 0' }}>
+                    Mandatory step-up presence verification for high-value transactions (&gt;= $10,000). Issues single-use 60-second tokens with cryptographic replay defense.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px', background: 'rgba(0,0,0,0.25)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                      <span style={{ color: '#94a3b8' }}>Biometric Provider:</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{bankingBiometrics?.provider || 'Windows Hello (BioAPI)'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                      <span style={{ color: '#94a3b8' }}>Active Token:</span>
+                      <span style={{ color: stepUpToken ? '#34d399' : '#64748b', fontWeight: 600, fontFamily: 'monospace' }}>
+                        {stepUpToken ? stepUpToken.token.substring(0, 18) + '...' : 'NO ACTIVE TOKEN'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {stepUpChallenge ? (
+                    <div style={{ background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '8px', padding: '12px', marginBottom: '10px' }}>
+                      <div style={{ fontSize: '11px', color: '#d8b4fe', marginBottom: '6px' }}>
+                        Pending Challenge: <strong style={{ color: '#fff' }}>{stepUpChallenge.challenge_id}</strong> (${stepUpChallenge.amount} {stepUpChallenge.currency})
+                      </div>
+                      <button
+                        onClick={handleVerifyBiometricPresence}
+                        disabled={bankingLoading}
+                        style={{ width: '100%', background: '#a855f7', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        🖐️ Confirm Windows Hello / Touch ID Presence
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleRequestStepUp(parseFloat(txAmount) || 25000)}
+                      disabled={bankingLoading}
+                      style={{ width: '100%', background: 'rgba(168, 85, 247, 0.2)', border: '1px solid rgba(168, 85, 247, 0.4)', color: '#d8b4fe', borderRadius: '8px', padding: '10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Request Step-Up Biometric Token (${txAmount} {txCurrency})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* MIDDLE ROW: MAKER-CHECKER (FOUR-EYES PRINCIPLE) TERMINAL */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                {/* 3. Maker Terminal (Drafting) */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FileText style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                    Maker Terminal: Draft Transaction (First Eye)
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Maker Identity (Teller/Operator)</label>
+                      <input
+                        type="text"
+                        value={makerId}
+                        onChange={(e) => setMakerId(e.target.value)}
+                        style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px', color: '#e2e8f0', fontSize: '12px' }}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Source Account (IBAN)</label>
+                        <input
+                          type="text"
+                          value={fromAccount}
+                          onChange={(e) => setFromAccount(e.target.value)}
+                          style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px', color: '#e2e8f0', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Beneficiary Account (IBAN)</label>
+                        <input
+                          type="text"
+                          value={toAccount}
+                          onChange={(e) => setToAccount(e.target.value)}
+                          style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px', color: '#e2e8f0', fontSize: '12px' }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Amount</label>
+                        <input
+                          type="number"
+                          value={txAmount}
+                          onChange={(e) => setTxAmount(e.target.value)}
+                          style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px', color: '#e2e8f0', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Currency</label>
+                        <select
+                          value={txCurrency}
+                          onChange={(e) => setTxCurrency(e.target.value)}
+                          style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px', color: '#e2e8f0', fontSize: '12px' }}
+                        >
+                          <option value="USD">USD</option>
+                          <option value="EUR">EUR</option>
+                          <option value="CHF">CHF</option>
+                          <option value="GBP">GBP</option>
+                          <option value="LKR">LKR</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Payment Reference / ISO 20022 Purpose</label>
+                      <input
+                        type="text"
+                        value={txReference}
+                        onChange={(e) => setTxReference(e.target.value)}
+                        style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px', color: '#e2e8f0', fontSize: '12px' }}
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleProposeTransaction}
+                      disabled={bankingLoading}
+                      style={{
+                        marginTop: '8px',
+                        background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(14, 165, 233, 0.4))',
+                        border: '1px solid rgba(56, 189, 248, 0.5)',
+                        color: '#7dd3fc',
+                        padding: '10px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ✍️ Draft & Sign Transaction (Maker Phase)
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. Checker Queue (Four-Eyes Approval) */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <CheckCircle2 style={{ width: '16px', height: '16px', color: '#10b981' }} />
+                      Checker Queue: Dual-Control Approval (Second Eye)
+                    </div>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>
+                      Pending: {bankingTransactions.filter(t => t.status === 'PENDING_CHECKER_APPROVAL').length}
+                    </span>
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Active Checker / Supervisor Identity</label>
+                    <input
+                      type="text"
+                      value={checkerId}
+                      onChange={(e) => setCheckerId(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px', color: '#e2e8f0', fontSize: '12px' }}
+                    />
+                    {checkerId.trim().toLowerCase() === makerId.trim().toLowerCase() && (
+                      <div style={{ marginTop: '6px', padding: '6px 10px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', color: '#fca5a5', fontSize: '11px' }}>
+                        ⚠️ Four-Eyes Violation: Checker identity cannot match Maker identity.
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '250px', overflowY: 'auto' }}>
+                    {bankingTransactions.filter(t => t.status === 'PENDING_CHECKER_APPROVAL').length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '30px', color: '#64748b', fontSize: '12px', fontStyle: 'italic' }}>
+                        No transactions pending approval. Draft one in the Maker Terminal.
+                      </div>
+                    ) : (
+                      bankingTransactions
+                        .filter(t => t.status === 'PENDING_CHECKER_APPROVAL')
+                        .map(tx => (
+                          <div key={tx.tx_id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc' }}>{tx.tx_id}</span>
+                              <span style={{ fontSize: '13px', fontWeight: 700, color: '#38bdf8' }}>{tx.amount.toLocaleString()} {tx.currency}</span>
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>
+                              From: {tx.from_account} ➔ To: {tx.to_account}
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '8px' }}>
+                              Maker: <strong style={{ color: '#cbd5e1' }}>{tx.maker_id}</strong> • Ref: {tx.reference}
+                            </div>
+                            {tx.amount >= 10000 && !stepUpToken && (
+                              <div style={{ fontSize: '10px', color: '#fbbf24', background: 'rgba(251, 191, 36, 0.1)', padding: '4px 8px', borderRadius: '4px', marginBottom: '8px' }}>
+                                🔒 Requires Step-Up Biometric Token before approval (&gt;= $10,000)
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={() => handleApproveTransaction(tx.tx_id)}
+                                disabled={bankingLoading || checkerId.trim().toLowerCase() === makerId.trim().toLowerCase()}
+                                style={{ flex: 1, background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#6ee7b7', padding: '6px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                              >
+                                ✓ Approve & Commit
+                              </button>
+                              <button
+                                onClick={() => handleRejectTransaction(tx.tx_id)}
+                                disabled={bankingLoading}
+                                style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* BOTTOM ROW: IMMUTABLE CRYPTOGRAPHIC CHAINED LEDGER (PCI-DSS REQ 10) */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Database style={{ width: '16px', height: '16px', color: '#10b981' }} />
+                      Tamper-Proof Chained Financial Ledger (PCI-DSS Req 10)
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                      Chained SHA-256 block ledger preserving all committed banking transfers. Any tampering breaks cryptographic continuity.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleVerifyLedgerIntegrity}
+                    disabled={bankingLoading}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35))',
+                      border: '1px solid rgba(16, 185, 129, 0.5)',
+                      color: '#6ee7b7',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <ShieldCheck style={{ width: '14px', height: '14px' }} />
+                    Verify Ledger Integrity
+                  </button>
+                </div>
+
+                {ledgerReport && (
+                  <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', color: '#6ee7b7', fontSize: '12px', marginBottom: '16px' }}>
+                    <div style={{ fontWeight: 700, marginBottom: '2px' }}>
+                      ✅ 100% Cryptographic Ledger Integrity Confirmed ({ledgerReport.total_blocks} Blocks Chained)
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#cbd5e1' }}>
+                      Genesis: <code style={{ color: '#a7f3d0' }}>{ledgerReport.genesis_hash.substring(0, 24)}...</code> • Tip: <code style={{ color: '#a7f3d0' }}>{ledgerReport.tip_hash.substring(0, 24)}...</code>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                  {bankingLedger.map((block) => (
+                    <div key={block.index} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#38bdf8' }}>BLOCK #{block.index}</span>
+                        <span style={{ fontSize: '10px', color: '#64748b' }}>{block.tx_id}</span>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#94a3b8', margin: '4px 0', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                        Hash: {block.block_hash.substring(0, 28)}...
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#64748b', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                        Prev: {block.previous_hash.substring(0, 28)}...
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

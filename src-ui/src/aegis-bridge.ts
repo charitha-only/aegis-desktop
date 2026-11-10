@@ -1016,6 +1016,124 @@ export class AegisBridge {
     }
     return results[results.length - 1];
   }
+
+  // --- Banking-Grade Financial Suite APIs ---
+  public async setScreenProtection(protectedState: boolean): Promise<IpcResponse<{
+    protected: boolean;
+    platform: string;
+    affinity: string;
+    applied_hwnds: number;
+    anti_capture_active: boolean;
+    description: string;
+  }>> {
+    return this.invoke('banking_screen_protection_set', { protected: protectedState });
+  }
+
+  public async getScreenProtectionStatus(): Promise<IpcResponse<{
+    protected: boolean;
+    platform: string;
+    affinity: string;
+    applied_hwnds: number;
+    anti_capture_active: boolean;
+    description: string;
+  }>> {
+    return this.invoke('banking_screen_protection_status');
+  }
+
+  public async getBankingBiometricStatus(): Promise<IpcResponse<{
+    platform: string;
+    provider: string;
+    biometric_enrolled: boolean;
+    hardware_backed: boolean;
+    multi_factor_capable: boolean;
+    supported_methods: string[];
+  }>> {
+    return this.invoke('banking_biometric_hardware_status');
+  }
+
+  public async requestBiometricChallenge(userId: string, operation: string, amount: number, currency = 'USD'): Promise<IpcResponse<{
+    challenge_id: string;
+    user_id: string;
+    operation: string;
+    amount: number;
+    currency: string;
+    nonce: string;
+    created_at: number;
+    expires_at: number;
+  }>> {
+    return this.invoke('banking_biometric_challenge_request', { userId, operation, amount, currency });
+  }
+
+  public async verifyBiometricAssertion(challengeId: string, userId: string, biometricPayload: string): Promise<IpcResponse<{
+    token: string;
+    user_id: string;
+    operation: string;
+    amount: number;
+    currency: string;
+    biometric_method: string;
+    created_at: number;
+    expires_at: number;
+    consumed: boolean;
+  }>> {
+    return this.invoke('banking_biometric_verify', { challengeId, userId, biometricPayload });
+  }
+
+  public async proposeTransaction(
+    makerId: string,
+    fromAccount: string,
+    toAccount: string,
+    amount: number,
+    currency: string,
+    reference: string
+  ): Promise<IpcResponse<{
+    tx_id: string;
+    maker_id: string;
+    from_account: string;
+    to_account: string;
+    amount: number;
+    currency: string;
+    reference: string;
+    created_at: number;
+    canonical_hash: string;
+    maker_signature: string;
+    status: string;
+  }>> {
+    return this.invoke('banking_transaction_propose', {
+      makerId,
+      fromAccount,
+      toAccount,
+      amount,
+      currency,
+      reference,
+    });
+  }
+
+  public async approveTransaction(txId: string, checkerId: string, stepUpToken?: string): Promise<IpcResponse<any>> {
+    return this.invoke('banking_transaction_approve', { txId, checkerId, stepUpToken });
+  }
+
+  public async rejectTransaction(txId: string, checkerId: string, reason: string): Promise<IpcResponse<any>> {
+    return this.invoke('banking_transaction_reject', { txId, checkerId, reason });
+  }
+
+  public async listTransactions(): Promise<IpcResponse<{ transactions: any[]; count: number }>> {
+    return this.invoke('banking_transaction_list');
+  }
+
+  public async getLedger(): Promise<IpcResponse<{ ledger: any[]; blockCount: number }>> {
+    return this.invoke('banking_ledger_get');
+  }
+
+  public async verifyLedger(): Promise<IpcResponse<{
+    verified: boolean;
+    total_blocks: number;
+    genesis_hash: string;
+    tip_hash: string;
+    chained_integrity_confirmed: boolean;
+    four_eyes_audit_compliant: boolean;
+  }>> {
+    return this.invoke('banking_ledger_verify');
+  }
 }
 
 export const aegis = new AegisBridge();

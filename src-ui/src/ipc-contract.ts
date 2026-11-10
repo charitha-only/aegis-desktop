@@ -99,5 +99,17 @@ export function validCommandData(command: string, data: unknown): boolean {
   if (command === 'plugin_sandboxed_execute') {
     return record(data) && text(data.pluginId) && text(data.action) && 'result' in data;
   }
+  if (command === 'banking_screen_protection_set' || command === 'banking_screen_protection_status') {
+    return record(data) && typeof data.protected === 'boolean' && text(data.platform);
+  }
+  if (command === 'banking_biometric_hardware_status') {
+    return record(data) && typeof data.biometric_enrolled === 'boolean';
+  }
+  if (command === 'banking_transaction_propose' || command === 'banking_transaction_approve' || command === 'banking_transaction_reject') {
+    return record(data) && text(data.tx_id) && text(data.maker_id);
+  }
+  if (command === 'banking_ledger_verify') {
+    return record(data) && typeof data.verified === 'boolean';
+  }
   return true;
 }
