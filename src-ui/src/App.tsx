@@ -77,6 +77,11 @@ export default function App() {
   const [pluginDispatchPayload, setPluginDispatchPayload] = useState('{}');
   const [pluginResult, setPluginResult] = useState<any>(null);
   const [pluginLoading, setPluginLoading] = useState(false);
+  const [sandboxedManifests, setSandboxedManifests] = useState<any[]>([]);
+  const [sandboxedResult, setSandboxedResult] = useState<any>(null);
+  const [selectedSandboxedPlugin, setSelectedSandboxedPlugin] = useState('demo_sha256');
+  const [sandboxedAction, setSandboxedAction] = useState('crypto_sha256');
+  const [sandboxedPayload, setSandboxedPayload] = useState('{"data": "Hello Aegis Zero-Trust"}');
 
   // Notifications State (v0.13)
   const [notifTitle, setNotifTitle] = useState('Aegis Security Alert');
@@ -456,7 +461,33 @@ export default function App() {
       setPluginList(res.data.plugins || []);
       addLog('INFO', 'plugin_list', `${res.data.count} plugins found in registry`);
     }
+    const manifestRes = await aegis.call('plugin_manifest_list', {});
+    if (manifestRes.success && manifestRes.data) {
+      setSandboxedManifests(manifestRes.data.manifests || []);
+    }
     setPluginLoading(false);
+  };
+
+  const handleExecuteSandboxedPlugin = async () => {
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(sandboxedPayload);
+    } catch {
+      addLog('BLOCKED', 'plugin_sandboxed_execute', 'Invalid JSON payload format');
+      return;
+    }
+    const res = await aegis.call('plugin_sandboxed_execute', {
+      pluginId: selectedSandboxedPlugin,
+      action: sandboxedAction,
+      payload: parsed,
+    });
+    if (res.success) {
+      setSandboxedResult(res.data);
+      addLog('SUCCESS', 'plugin_sandboxed_execute', `Executed '${selectedSandboxedPlugin}' (${sandboxedAction})`);
+    } else {
+      setSandboxedResult({ error: res.error });
+      addLog('BLOCKED', 'plugin_sandboxed_execute', res.error || 'Execution denied');
+    }
   };
 
   const handleDispatchPlugin = async () => {
@@ -987,7 +1018,7 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
-              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>v1.0 RC1</span>
+              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#34d399', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '2px 8px', borderRadius: '4px', marginLeft: '6px', fontWeight: 600 }}>v1.0.0 PRODUCTION</span>
             </div>
             <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Sandboxed Framework</div>
           </div>
@@ -2196,6 +2227,113 @@ export default function App() {
                       </pre>
                     </div>
                   )}
+                </div>
+
+                {/* Sandboxed Plugins & Capability Manifests (v1.0 Production) */}
+                <div style={{ gridColumn: 'span 2', background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '12px', padding: '20px', marginTop: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ShieldCheck style={{ width: '16px', height: '16px', color: '#60a5fa' }} />
+                      Untrusted Plugin Sandbox & Declared Permission Manifests (v1.0)
+                    </h3>
+                    <span style={{ fontSize: '11px', background: 'rgba(59, 130, 246, 0.15)', color: '#93c5fd', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                      Zero-Trust Fail-Closed Gate
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px', lineHeight: '1.5' }}>
+                    Untrusted plugins must declare a strict manifest (<code>plugin.json</code>) with explicit capabilities. Undeclared host service access fails closed with <code>PERMISSION_DENIED</code>. Guest crashes and traps are contained within the sandbox.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    {/* Manifest List */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#cbd5e1' }}>REGISTERED MANIFESTS</div>
+                      {sandboxedManifests.length === 0 ? (
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>Click refresh to load sandboxed manifests.</div>
+                      ) : (
+                        sandboxedManifests.map((m) => (
+                          <div key={m.id} style={{ background: 'rgba(0,0,0,0.35)', border: `1px solid ${m.id === 'demo_restricted' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`, borderRadius: '8px', padding: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: m.id === 'demo_restricted' ? '#fca5a5' : '#6ee7b7' }}>{m.name}</span>
+                              <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.06)', color: '#94a3b8', padding: '1px 6px', borderRadius: '4px' }}>{m.trustTier || 'sandboxed_guest'}</span>
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px' }}>{m.description}</div>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              {m.permissions?.length > 0 ? (
+                                m.permissions.map((p: string) => (
+                                  <span key={p} style={{ fontSize: '10px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px' }}>
+                                    ✓ {p}
+                                  </span>
+                                ))
+                              ) : (
+                                <span style={{ fontSize: '10px', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', padding: '2px 6px', borderRadius: '4px' }}>
+                                  ⚠️ No permissions (Restricted Zero-Trust)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Interactive Sandbox Test Console */}
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '14px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#cbd5e1', marginBottom: '10px' }}>INTERACTIVE SANDBOX RUNNER</div>
+
+                      <div style={{ marginBottom: '10px' }}>
+                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>SELECT PLUGIN</label>
+                        <select
+                          value={selectedSandboxedPlugin}
+                          onChange={(e) => setSelectedSandboxedPlugin(e.target.value)}
+                          style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)', color: '#f8fafc', padding: '6px 10px', borderRadius: '6px', fontSize: '12px' }}
+                        >
+                          <option value="demo_sha256">demo_sha256 (Holds crypto:sha256)</option>
+                          <option value="demo_restricted">demo_restricted (Zero permissions)</option>
+                        </select>
+                      </div>
+
+                      <div style={{ marginBottom: '10px' }}>
+                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>ACTION</label>
+                        <select
+                          value={sandboxedAction}
+                          onChange={(e) => setSandboxedAction(e.target.value)}
+                          style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)', color: '#f8fafc', padding: '6px 10px', borderRadius: '6px', fontSize: '12px' }}
+                        >
+                          <option value="crypto_sha256">crypto_sha256 (Requires crypto:sha256)</option>
+                          <option value="system_info">system_info (Requires system:info)</option>
+                        </select>
+                      </div>
+
+                      <div style={{ marginBottom: '10px' }}>
+                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>INPUT DATA</label>
+                        <input
+                          type="text"
+                          value={sandboxedPayload}
+                          onChange={(e) => setSandboxedPayload(e.target.value)}
+                          style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)', color: '#93c5fd', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace' }}
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleExecuteSandboxedPlugin}
+                        style={{ width: '100%', background: 'linear-gradient(90deg, #2563eb, #3b82f6)', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '12px', marginBottom: '10px' }}
+                      >
+                        ⚡ Execute in Sandbox
+                      </button>
+
+                      {sandboxedResult && (
+                        <div style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${sandboxedResult.error ? 'rgba(239, 68, 68, 0.4)' : 'rgba(59, 130, 246, 0.4)'}`, borderRadius: '6px', padding: '10px' }}>
+                          <div style={{ fontSize: '10px', fontWeight: 600, color: sandboxedResult.error ? '#f87171' : '#60a5fa', marginBottom: '4px' }}>
+                            {sandboxedResult.error ? '🛑 ACCESS DENIED (FAIL-CLOSED)' : '✅ EXECUTION RESULT'}
+                          </div>
+                          <pre style={{ margin: 0, fontSize: '10px', color: '#cbd5e1', overflowX: 'auto', maxHeight: '120px' }}>
+                            {JSON.stringify(sandboxedResult, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -230,3 +230,4 @@ main().catch((err) => {
   console.error('[SBOM] ❌ Error:', err.message);
   process.exit(1);
 });
+
