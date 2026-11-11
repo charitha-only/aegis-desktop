@@ -110,3 +110,4 @@ export const soundEffects = {
 
   getMuted: () => isMuted,
 };
+

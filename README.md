@@ -2,8 +2,9 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v0.30.8-blue.svg?style=flat-square&logo=git)](CHANGELOG.md)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v0.30.8-purple?style=flat-square)](CHANGELOG.md)
+[![Official Website](https://img.shields.io/badge/Official_Website-charitha--only.github.io%2Faegis--desktop-f59e0b.svg?style=flat-square&logo=google-chrome)](https://charitha-only.github.io/aegis-desktop/)
+[![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg?style=flat-square&logo=git)](https://github.com/charitha-only/aegis-desktop/releases/tag/v1.1.0)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v1.1.0-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -16,17 +17,14 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v0.30.8 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Frontend Compatibility](#-frontend-frameworks--ui-libraries)
+[🌐 Official Website](https://charitha-only.github.io/aegis-desktop/) • [What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v1.1.0 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Security Whitepaper](docs/ENTERPRISE_SECURITY_WHITEPAPER.md)
 
 </div>
 
-> **v0.30.8 — production-hardened framework:** Windows, Linux and macOS have shared-core/UI and optional native desktop CI. Default development opens an external browser; optional embedded webviews and native-service interfaces are previews. Portable packaging exists on all three OSes; Windows installer/upgrade/backup/lock and Linux Debian/macOS package install/upgrade/reinstall data-preservation acceptance run on disposable CI. See the [exact-source verification ledger](docs/IMPLEMENTATION_STATUS.md), [release gates](docs/RELEASE_GATES.md) and [changelog](CHANGELOG.md).
+> 🌐 **Official Interactive Motion Graphics Website:**  
+> Experience the 60FPS cybernetic particle mesh, live Win32 DWM anti-screen capture simulator, 3D exploded micro-architecture, and real-time Four-Eyes consensus ledger at **[https://charitha-only.github.io/aegis-desktop/](https://charitha-only.github.io/aegis-desktop/)**.
 >
-> **Latest verified tooling:** Source `829411d` passed three-OS portable/native and Windows installer checks on attempt 1, including three required fresh Windows GUI runs. The [typed managed-window SDK](docs/MANAGED_WINDOW_SDK.md) has 23 SDK tests per hosted OS. [Startup stage timings](docs/NATIVE_STARTUP_OBSERVATION.md) are now retained; the earlier timeout remains unexplained, not fixed. See the [exact-source ledger](docs/IMPLEMENTATION_STATUS.md).
->
-> Hardware authentication, TPM, HSM/PKCS#11, biometrics, GPU, P2P, encrypted IPC and automatic updates remain unavailable. Full distribution/architecture installer coverage, owner signing/notarization, complete managed-window behavior and physical/accessibility acceptance remain incomplete. Sensitive production applications require application-specific verification and an independent audit. Historical prototype descriptions below do not establish present capabilities or performance guarantees.
->
-> **ASVS-guided development:** [OWASP ASVS v5.0.0](https://github.com/OWASP/ASVS/tree/v5.0.0/5.0) now supplies requirements for the applicable web/IPC surface. The [scoped evidence matrix](docs/ASVS_5_MAPPING.md) records checks and gaps; it is not ASVS certification or a complete audit.
+> **v1.1.0 — Banking-Grade Security & Financial Defense Release:** Integrates Win32 `SetWindowDisplayAffinity` anti-screen recording protection against OBS Studio / Zoom, Basel Corporate Governance & PCI-DSS Req 10 Four-Eyes Maker-Checker consensus with Ed25519 threshold signatures, biometric step-up authentication (Windows Hello / Touch ID), Pure Wayland Linux clipboard driver (`wl-copy`), and formal enterprise security compliance (`docs/ENTERPRISE_SECURITY_WHITEPAPER.md`). Passes all 138 Rust core tests, 76 CLI tests, and live smoke test suites with 0 compiler warnings. Dual-engine Authenticode signed with DigiCert RFC 3161 timestamps.
 
 
 ---

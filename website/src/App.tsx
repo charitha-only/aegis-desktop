@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Volume2, VolumeX, Github, ExternalLink, FileText, Lock, Terminal, Cpu } from 'lucide-react';
 import { CyberCanvas } from './components/CyberCanvas';
 import { HeroSection } from './components/HeroSection';
+import { AboutSection } from './components/AboutSection';
 import { ExplodedArchitecture } from './components/ExplodedArchitecture';
 import { AntiCaptureDemo } from './components/AntiCaptureDemo';
 import { MakerCheckerDemo } from './components/MakerCheckerDemo';
@@ -59,6 +60,13 @@ export const App: React.FC = () => {
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-8 font-mono text-xs">
+            <button
+              onClick={() => scrollToSection('about')}
+              onMouseEnter={() => soundEffects.hover()}
+              className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
+            >
+              // ABOUT
+            </button>
             <button
               onClick={() => scrollToSection('architecture')}
               onMouseEnter={() => soundEffects.hover()}
@@ -142,6 +150,8 @@ export const App: React.FC = () => {
           onExploreDownloads={() => scrollToSection('downloads')}
         />
 
+        <AboutSection />
+
         <ExplodedArchitecture />
 
         <AntiCaptureDemo />
@@ -207,3 +217,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
+

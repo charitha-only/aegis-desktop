@@ -291,3 +291,4 @@ assertValidContract(response, TransactionResponseSchema);`,
     </section>
   );
 };
+

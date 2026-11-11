@@ -111,3 +111,4 @@ export const BenchmarkTelemetry: React.FC = () => {
     </section>
   );
 };
+
