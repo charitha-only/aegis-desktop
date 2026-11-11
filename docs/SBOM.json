@@ -3,7 +3,7 @@
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
   "name": "Aegis-Desktop-Framework-SBOM",
-  "documentNamespace": "https://github.com/charitha-only/aegis-desktop/spdx/aegis-desktop-1.1.0-1794355412776",
+  "documentNamespace": "https://github.com/charitha-only/aegis-desktop/spdx/aegis-desktop-1.2.0-1794355412776",
   "creationInfo": {
     "creators": [
       "Tool: aegis-sbom-generator-1.0.0",
@@ -18,7 +18,7 @@
     {
       "SPDXID": "SPDXRef-Package-aegis-desktop",
       "name": "aegis-desktop",
-      "versionInfo": "1.1.0",
+      "versionInfo": "1.2.0",
       "downloadLocation": "https://github.com/charitha-only/aegis-desktop",
       "filesAnalyzed": false,
       "supplier": "Organization: Aegis Desktop Contributors",
@@ -42,9 +42,9 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-cargo-aegis-core-1-1-0",
+      "SPDXID": "SPDXRef-Package-cargo-aegis-core-1-2-0",
       "name": "aegis-core",
-      "versionInfo": "1.1.0",
+      "versionInfo": "1.2.0",
       "downloadLocation": "NOASSERTION",
       "filesAnalyzed": false,
       "supplier": "NOASSERTION",
