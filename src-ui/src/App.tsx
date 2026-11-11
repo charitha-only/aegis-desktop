@@ -42,6 +42,8 @@ import {
   PrivacyAudit,
   IpcResponse,
 } from './aegis-bridge';
+import { AdvancedSecuritySuite } from './AdvancedSecuritySuite';
+import { translations, Language } from './i18n';
 
 interface AuditLog {
   id: string;
@@ -53,7 +55,9 @@ interface AuditLog {
 
 const unavailableTabs: string[] = ['hardwareKey','enclave','stream','tpmAttestation','wgpuJit','p2pMarket','hsmPkcs11','packagePipeline'];
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit' | 'packagePipeline' | 'p2pMarket' | 'hsmPkcs11' | 'banking'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit' | 'packagePipeline' | 'p2pMarket' | 'hsmPkcs11' | 'banking' | 'advancedSecurity'>('security');
+  const [lang, setLang] = useState<Language>('en');
+  const t = translations[lang];
   const [connected, setConnected] = useState(false);
   const [srAnnouncement, setSrAnnouncement] = useState('Aegis Desktop Dashboard Ready');
   const [nonce, setNonce] = useState<string | null>(null);
@@ -1208,6 +1212,40 @@ export default function App() {
 
         {/* Connection & Nonce Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Language Switcher (EN / සිංහල) */}
+          <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', padding: '2px' }}>
+            <button
+              onClick={() => setLang('en')}
+              style={{
+                background: lang === 'en' ? '#6366f1' : 'transparent',
+                color: lang === 'en' ? '#fff' : '#94a3b8',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '3px 8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLang('si')}
+              style={{
+                background: lang === 'si' ? '#6366f1' : 'transparent',
+                color: lang === 'si' ? '#fff' : '#94a3b8',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '3px 8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              සිංහල
+            </button>
+          </div>
+
           <div
             role="status"
             aria-live="polite"
@@ -1672,6 +1710,20 @@ export default function App() {
           >
             <ShieldCheck style={{ width: '18px', height: '18px', color: '#10b981' }} />
             Banking Terminal & Four-Eyes
+          </button>
+
+          <button
+            onClick={() => setActiveTab('advancedSecurity')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+              borderRadius: '8px', border: 'none',
+              background: activeTab === 'advancedSecurity' ? 'linear-gradient(90deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.05))' : 'transparent',
+              color: activeTab === 'advancedSecurity' ? '#fcd34d' : '#94a3b8',
+              cursor: 'pointer', fontWeight: 500, fontSize: '13px', textAlign: 'left', transition: 'all 0.15s ease',
+            }}
+          >
+            <ShieldAlert style={{ width: '18px', height: '18px', color: '#f59e0b' }} />
+            {lang === 'si' ? 'උසස් RASP & FIDO2 ආරක්ෂාව' : 'Advanced Threat Suite'}
           </button>
 
           <div style={{ marginTop: 'auto', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
@@ -5072,6 +5124,15 @@ export default function App() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* TAB: ADVANCED THREAT DEFENSE & HARDWARE ENCLAVES */}
+          {activeTab === 'advancedSecurity' && (
+            <AdvancedSecuritySuite
+              lang={lang}
+              onAddLog={addLog}
+              setSrAnnouncement={setSrAnnouncement}
+            />
           )}
         </main>
       </div>

@@ -1134,6 +1134,141 @@ export class AegisBridge {
   }>> {
     return this.invoke('banking_ledger_verify');
   }
+
+  // ── RASP Anti-Tampering & Memory Hook Protection ───────────────────────────
+  public async evaluateRasp(): Promise<IpcResponse<{
+    debugger_detected: boolean;
+    memory_hooks_detected: boolean;
+    suspicious_dlls_detected: boolean;
+    hardware_breakpoints_detected: boolean;
+    fail_closed_containment_active: boolean;
+    system_integrity_tier: 'SECURE' | 'ELEVATED_RISK' | 'COMPROMISED_CONTAINED';
+    evaluated_at: number;
+    violations: string[];
+  }>> {
+    return this.invoke('rasp_evaluate');
+  }
+
+  public async resetRaspContainment(): Promise<IpcResponse<{ status: string }>> {
+    return this.invoke('rasp_containment_reset');
+  }
+
+  // ── mTLS & Public Key Pinning Sentinel ─────────────────────────────────────
+  public async evaluateNetworkPinning(
+    host: string,
+    certBytesHex: string,
+    clientCertPresent = true
+  ): Promise<IpcResponse<{
+    host: string;
+    pin_verified: boolean;
+    mitm_interception_detected: boolean;
+    mtls_client_authenticated: boolean;
+    observed_spki_pin: string;
+    expected_spki_pin?: string;
+    status: string;
+  }>> {
+    return this.invoke('network_pinning_evaluate', { host, certBytesHex, clientCertPresent });
+  }
+
+  public async enrollPinnedEndpoint(endpoint: {
+    host: string;
+    port: number;
+    expected_spki_pins: string[];
+    require_mtls: boolean;
+    allow_subdomains: boolean;
+  }): Promise<IpcResponse<{ status: string; host: string }>> {
+    return this.invoke('network_pinning_enroll', endpoint);
+  }
+
+  // ── Physical Hardware Security Key (FIDO2 / YubiKey) ────────────────────────
+  public async enumerateFido2Tokens(): Promise<IpcResponse<{ devices: any[]; count: number }>> {
+    return this.invoke('fido2_token_enumerate');
+  }
+
+  public async registerFido2Credential(userHandle: string, relyingParty = 'aegis.bank.internal'): Promise<IpcResponse<{
+    credential_id: string;
+    user_handle: string;
+    relying_party: string;
+    public_key_hex: string;
+    sign_count: number;
+    registered_at: number;
+  }>> {
+    return this.invoke('fido2_token_register', { userHandle, relyingParty });
+  }
+
+  public async signWithFido2Token(
+    credentialId: string,
+    clientDataHashHex: string,
+    touchConfirmed: boolean
+  ): Promise<IpcResponse<{
+    credential_id: string;
+    signature_hex: string;
+    authenticator_data_hex: string;
+    user_present: boolean;
+    user_verified: boolean;
+    counter: number;
+  }>> {
+    return this.invoke('fido2_token_sign', { credentialId, clientDataHashHex, touchConfirmed });
+  }
+
+  public async verifyFido2Signature(
+    credentialId: string,
+    clientDataHashHex: string,
+    assertion: any
+  ): Promise<IpcResponse<{ verified: boolean }>> {
+    return this.invoke('fido2_token_verify', { credentialId, clientDataHashHex, assertion });
+  }
+
+  // ── Decentralized P2P Zero-Knowledge Sync (Noise Protocol) ──────────────────
+  public async initiateP2pSync(): Promise<IpcResponse<{
+    session_id: string;
+    initiator_public_hex: string;
+    ephemeral_nonce_hex: string;
+    timestamp: number;
+  }>> {
+    return this.invoke('p2p_sync_init');
+  }
+
+  public async completeP2pSync(
+    sessionId: string,
+    initiatorPubHex: string,
+    responderPubHex: string
+  ): Promise<IpcResponse<{
+    session_id: string;
+    responder_public_hex: string;
+    mutual_auth_tag_hex: string;
+    session_established: boolean;
+  }>> {
+    return this.invoke('p2p_sync_complete', { sessionId, initiatorPubHex, responderPubHex });
+  }
+
+  public async encryptP2pBundle(
+    sessionId: string,
+    sequenceNumber: number,
+    payloadHex: string
+  ): Promise<IpcResponse<{
+    session_id: string;
+    sequence_number: number;
+    ciphertext_hex: string;
+    auth_tag_hex: string;
+    nonce_hex: string;
+  }>> {
+    return this.invoke('p2p_sync_encrypt', { sessionId, sequenceNumber, payloadHex });
+  }
+
+  public async decryptP2pBundle(bundle: {
+    session_id: string;
+    sequence_number: number;
+    ciphertext_hex: string;
+    auth_tag_hex: string;
+    nonce_hex: string;
+  }): Promise<IpcResponse<{
+    plaintextHex: string;
+    plaintextUtf8: string;
+    verified: boolean;
+  }>> {
+    return this.invoke('p2p_sync_decrypt', bundle);
+  }
 }
 
 export const aegis = new AegisBridge();

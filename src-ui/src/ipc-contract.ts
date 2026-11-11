@@ -111,5 +111,43 @@ export function validCommandData(command: string, data: unknown): boolean {
   if (command === 'banking_ledger_verify') {
     return record(data) && typeof data.verified === 'boolean';
   }
+  if (command === 'rasp_evaluate') {
+    return record(data) && typeof data.debugger_detected === 'boolean' && typeof data.memory_hooks_detected === 'boolean'
+      && typeof data.fail_closed_containment_active === 'boolean' && ['SECURE', 'ELEVATED_RISK', 'COMPROMISED_CONTAINED'].includes(data.system_integrity_tier as string);
+  }
+  if (command === 'rasp_containment_reset') {
+    return record(data) && text(data.status);
+  }
+  if (command === 'network_pinning_evaluate') {
+    return record(data) && typeof data.pin_verified === 'boolean' && typeof data.mitm_interception_detected === 'boolean'
+      && typeof data.mtls_client_authenticated === 'boolean' && text(data.observed_spki_pin);
+  }
+  if (command === 'network_pinning_enroll') {
+    return record(data) && text(data.status) && text(data.host);
+  }
+  if (command === 'fido2_token_enumerate') {
+    return record(data) && Array.isArray(data.devices) && typeof data.count === 'number';
+  }
+  if (command === 'fido2_token_register') {
+    return record(data) && text(data.credential_id) && text(data.public_key_hex);
+  }
+  if (command === 'fido2_token_sign') {
+    return record(data) && text(data.credential_id) && text(data.signature_hex) && typeof data.user_present === 'boolean';
+  }
+  if (command === 'fido2_token_verify') {
+    return record(data) && typeof data.verified === 'boolean';
+  }
+  if (command === 'p2p_sync_init') {
+    return record(data) && text(data.session_id) && text(data.initiator_public_hex);
+  }
+  if (command === 'p2p_sync_complete') {
+    return record(data) && text(data.session_id) && typeof data.session_established === 'boolean';
+  }
+  if (command === 'p2p_sync_encrypt') {
+    return record(data) && text(data.session_id) && text(data.ciphertext_hex) && text(data.auth_tag_hex);
+  }
+  if (command === 'p2p_sync_decrypt') {
+    return record(data) && typeof data.verified === 'boolean' && text(data.plaintextHex);
+  }
   return true;
 }

@@ -44,6 +44,10 @@ pub struct IpcRouter {
     p2p_market: Arc<P2PPluginMarketplace>,
     hsm_engine: Arc<HsmPkcs11Engine>,
     banking: Arc<crate::banking::BankingEngine>,
+    rasp_engine: Arc<crate::security::RaspEngine>,
+    tls_pinning: Arc<crate::security::TlsPinningEngine>,
+    fido2_engine: Arc<crate::security::Fido2TokenEngine>,
+    p2p_sync: Arc<crate::security::P2pSyncEngine>,
     sensitive_limiter: crate::security::RateLimiter,
     vault_sessions: Arc<crate::security::vault_session::VaultSessions>,
     dispatch: std::sync::Mutex<()>,
@@ -129,6 +133,10 @@ impl IpcRouter {
             p2p_market,
             hsm_engine,
             banking: Arc::new(crate::banking::BankingEngine::new()),
+            rasp_engine: Arc::new(crate::security::RaspEngine::new()),
+            tls_pinning: Arc::new(crate::security::TlsPinningEngine::new()),
+            fido2_engine: Arc::new(crate::security::Fido2TokenEngine::new()),
+            p2p_sync: Arc::new(crate::security::P2pSyncEngine::new()),
             sensitive_limiter: crate::security::RateLimiter::new(20, 60, 60),
         }
     }
@@ -2149,6 +2157,193 @@ impl IpcRouter {
             "banking_ledger_verify" => {
                 match self.banking.maker_checker.verify_ledger_integrity() {
                     Ok(report) => IpcResponse::ok(&req.id, json!(report)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ── RASP & Anti-Tampering Engine ─────────────────────────────────
+            "rasp_evaluate" => {
+                let report = self.rasp_engine.evaluate();
+                IpcResponse::ok(&req.id, json!(report))
+            }
+
+            "rasp_containment_reset" => {
+                self.rasp_engine.reset_containment();
+                IpcResponse::ok(&req.id, json!({ "status": "Containment reset successfully" }))
+            }
+
+            // ── mTLS & Public Key Pinning Engine ────────────────────────────
+            "network_pinning_evaluate" => {
+                let host = match req.payload.get("host").and_then(|h| h.as_str()) {
+                    Some(h) => h,
+                    None => return IpcResponse::err(&req.id, "Missing 'host' parameter"),
+                };
+                let cert_hex = match req.payload.get("certBytesHex").and_then(|c| c.as_str()) {
+                    Some(c) => c,
+                    None => return IpcResponse::err(&req.id, "Missing 'certBytesHex' parameter"),
+                };
+                let client_cert_present = req
+                    .payload
+                    .get("clientCertPresent")
+                    .and_then(|c| c.as_bool())
+                    .unwrap_or(true);
+
+                let cert_bytes = match hex::decode(cert_hex) {
+                    Ok(b) => b,
+                    Err(e) => return IpcResponse::err(&req.id, &format!("Invalid certificate hex: {}", e)),
+                };
+
+                let assessment = self
+                    .tls_pinning
+                    .evaluate_connection(host, &cert_bytes, client_cert_present);
+                IpcResponse::ok(&req.id, json!(assessment))
+            }
+
+            "network_pinning_enroll" => {
+                let endpoint: crate::security::mtls_pinning::PinnedEndpoint =
+                    match serde_json::from_value(req.payload.clone()) {
+                        Ok(ep) => ep,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Invalid endpoint payload: {}", e)),
+                    };
+                self.tls_pinning.enroll_pinned_host(endpoint.clone());
+                IpcResponse::ok(&req.id, json!({ "status": "Endpoint pinned", "host": endpoint.host }))
+            }
+
+            // ── Physical Hardware Security Key (FIDO2 / YubiKey) ────────────
+            "fido2_token_enumerate" => {
+                let devices = self.fido2_engine.enumerate_devices();
+                IpcResponse::ok(&req.id, json!({ "devices": devices, "count": devices.len() }))
+            }
+
+            "fido2_token_register" => {
+                let user_handle = match req.payload.get("userHandle").and_then(|u| u.as_str()) {
+                    Some(u) => u,
+                    None => return IpcResponse::err(&req.id, "Missing 'userHandle' parameter"),
+                };
+                let relying_party = match req.payload.get("relyingParty").and_then(|r| r.as_str()) {
+                    Some(r) => r,
+                    None => "aegis.bank.internal",
+                };
+
+                match self.fido2_engine.register_credential(user_handle, relying_party) {
+                    Ok(cred) => IpcResponse::ok(&req.id, json!(cred)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "fido2_token_sign" => {
+                let cred_id = match req.payload.get("credentialId").and_then(|c| c.as_str()) {
+                    Some(c) => c,
+                    None => return IpcResponse::err(&req.id, "Missing 'credentialId' parameter"),
+                };
+                let hash_hex = match req.payload.get("clientDataHashHex").and_then(|h| h.as_str()) {
+                    Some(h) => h,
+                    None => return IpcResponse::err(&req.id, "Missing 'clientDataHashHex' parameter"),
+                };
+                let touch_confirmed = req
+                    .payload
+                    .get("touchConfirmed")
+                    .and_then(|t| t.as_bool())
+                    .unwrap_or(false);
+
+                match self.fido2_engine.sign_assertion(cred_id, hash_hex, touch_confirmed) {
+                    Ok(assertion) => IpcResponse::ok(&req.id, json!(assertion)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "fido2_token_verify" => {
+                let cred_id = match req.payload.get("credentialId").and_then(|c| c.as_str()) {
+                    Some(c) => c,
+                    None => return IpcResponse::err(&req.id, "Missing 'credentialId' parameter"),
+                };
+                let hash_hex = match req.payload.get("clientDataHashHex").and_then(|h| h.as_str()) {
+                    Some(h) => h,
+                    None => return IpcResponse::err(&req.id, "Missing 'clientDataHashHex' parameter"),
+                };
+                let assertion: crate::security::fido2_token::HardwareSignAssertion =
+                    match req.payload.get("assertion") {
+                        Some(val) => match serde_json::from_value(val.clone()) {
+                            Ok(a) => a,
+                            Err(e) => return IpcResponse::err(&req.id, &format!("Invalid assertion: {}", e)),
+                        },
+                        None => return IpcResponse::err(&req.id, "Missing 'assertion' object"),
+                    };
+
+                match self.fido2_engine.verify_assertion(cred_id, hash_hex, &assertion) {
+                    Ok(valid) => IpcResponse::ok(&req.id, json!({ "verified": valid })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ── Decentralized P2P Zero-Knowledge Sync (Noise Protocol) ───────
+            "p2p_sync_init" => {
+                let (init, _) = self.p2p_sync.initiate_handshake();
+                IpcResponse::ok(&req.id, json!(init))
+            }
+
+            "p2p_sync_complete" => {
+                let session_id = match req.payload.get("sessionId").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'sessionId' parameter"),
+                };
+                let init_pub = match req.payload.get("initiatorPubHex").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'initiatorPubHex' parameter"),
+                };
+                let resp_pub = match req.payload.get("responderPubHex").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'responderPubHex' parameter"),
+                };
+
+                match self.p2p_sync.complete_handshake(session_id, init_pub, resp_pub) {
+                    Ok(resp) => IpcResponse::ok(&req.id, json!(resp)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "p2p_sync_encrypt" => {
+                let session_id = match req.payload.get("sessionId").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'sessionId' parameter"),
+                };
+                let seq = req
+                    .payload
+                    .get("sequenceNumber")
+                    .and_then(|n| n.as_u64())
+                    .unwrap_or(1);
+                let payload_hex = match req.payload.get("payloadHex").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'payloadHex' parameter"),
+                };
+
+                let plaintext = match hex::decode(payload_hex) {
+                    Ok(b) => b,
+                    Err(e) => return IpcResponse::err(&req.id, &format!("Invalid hex: {}", e)),
+                };
+
+                match self.p2p_sync.encrypt_sync_bundle(session_id, seq, &plaintext) {
+                    Ok(bundle) => IpcResponse::ok(&req.id, json!(bundle)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "p2p_sync_decrypt" => {
+                let bundle: crate::security::p2p_sync::EncryptedSyncBundle =
+                    match serde_json::from_value(req.payload.clone()) {
+                        Ok(b) => b,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Invalid bundle: {}", e)),
+                    };
+
+                match self.p2p_sync.decrypt_sync_bundle(&bundle) {
+                    Ok(bytes) => IpcResponse::ok(
+                        &req.id,
+                        json!({
+                            "plaintextHex": hex::encode(&bytes),
+                            "plaintextUtf8": String::from_utf8(bytes).unwrap_or_default(),
+                            "verified": true
+                        }),
+                    ),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }

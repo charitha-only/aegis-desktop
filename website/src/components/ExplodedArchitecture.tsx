@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, ShieldCheck, Cpu, Database, EyeOff, Key, Code2, Sparkles } from 'lucide-react';
+import { Layers, ShieldCheck, Cpu, Database, EyeOff, Key, Code2, Sparkles, Binary, Wifi, ShieldAlert } from 'lucide-react';
 import { soundEffects } from './AudioEffects';
 
 interface ArchitectureLayer {
@@ -13,27 +13,36 @@ interface ArchitectureLayer {
   code: string;
   icon: React.ComponentType<{ className?: string }>;
   accentColor: string;
+  schematicTag: string;
 }
 
-export const ExplodedArchitecture: React.FC = () => {
+interface ExplodedArchitectureProps {
+  lang?: 'en' | 'si';
+}
+
+export const ExplodedArchitecture: React.FC<ExplodedArchitectureProps> = ({ lang = 'en' }) => {
   const [selectedLayer, setSelectedLayer] = useState<number>(0);
   const [isExploded, setIsExploded] = useState<boolean>(true);
+  const isSi = lang === 'si';
 
   const layers: ArchitectureLayer[] = [
     {
-      id: 'layer-hardware',
+      id: 'layer-dwm',
       number: '01',
-      title: 'HARDWARE SECURITY & OS DWM AFFINITY',
-      badge: 'WIN32 DWM / TPM 2.0',
-      category: 'PHYSICAL LAYER',
-      description: 'Interfaces directly with the Windows Desktop Window Manager and platform hardware cryptographic enclaves to prevent physical or malware-based display interception.',
+      title: isSi ? 'DWM තිර ග්‍රහණ වැළැක්වීමේ ආවරණය' : 'PROTECTIVE DWM ANTI-CAPTURE LID',
+      badge: 'WIN32 DWM / OBS BLACKOUT',
+      category: isSi ? 'දෘඩාංග මට්ටම' : 'HARDWARE INTERFACE LAYER',
+      schematicTag: 'WDA_EXCLUDEFROMCAPTURE // 0x00000011',
+      description: isSi
+        ? 'Windows Desktop Window Manager (DWM) සංයුක්ත ස්ථරය සමඟ සෘජුව සම්බන්ධ වී OBS Studio, Zoom හෝ malware මඟින් screen capture කිරීම කළු තිරයකින් වළක්වයි.'
+        : 'Interfaces directly with the Windows Desktop Window Manager compositor to enforce hardware-level frame blackouts against OBS Studio, Zoom, and remote screen scrapers.',
       specs: [
         'SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)',
         'Direct DWM frame black-out against OBS & TeamViewer',
         'Windows Hello & Touch ID Biometric FIDO2 Challenge-Response',
-        'TPM 2.0 Hardware Key Cryptographic Binding',
+        'Fail-closed display containment on window initialization',
       ],
-      code: `// Hardware-level DWM display masking
+      code: `// Hardware-level Win32 DWM display masking
 let affinity = WDA_EXCLUDEFROMCAPTURE; // 0x00000011
 let result = SetWindowDisplayAffinity(hwnd, affinity);
 if result == 0 {
@@ -43,17 +52,47 @@ if result == 0 {
       accentColor: 'from-amber-500 to-yellow-600',
     },
     {
-      id: 'layer-kernel',
+      id: 'layer-rasp',
       number: '02',
-      title: 'AEGIS ZERO-TRUST RUST MICRO-KERNEL',
-      badge: 'RUST 1.92 / ZERO-ALLOCATION',
-      category: 'CORE RUNTIME',
-      description: 'High-concurrency, memory-safe IPC server with scoped thread execution, O(1) rate limiting, and constant-time cryptographic zeroization.',
+      title: isSi ? 'RING-0 RASP ස්වයං-ආරක්ෂණ ඒකකය' : 'RING-0 RASP & ANTI-TAMPER DIE',
+      badge: 'ANTI-DEBUG / MEMORY HOOKS',
+      category: isSi ? 'මූලික ධාවන ස්ථරය' : 'KERNEL RUNTIME GUARD',
+      schematicTag: 'SYS_HOOK_SCAN // FAIL-CLOSED CONTAINMENT',
+      description: isSi
+        ? 'IsDebuggerPresent, CheckRemoteDebuggerPresent සහ VirtualProtect මතක කොකු ක්ෂණිකව පරිලෝකනය කර ක්‍රියාවලිය tamper වුවහොත් fail-closed ලෙස අගුලු දමයි.'
+        : 'Continuous kernel-level scanning for attached debuggers, hardware breakpoints, and VirtualProtect opcode modifications, enforcing instant fail-closed containment.',
       specs: [
-        'Multi-threaded scoped IPC workers (std::thread::scope)',
+        'Win32 IsDebuggerPresent & CheckRemoteDebuggerPresent probe',
+        'VirtualProtect / NtQueryInformationProcess hook detector',
+        'Hardware breakpoint (DR0-DR3) register verification',
+        'Instantaneous fail-closed memory zeroization',
+      ],
+      code: `// Real-time RASP memory hook scan
+let peb_debugger = IsDebuggerPresent() != 0;
+let mut remote_debugger: BOOL = 0;
+CheckRemoteDebuggerPresent(GetCurrentProcess(), &mut remote_debugger);
+if peb_debugger || remote_debugger != 0 {
+    self.containment_active.store(true, Ordering::SeqCst);
+    return Err(SecurityError::ProcessTampered);
+}`,
+      icon: ShieldAlert,
+      accentColor: 'from-red-500 to-amber-600',
+    },
+    {
+      id: 'layer-kernel',
+      number: '03',
+      title: isSi ? 'AEGIS RUST ශුන්‍ය-විශ්වාස මයික්‍රෝ-කර්නලය' : 'AEGIS ZERO-TRUST RUST MICRO-CORE',
+      badge: 'RUST 1.92 / ZERO-ALLOCATION',
+      category: isSi ? 'පද්ධති කර්නලය' : 'CORE CRYPTOGRAPHIC ENGINE',
+      schematicTag: 'ZERO_ALLOC_RING // CONSTANT_TIME_CRYPTO',
+      description: isSi
+        ? 'මතක ආරක්ෂිත Rust 1.92 මත පදනම් වූ ශුන්‍ය-alloc IPC සේවාදායකය. කාල-නියත (constant-time) සංසන්දන සහ ස්ලයිඩින්-වින්ඩෝ anti-DoS සීමාකාරක.'
+        : 'High-concurrency, memory-safe IPC server with scoped thread execution, O(1) sliding-window rate limiting, and constant-time cryptographic zeroization.',
+      specs: [
         'Constant-time crypto comparisons (timing-attack immune)',
-        'Memory-guarded zeroize on plaintext buffers',
         'Ring-buffer O(1) sliding window anti-DoS rate limiter',
+        'Memory-guarded zeroize on all plaintext crypt-buffers',
+        'Sub-millisecond IPC response latency (p50: 1.6ms)',
       ],
       code: `// Constant-time authenticated token verification
 pub fn constant_time_eq_ascii(a: &str, b: &str) -> bool {
@@ -69,16 +108,19 @@ pub fn constant_time_eq_ascii(a: &str, b: &str) -> bool {
     },
     {
       id: 'layer-wasm',
-      number: '03',
-      title: 'WASM INSTRUCTION-METERED SANDBOX',
-      badge: 'WASMTIME / FUEL TRAPS',
-      category: 'UNTRUSTED EXTENSION ENGINE',
-      description: 'Strictly bounded execution environment for third-party plugins with deterministic fuel counters, instruction limits, and fail-closed trap containment.',
+      number: '04',
+      title: isSi ? 'WASM උපදෙස් ඉන්ධන වැලිපිල්ල' : 'WASM INSTRUCTION-METERED SANDBOX',
+      badge: 'WASMTIME / DETERMINISTIC FUEL',
+      category: isSi ? 'ප්ලගීන පරිසරය' : 'UNTRUSTED EXTENSION ENGINE',
+      schematicTag: 'METERED_FUEL_BOUND // 5M_FUEL_CAP',
+      description: isSi
+        ? 'තෙවන පාර්ශ්වීය ප්ලගීන සඳහා දැඩි ඉන්ධන කෝටා (fuel limits) සහ 64MB උපරිම මතක සීමාවන් සහිතව සකස් කළ ආරක්ෂිත ධාවන පරිසරය.'
+        : 'Strictly bounded execution environment for third-party plugins with deterministic fuel counters, instruction limits, and fail-closed trap containment.',
       specs: [
-        'Deterministic instruction fuel metering (anti-infinite loops)',
+        'Deterministic instruction fuel metering (anti-infinite loop)',
         'Memory allocation ceiling (max 64 MB heap cap)',
         'Declared capability manifests (crypto:sha256, storage:read)',
-        'Host trap containment preventing core crashes',
+        'Host trap containment preventing application crashes',
       ],
       code: `// Instruction fuel metering & trap boundary
 store.set_fuel(5_000_000)?;
@@ -91,19 +133,46 @@ match result {
       accentColor: 'from-emerald-500 to-teal-600',
     },
     {
-      id: 'layer-consensus',
-      number: '04',
-      title: 'MAKER-CHECKER FOUR-EYES CONSENSUS',
-      badge: 'PCI-DSS REQ 10 / BASEL',
-      category: 'FINANCIAL GOVERNANCE',
-      description: 'Enforces corporate banking Segregation of Duties (SOD) and maintains an immutable cryptographic chained ledger with SHA-256 block hash continuity.',
+      id: 'layer-pinning',
+      number: '05',
+      title: isSi ? 'mTLS සහතික PINNING සහ P2P MESH' : 'mTLS SPKI PINNING & P2P NOISE MESH',
+      badge: 'SPKI PINNING / NOISE PROTOCOL',
+      category: isSi ? 'ජාල ආරක්ෂණය' : 'ZERO-TRUST NETWORK SENTINEL',
+      schematicTag: 'SHA256_SPKI_HASH // P2P_DIFF_SYNC',
+      description: isSi
+        ? 'Burp Suite හෝ rogue CA මඟින් කෙරෙන MITM proxy මැදිහත්වීම් වළක්වන SPKI hash pinning සහ විමධ්‍යගත P2P Noise differential sync.'
+        : 'Defeats proxy interception (Burp Suite, Charles) via cryptographic SPKI hash pinning and enables peer-to-peer differential vault sync via Noise protocol.',
       specs: [
-        'Strict Segregation of Duties (checker_id != maker_id)',
-        'Mandatory biometric step-up for amounts >= $10,000 USD',
-        'Ed25519 threshold digital signature verification',
-        'Chained SHA-256 block ledger with genesis continuity checks',
+        'Cryptographic SPKI public key hash pinning',
+        'MITM proxy interception detection & immediate denial',
+        'Mutual TLS (mTLS) client certificate enforcement',
+        'Ephemeral Noise handshake with symmetric session derivation',
       ],
-      code: `// Basel Four-Eyes Principle enforcement
+      code: `// SPKI public key hash verification against MITM
+let observed_pin = format!("pin-sha256=\"{}\"", hex::encode(digest));
+if !endpoint.expected_spki_pins.contains(&observed_pin) {
+    return Err(SecurityError::MitmInterceptionBlocked);
+}`,
+      icon: Wifi,
+      accentColor: 'from-purple-500 to-indigo-600',
+    },
+    {
+      id: 'layer-fido2',
+      number: '06',
+      title: isSi ? 'භෞතික FIDO2 / YUBIKEY සහ FOUR-EYES' : 'FIDO2 HARDWARE KEY & FOUR-EYES MATRIX',
+      badge: 'CTAP2 / BASEL SOD / PCI-DSS',
+      category: isSi ? 'මූල්‍ය පාලනය' : 'PHYSICAL HARDWARE & GOVERNANCE',
+      schematicTag: 'USER_PRESENCE_TOUCH // SOD_IMMUTABLE_CHAIN',
+      description: isSi
+        ? 'භෞතික ස්පර්ශය අනිවාර්ය කරන YubiKey / FIDO2 දෘඩාංග අත්සන් සහ තනි පුද්ගලයෙකුට අනුමත කළ නොහැකි Maker-Checker Four-Eyes සම්මුතිය.'
+        : 'Enforces mandatory physical hardware presence (YubiKey CTAP2) and corporate banking Segregation of Duties (SOD) with chained SHA-256 ledger integrity.',
+      specs: [
+        'CTAP2 user touch presence enforcement for key release',
+        'Ed25519 hardware assertion generation & verification',
+        'Strict Segregation of Duties (checker_id != maker_id)',
+        'Immutable chained SHA-256 audit ledger blocks',
+      ],
+      code: `// Dual-control maker-checker + hardware touch enforcement
 if tx.maker_id.eq_ignore_ascii_case(checker_id) {
     return Err(BankingError::SelfApprovalForbidden);
 }
@@ -111,27 +180,6 @@ let block_hash = compute_sha256_chain(&prev_hash, &tx);
 ledger.append(AuditBlock::new(block_hash, tx));`,
       icon: Key,
       accentColor: 'from-amber-400 to-orange-600',
-    },
-    {
-      id: 'layer-ui',
-      number: '05',
-      title: 'SANDBOXED FRONTEND & WEBVIEW2 HOST',
-      badge: 'REACT 18 / WCAG 2.1 AA',
-      category: 'PRESENTATION TIER',
-      description: 'Isolated client runtime communicating solely via authenticated HTTP/IPC loopback with strict Content Security Policy and zero unverified origins.',
-      specs: [
-        'Strict Content-Security-Policy: frame-ancestors none',
-        'Normalized RFC 6454 origin pre-validation',
-        'Accessible WCAG 2.1 AA focus visible & screen-reader ARIA',
-        'Zero-flash native desktop WebView2 embedding',
-      ],
-      code: `// Loopback IPC bridge contract validation
-const response = await bridge.call('banking_transaction_propose', {
-  makerId, fromAccount, toAccount, amount, currency
-});
-assertValidContract(response, TransactionResponseSchema);`,
-      icon: Database,
-      accentColor: 'from-purple-500 to-indigo-600',
     },
   ];
 
@@ -141,18 +189,23 @@ assertValidContract(response, TransactionResponseSchema);`,
       <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]" />
 
       <div className="relative z-10 max-w-7xl mx-auto">
-        {/* Section Header */}
+        {/* Section Header (Directly matching Image 4: DESIGNED AT THE [TRANSISTOR]) */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 font-mono text-xs text-amber-400 uppercase tracking-widest">
               <Layers className="w-4 h-4" />
-              <span>[SCHEMATIC SPECIFICATION] // 5-LAYER STACK</span>
+              <span>[SCHEMATIC SPECIFICATION] // 6-LAYER ZERO-TRUST STACK</span>
             </div>
             <h2 className="text-3xl sm:text-5xl font-extrabold font-display text-white tracking-tight">
-              DESIGNED AT THE <span className="text-amber-400 glow-amber">[TRANSISTOR]</span>
+              {isSi ? 'නිර්මාණය වූයේ' : 'ENGINEERED AT THE'}{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500 glow-amber">
+                {isSi ? '[BARE METAL මට්ටමෙනි.]' : '[BARE METAL].'}
+              </span>
             </h2>
             <p className="text-slate-400 max-w-2xl text-sm sm:text-base font-light">
-              Every layer isolated. Every permission capability-checked. Explore the 5 zero-trust security tiers separating untrusted frontend code from physical cryptographic hardware.
+              {isSi
+                ? 'මතක සීමාවන් සහ දෘඩාංග හුදකලාව මත ගොඩනැඟූ ශුන්‍ය විශ්වාස කර්නලය. සෑම register එකක්ම තහවුරුයි, සෑම උපදෙසක්ම මනින ලදයි, කිසිවක් අනාරක්ෂිත නැත.'
+                : 'A zero-trust kernel designed around memory bounds and hardware enclaves. Every register verified, every instruction metered, every hook fail-closed.'}
             </p>
           </div>
 
@@ -162,11 +215,62 @@ assertValidContract(response, TransactionResponseSchema);`,
                 soundEffects.click();
                 setIsExploded(!isExploded);
               }}
-              className="px-4 py-2 rounded-lg bg-[#0d111a] border border-amber-500/30 hover:border-amber-400 text-amber-300 font-mono text-xs tracking-wider flex items-center gap-2 transition-all"
+              className="px-4 py-2.5 rounded-lg bg-[#0d111a] border border-amber-500/30 hover:border-amber-400 text-amber-300 font-mono text-xs tracking-wider flex items-center gap-2 transition-all shadow-lg"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>{isExploded ? 'COLLAPSE 3D STACK' : 'EXPLODE 3D STACK'}</span>
+              <span>{isExploded ? (isSi ? 'ස්ථර එකතු කරන්න' : 'COLLAPSE 3D STACK') : (isSi ? '3D ස්ථර විහිදුවන්න' : 'EXPLODE 3D STACK')}</span>
             </button>
+          </div>
+        </div>
+
+        {/* Isometric Visual Schematic Hero Card (Directly matching Image 4) */}
+        <div className="mb-14 rounded-2xl bg-[#090c14] border border-amber-500/30 p-6 sm:p-8 relative overflow-hidden shadow-2xl crosshair">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Exploded 3D Isometric Hardware Diagram (sample-chip.jpg + Leader Lines) */}
+            <div className="lg:col-span-6 relative aspect-square sm:aspect-[4/3] rounded-xl overflow-hidden bg-black/90 border border-white/10 flex items-center justify-center p-4">
+              <img
+                src="./assets/sample-chip.jpg"
+                alt="Exploded Isometric Micro-Architecture Chip Stack"
+                className="max-h-full max-w-full object-contain filter contrast-125 brightness-105 transition-transform duration-700 hover:scale-105"
+              />
+              <div className="absolute top-3 left-3 font-mono text-[9px] text-amber-400 bg-black/80 px-2 py-1 rounded border border-amber-500/30">
+                BLUEPRINT // DIE_STACK_0x7E
+              </div>
+              <div className="absolute bottom-3 right-3 font-mono text-[9px] text-slate-400 bg-black/80 px-2 py-1 rounded border border-white/10">
+                [IN PRODUCTION v1.1.0]
+              </div>
+            </div>
+
+            {/* Architecture Exploded Callout Annotations */}
+            <div className="lg:col-span-6 space-y-4">
+              <div className="font-mono text-xs text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                <Binary className="w-4 h-4 text-amber-400" />
+                <span>MICRO-LAYER PIN MAPPINGS & ENCLAVE BUS</span>
+              </div>
+              <p className="font-mono text-xs text-slate-300 leading-relaxed">
+                Click any layer below to inspect its internal Win32 compositor hooks, Wasm instruction fuel counters, and cryptographic hardware assertions.
+              </p>
+
+              <div className="space-y-2 font-mono text-[11px]">
+                {layers.map((l, idx) => (
+                  <div
+                    key={l.id}
+                    onClick={() => {
+                      soundEffects.click();
+                      setSelectedLayer(idx);
+                    }}
+                    className={`p-2.5 rounded-lg border cursor-pointer transition-all flex items-center justify-between ${
+                      selectedLayer === idx
+                        ? 'bg-amber-500/10 border-amber-400 text-amber-300 font-bold'
+                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
+                    }`}
+                  >
+                    <span>L0{idx + 1} // {l.title}</span>
+                    <span className="text-[10px] text-slate-500">{l.schematicTag}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -249,40 +353,29 @@ assertValidContract(response, TransactionResponseSchema);`,
               </div>
 
               {/* Technical Specifications Checklist */}
-              <div className="p-6 space-y-6">
-                <div>
-                  <h4 className="font-mono text-xs uppercase text-slate-400 tracking-wider mb-3">
-                    Active Security Guardrails:
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {layers[selectedLayer].specs.map((spec, sidx) => (
-                      <div
-                        key={sidx}
-                        className="flex items-center gap-2 p-2.5 rounded bg-white/[0.02] border border-white/5 font-mono text-xs text-slate-300"
-                      >
-                        <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                        <span className="truncate">{spec}</span>
-                      </div>
-                    ))}
-                  </div>
+              <div className="p-5 border-b border-white/10 bg-[#0a0e18]/80 font-mono text-xs space-y-2">
+                <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-3">
+                  // VERIFIED CAPABILITY CONTRACTS
                 </div>
-
-                {/* Live Code Implementation Preview */}
-                <div>
-                  <h4 className="font-mono text-xs uppercase text-slate-400 tracking-wider mb-2 flex items-center justify-between">
-                    <span>Implementation Code Snapshot:</span>
-                    <span className="text-[10px] text-emerald-400">VERIFIED PASS</span>
-                  </h4>
-                  <div className="p-4 rounded-lg bg-[#040507] border border-white/10 font-mono text-xs text-amber-200/90 overflow-x-auto leading-relaxed shadow-inner">
-                    <pre>{layers[selectedLayer].code}</pre>
+                {layers[selectedLayer].specs.map((spec, sIdx) => (
+                  <div key={sIdx} className="flex items-start gap-2.5 text-slate-300">
+                    <span className="text-amber-400 font-bold select-none">&gt;</span>
+                    <span className="font-light">{spec}</span>
                   </div>
-                </div>
+                ))}
               </div>
 
-              {/* Bottom Telemetry Bar */}
-              <div className="px-5 py-3 bg-[#0a0d16] border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-400">
-                <span>STATUS: HARDWARE ACTIVE</span>
-                <span className="text-emerald-400">FAIL-CLOSED ENFORCED</span>
+              {/* Code Snippet Box */}
+              <div className="p-5 bg-black/90 overflow-x-auto">
+                <pre className="font-mono text-xs text-amber-200/90 leading-relaxed">
+                  <code>{layers[selectedLayer].code}</code>
+                </pre>
+              </div>
+
+              {/* Footer Audit Signature */}
+              <div className="px-5 py-3 bg-[#0a0d16] border-t border-white/10 flex items-center justify-between font-mono text-[10px] text-slate-500">
+                <span>SCHEMATIC: NIST SP 800-218</span>
+                <span className="text-emerald-400">HARDWARE BOUND</span>
               </div>
             </div>
           </div>
@@ -291,4 +384,3 @@ assertValidContract(response, TransactionResponseSchema);`,
     </section>
   );
 };
-

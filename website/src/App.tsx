@@ -12,6 +12,7 @@ import { soundEffects } from './components/AudioEffects';
 
 export const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [lang, setLang] = useState<'en' | 'si'>('en');
 
   const toggleSound = () => {
     const muted = soundEffects.toggleMute();
@@ -26,6 +27,8 @@ export const App: React.FC = () => {
       element.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  const isSi = lang === 'si';
 
   return (
     <div className="min-h-screen bg-[#050608] text-slate-100 relative selection:bg-amber-500/30 selection:text-amber-200">
@@ -53,7 +56,7 @@ export const App: React.FC = () => {
                 <span className="text-amber-400 font-mono text-xs font-normal">[CORE]</span>
               </div>
               <div className="font-mono text-[9px] text-slate-400 tracking-widest uppercase">
-                ZERO-TRUST DESKTOP
+                {isSi ? 'ශුන්‍ය විශ්වාස ඩෙස්ක්ටොප්' : 'ZERO-TRUST DESKTOP'}
               </div>
             </div>
           </div>
@@ -65,47 +68,73 @@ export const App: React.FC = () => {
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // ABOUT
+              // {isSi ? 'හැඳින්වීම' : 'ABOUT'}
             </button>
             <button
               onClick={() => scrollToSection('architecture')}
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // ARCHITECTURE
+              // {isSi ? 'ගෘහ නිර්මාණය' : 'ARCHITECTURE'}
             </button>
             <button
               onClick={() => scrollToSection('anti-capture')}
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // ANTI-CAPTURE
+              // {isSi ? 'තිර ආරක්ෂාව' : 'ANTI-CAPTURE'}
             </button>
             <button
               onClick={() => scrollToSection('maker-checker')}
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // FOUR-EYES
+              // {isSi ? 'FOUR-EYES' : 'FOUR-EYES'}
             </button>
             <button
               onClick={() => scrollToSection('benchmarks')}
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // BENCHMARKS
+              // {isSi ? 'වේග මිනුම්' : 'BENCHMARKS'}
             </button>
             <button
               onClick={() => scrollToSection('downloads')}
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // DOWNLOADS
+              // {isSi ? 'බාගැනීම්' : 'DOWNLOADS'}
             </button>
           </nav>
 
           {/* Right Utility Buttons */}
           <div className="flex items-center gap-3">
+            {/* Language Switcher (EN / SI) */}
+            <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5 font-mono text-xs">
+              <button
+                onClick={() => {
+                  soundEffects.click();
+                  setLang('en');
+                }}
+                className={`px-2.5 py-1 rounded transition-colors ${
+                  lang === 'en' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => {
+                  soundEffects.click();
+                  setLang('si');
+                }}
+                className={`px-2.5 py-1 rounded transition-colors ${
+                  lang === 'si' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                සිංහල
+              </button>
+            </div>
+
             {/* Audio Toggle Button */}
             <button
               onClick={toggleSound}
@@ -136,7 +165,7 @@ export const App: React.FC = () => {
               onMouseEnter={() => soundEffects.hover()}
               className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-mono text-xs font-bold tracking-wider shadow-md shadow-amber-500/20 transition-all"
             >
-              DOWNLOAD
+              {isSi ? 'බාගන්න' : 'DOWNLOAD'}
             </button>
           </div>
         </div>
@@ -145,6 +174,7 @@ export const App: React.FC = () => {
       {/* Main Page Content */}
       <main className="relative z-10">
         <HeroSection
+          lang={lang}
           onExploreArchitecture={() => scrollToSection('architecture')}
           onExploreDemo={() => scrollToSection('anti-capture')}
           onExploreDownloads={() => scrollToSection('downloads')}
@@ -152,7 +182,7 @@ export const App: React.FC = () => {
 
         <AboutSection />
 
-        <ExplodedArchitecture />
+        <ExplodedArchitecture lang={lang} />
 
         <AntiCaptureDemo />
 
@@ -217,4 +247,3 @@ export const App: React.FC = () => {
     </div>
   );
 };
-

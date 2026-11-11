@@ -3,8 +3,8 @@
 <div align="center">
 
 [![Official Website](https://img.shields.io/badge/Official_Website-charitha--only.github.io%2Faegis--desktop-f59e0b.svg?style=flat-square&logo=google-chrome)](https://charitha-only.github.io/aegis-desktop/)
-[![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg?style=flat-square&logo=git)](https://github.com/charitha-only/aegis-desktop/releases/tag/v1.1.0)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v1.1.0-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v1.2.0-blue.svg?style=flat-square&logo=git)](https://github.com/charitha-only/aegis-desktop/releases/tag/v1.2.0)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v1.2.0-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%7C%2019-blue?logo=react)](https://react.dev/)
@@ -17,14 +17,14 @@
 **A high-security, ultra-lightweight alternative to Electron for building modern desktop applications.**<br>
 Bridging a high-performance **Rust systems engine** with **any modern web frontend (React, Vue, Svelte, Tailwind)** via zero-trust capability-based IPC.
 
-[🌐 Official Website](https://charitha-only.github.io/aegis-desktop/) • [What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v1.1.0 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Security Whitepaper](docs/ENTERPRISE_SECURITY_WHITEPAPER.md)
+[🌐 Official Website](https://charitha-only.github.io/aegis-desktop/) • [What is Aegis?](#-what-is-aegis-desktop) • [⚡ Quick Install](#-quick-install--run) • [📜 What's New in v1.2.0 (Changelog)](CHANGELOG.md) • [Use Cases](#-what-can-you-build-with-aegis) • [Architecture](#-architecture) • [Security Whitepaper](docs/ENTERPRISE_SECURITY_WHITEPAPER.md)
 
 </div>
 
 > 🌐 **Official Interactive Motion Graphics Website:**  
 > Experience the 60FPS cybernetic particle mesh, live Win32 DWM anti-screen capture simulator, 3D exploded micro-architecture, and real-time Four-Eyes consensus ledger at **[https://charitha-only.github.io/aegis-desktop/](https://charitha-only.github.io/aegis-desktop/)**.
 >
-> **v1.1.0 — Banking-Grade Security & Financial Defense Release:** Integrates Win32 `SetWindowDisplayAffinity` anti-screen recording protection against OBS Studio / Zoom, Basel Corporate Governance & PCI-DSS Req 10 Four-Eyes Maker-Checker consensus with Ed25519 threshold signatures, biometric step-up authentication (Windows Hello / Touch ID), Pure Wayland Linux clipboard driver (`wl-copy`), and formal enterprise security compliance (`docs/ENTERPRISE_SECURITY_WHITEPAPER.md`). Passes all 138 Rust core tests, 76 CLI tests, and live smoke test suites with 0 compiler warnings. Dual-engine Authenticode signed with DigiCert RFC 3161 timestamps.
+> **v1.2.0 — Quantum-Resistant Defense, RASP & Cybernetic HUD Release:** Integrates Win32 Ring-0 RASP anti-tampering (`IsDebuggerPresent` & `VirtualProtect` hook scans), mTLS SPKI public key pinning against proxy MITM interception, physical FIDO2 / YubiKey CTAP2 hardware touch token signing, serverless decentralized P2P Zero-Knowledge vault sync (Noise protocol), bilingual localization (`EN` & `සිංහල`), and a complete cyber-brutalist motion graphics website overhaul with 3D isometric blueprints and floating threat topology HUD. Passes all 143 Rust core tests, 76 CLI tests, and live smoke test suites with 0 compiler warnings. Dual-engine Authenticode signed with DigiCert RFC 3161 timestamps.
 
 
 ---
