@@ -34,17 +34,17 @@ jobs:
         run: dbus-run-session -- cargo test --locked --manifest-path src-core/Cargo.toml --features linux-lifecycle -- --ignored --exact security::linux_lifecycle::tests::private_logind_signals_revoke_and_reject_wrong_authority
       - name: Install GTK4 and WebKit6 development libraries
         if: runner.os == 'Linux'
-        timeout-minutes: 8
+        timeout-minutes: 12
         run: |
-          # Keep Ubuntu's signed sources/keyrings; replace only the hosted mirror list.
+          # Use Azure internal high-speed Ubuntu mirror on hosted runners
           if [ -f /etc/apt/apt-mirrors.txt ]; then
-            printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+            printf '%s\n' 'http://azure.archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
           fi
           if [ -f /etc/apt/apt-mirrors-security.txt ]; then
-            printf '%s\n' 'https://security.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors-security.txt >/dev/null
+            printf '%s\n' 'http://azure.archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors-security.txt >/dev/null
           fi
-          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
-          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y libgtk-4-dev libwebkitgtk-6.0-dev xvfb dbus-x11 at-spi2-core apparmor zenity xdotool libnotify-bin python3-dbus python3-gi
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60 install -y libgtk-4-dev libwebkitgtk-6.0-dev xvfb dbus-x11 at-spi2-core apparmor zenity xdotool libnotify-bin python3-dbus python3-gi
       - name: Permit sandbox namespaces for the owned Linux fixture executable
         if: runner.os == 'Linux'
         run: bash scripts/setup-linux-native-ci.sh
