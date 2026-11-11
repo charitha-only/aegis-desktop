@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, Volume2, VolumeX, Github, ExternalLink, FileText, Lock, Terminal, Cpu } from 'lucide-react';
 import { CyberCanvas } from './components/CyberCanvas';
 import { HeroSection } from './components/HeroSection';
@@ -167,7 +167,7 @@ export const App: React.FC = () => {
               <Github className="w-4 h-4 text-slate-300" />
               <span>GITHUB</span>
               <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                v1.1.0
+                v1.2.0
               </span>
             </a>
 

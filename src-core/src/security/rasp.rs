@@ -172,6 +172,7 @@ impl RaspEngine {
     }
 
     /// Enforces fail-closed lockdown if tampering is active.
+    #[allow(dead_code)]
     pub fn is_contained(&self) -> bool {
         self.containment_active.load(Ordering::SeqCst)
     }
