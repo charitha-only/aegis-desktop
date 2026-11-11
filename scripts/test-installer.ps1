@@ -45,7 +45,17 @@ function Assert-Preserved($Hashes) {
  foreach ($file in $Hashes.Keys) { if ((Get-FileHash -LiteralPath $file).Hash -ne $Hashes[$file]) { throw 'Installer changed encrypted vault/backup data' } }
 }
 function Uninstall-TestPackage {
- $uninstall = Start-Process -FilePath (Join-Path $install 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -WindowStyle Hidden -PassThru -Wait
+ $uninstallerPath = Join-Path $install 'unins000.exe'
+ for ($i = 0; $i -lt 10; $i++) {
+  if (Test-Path -LiteralPath $uninstallerPath) { break }
+  Start-Sleep -Milliseconds 500
+ }
+ if (-not (Test-Path -LiteralPath $uninstallerPath)) {
+  $alt = Get-ChildItem -LiteralPath $install -Filter 'unins*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($alt) { $uninstallerPath = $alt.FullName }
+  else { throw "Uninstaller not found at $uninstallerPath" }
+ }
+ $uninstall = Start-Process -FilePath $uninstallerPath -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -WindowStyle Hidden -PassThru -Wait
  if ($uninstall.ExitCode -ne 0 -or (Test-Path -LiteralPath $binary)) { throw 'Uninstallation failed' }
 }
 try {

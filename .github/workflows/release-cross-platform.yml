@@ -191,6 +191,5 @@ jobs:
           echo "Publishing release assets for tag: $TAG"
           find release-artifacts/ -type f -exec ls -lh {} +
 
-          # Upload assets to existing release or create release
-          gh release upload "$TAG" release-artifacts/*/* --clobber || \
-          gh release create "$TAG" release-artifacts/*/* --title "$TAG — Production-Hardened Multi-OS Release" --notes "Automated cross-platform production build containing verified Windows x64 signed binaries, Linux .deb packages, and macOS .pkg installers."
+          # Flatten and upload all artifact files
+          find release-artifacts/ -type f -exec gh release upload "$TAG" {} --clobber +

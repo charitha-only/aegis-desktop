@@ -20,6 +20,8 @@
     "doctor": "node aegis-cli/bin/aegis.js doctor",
     "package": "node aegis-cli/bin/aegis.js package",
     "package:all": "node scripts/package-cross-platform.mjs",
+    "site:dev": "npm --prefix website run dev",
+    "site:build": "npm --prefix website run build",
     "sbom:generate": "node scripts/generate-sbom.mjs",
     "sbom:verify": "node scripts/generate-sbom.mjs --verify",
     "release": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1",
