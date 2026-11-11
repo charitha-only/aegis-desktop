@@ -12,7 +12,19 @@ import { soundEffects } from './components/AudioEffects';
 
 export const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [lang, setLang] = useState<'en' | 'si'>('en');
+  const [lang, setLang] = useState<'en' | 'si'>(() => {
+    try {
+      const saved = localStorage.getItem('aegis_lang');
+      if (saved === 'si' || saved === 'en') return saved;
+    } catch {}
+    return 'en';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aegis_lang', lang);
+    } catch {}
+  }, [lang]);
 
   const toggleSound = () => {
     const muted = soundEffects.toggleMute();

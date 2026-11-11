@@ -56,8 +56,21 @@ interface AuditLog {
 const unavailableTabs: string[] = ['hardwareKey','enclave','stream','tpmAttestation','wgpuJit','p2pMarket','hsmPkcs11','packagePipeline'];
 export default function App() {
   const [activeTab, setActiveTab] = useState<'security' | 'filesystem' | 'vault' | 'window' | 'bundler' | 'plugins' | 'notifications' | 'permissions' | 'updater' | 'hardwareKey' | 'profiles' | 'wasm' | 'diagnostics' | 'logs' | 'enclave' | 'stream' | 'crashReporter' | 'secrets' | 'network' | 'pluginSig' | 'tpmAttestation' | 'wgpuJit' | 'packagePipeline' | 'p2pMarket' | 'hsmPkcs11' | 'banking' | 'advancedSecurity'>('security');
-  const [lang, setLang] = useState<Language>('en');
+  const [lang, setLang] = useState<Language>(() => {
+    try {
+      const saved = localStorage.getItem('aegis_lang');
+      if (saved === 'si' || saved === 'en') return saved;
+    } catch {}
+    return 'en';
+  });
   const t = translations[lang];
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aegis_lang', lang);
+    } catch {}
+  }, [lang]);
+
   const [connected, setConnected] = useState(false);
   const [srAnnouncement, setSrAnnouncement] = useState('Aegis Desktop Dashboard Ready');
   const [nonce, setNonce] = useState<string | null>(null);
@@ -349,6 +362,16 @@ export default function App() {
   // Crypto State
   const [hashInput, setHashInput] = useState('Aegis Zero Trust Security Payload 2026');
   const [hashResult, setHashResult] = useState<string | null>(null);
+  const [rateLimitTelemetry, setRateLimitTelemetry] = useState<any>(null);
+
+  const refreshRateLimitTelemetry = async () => {
+    try {
+      const res = await aegis.call('ratelimit_status', {});
+      if (res.success && res.data) {
+        setRateLimitTelemetry(res.data);
+      }
+    } catch {}
+  };
 
   const addLog = (type: 'SUCCESS' | 'BLOCKED' | 'INFO', command: string, details: string) => {
     const newLog: AuditLog = {
@@ -458,6 +481,7 @@ export default function App() {
       refreshFiles();
       refreshRuntimeInfo();
       refreshTpmMeasurements();
+      refreshRateLimitTelemetry();
     } else {
       setConnected(false);
       addLog('BLOCKED', 'handshake_failed', handshake.error || 'Connection refused');
@@ -627,6 +651,45 @@ export default function App() {
       addLog('BLOCKED', 'updater_stage', res.error || 'Staging failed');
     }
     setUpdaterLoading(false);
+  };
+
+  const handleDirectInAppUpdate = async (downloadUrl: string, filename: string, version: string) => {
+    setStageProgress(`Downloading ${filename} directly from GitHub releases...`);
+    setUpdaterLoading(true);
+    try {
+      addLog('INFO', 'github_updater', `Downloading release asset ${filename} directly into staging memory...`);
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download binary: HTTP ${response.status} ${response.statusText}`);
+      }
+      setStageProgress('Converting binary stream to base64 staging buffer...');
+      const arrayBuffer = await response.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < uint8.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, uint8.subarray(i, Math.min(i + chunkSize, uint8.length)) as any);
+      }
+      const b64 = btoa(binary);
+
+      setStageProgress('Staging payload into .aegis_updates via Rust IPC...');
+      const cleanVer = version.replace(/^v/, '');
+      const stageRes = await aegis.stageUpdateBytes(filename, b64, cleanVer);
+      if (stageRes.success) {
+        addLog('SUCCESS', 'updater_stage_bytes', `Update payload ${filename} staged successfully! Ready to apply.`);
+        setStageProgress(null);
+        await refreshUpdaterStatus();
+      } else {
+        throw new Error(stageRes.error || 'Failed to stage update bytes');
+      }
+    } catch (err: any) {
+      const msg = err.message || 'Auto-update staging failed';
+      setStageProgress(null);
+      setGhError(msg);
+      addLog('BLOCKED', 'updater_stage_bytes', msg);
+    } finally {
+      setUpdaterLoading(false);
+    }
   };
 
   // Banking Suite Handlers
@@ -2927,26 +2990,44 @@ export default function App() {
                               <div style={{ fontSize: '12px', fontWeight: 500, color: '#e2e8f0', textOverflow: 'ellipsis', overflow: 'hidden' }}>{asset.name}</div>
                               <div style={{ fontSize: '10px', color: '#64748b' }}>{Math.round(asset.size / 1024)} KB</div>
                             </div>
-                            <a
-                              href={asset.downloadUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{
-                                background: 'rgba(56, 189, 248, 0.1)',
-                                border: '1px solid rgba(56, 189, 248, 0.3)',
-                                color: '#7dd3fc',
-                                padding: '4px 8px',
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                textDecoration: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                              }}
-                            >
-                              <Download style={{ width: '12px', height: '12px' }} />
-                              Download
-                            </a>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              <button
+                                onClick={() => handleDirectInAppUpdate(asset.downloadUrl, asset.name, ghRelease.tagName)}
+                                disabled={updaterLoading}
+                                style={{
+                                  background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(14, 165, 233, 0.35))',
+                                  border: '1px solid rgba(56, 189, 248, 0.5)',
+                                  color: '#38bdf8',
+                                  padding: '5px 10px',
+                                  borderRadius: '6px',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  cursor: updaterLoading ? 'not-allowed' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                              >
+                                <Download style={{ width: '12px', height: '12px' }} />
+                                Auto-Stage In-App
+                              </button>
+                              <a
+                                href={asset.downloadUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.05)',
+                                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                                  color: '#94a3b8',
+                                  padding: '5px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '11px',
+                                  textDecoration: 'none',
+                                }}
+                              >
+                                URL
+                              </a>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -3376,6 +3457,48 @@ export default function App() {
                     <code style={{ fontSize: '13px', color: '#34d399', wordBreak: 'break-all' }}>{hashResult}</code>
                   </div>
                 )}
+              </div>
+
+              {/* Anti-DoS Sliding-Window Rate Limiter Telemetry */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', marginTop: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldCheck style={{ width: '16px', height: '16px', color: '#38bdf8' }} />
+                    Anti-DoS Sliding-Window & Ring Buffer Shield
+                  </h3>
+                  <button
+                    onClick={refreshRateLimitTelemetry}
+                    style={{ background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#7dd3fc', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}
+                  >
+                    Refresh Telemetry
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>IPC Window Rate</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#38bdf8', marginTop: '4px' }}>
+                      30 req / 1.0s
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>Sensitive Ops Limit</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#fbbf24', marginTop: '4px' }}>
+                      {rateLimitTelemetry?.sensitiveOperationsLimiter?.maxRequestsPerWindow || 20} req / 60s
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>Lockout Threshold</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#ef4444', marginTop: '4px' }}>
+                      5 Nonce Fails → 10s Lockout
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>Ring Buffer Eviction</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#34d399', marginTop: '4px' }}>
+                      O(1) Amortized Deque
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

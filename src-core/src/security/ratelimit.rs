@@ -124,6 +124,19 @@ impl RateLimiter {
         }
         None
     }
+
+    /// Exposes live telemetry for security audits & diagnostics dashboards.
+    pub fn get_telemetry(&self) -> serde_json::Value {
+        let state = self.state.lock().unwrap();
+        serde_json::json!({
+            "activeRequestsInWindow": state.request_timestamps.len(),
+            "maxRequestsPerWindow": self.max_requests_per_window,
+            "windowDurationSecs": self.window_duration.as_secs(),
+            "trackedFailedOrigins": state.failed_nonces.len(),
+            "lockoutDurationSecs": self.lockout_duration.as_secs(),
+            "lockoutThreshold": self.lockout_threshold,
+        })
+    }
 }
 
 #[cfg(test)]

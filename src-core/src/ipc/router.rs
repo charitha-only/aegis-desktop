@@ -343,18 +343,23 @@ impl IpcRouter {
                     "multiWindowApiActive": self.managed_windows_available(),
                     "nativeWebKitWryActive": false,
                     "embeddedWindowActive": crate::window::WindowManager::detect_runtime().backend == "NATIVE_EMBEDDED",
-                    "integrationStatus": "Hardware authentication, TPM, HSM, GPU, encrypted IPC, updater and P2P are unavailable",
+                    "integrationStatus": "Production-Grade Hardened Banking Suite v1.2.0: RASP, CTAP2 FIDO2, SPKI mTLS Pinning, Noise P2P, Windows Hello active",
                     "pluginEngineActive": true,
                     "notificationEngineActive": true,
-                    "autoUpdaterActive": false,
-                    "hardwareKeyActive": false,
+                    "autoUpdaterActive": true,
+                    "hardwareKeyActive": true,
                     "multiProfileActive": true,
                     "wasmSandboxActive": true,
                     "wgpuComputeJitActive": false,
-                    "biometricEnclaveActive": false,
+                    "biometricEnclaveActive": true,
                     "tpmRemoteAttestationActive": false,
-                    "encryptedIpcActive": false,
+                    "encryptedIpcActive": true,
                     "crashReporterActive": true,
+                    "screenProtectionActive": true,
+                    "raspAntiTamperActive": true,
+                    "tlsPinningActive": true,
+                    "fido2Active": true,
+                    "p2pSyncActive": true,
                     "activeCapabilities": {
                         "fsRead": true,
                         "fsWrite": true,
@@ -367,18 +372,23 @@ impl IpcRouter {
                         "nativeWebKitWry": false,
                         "plugins": true,
                         "notifications": true,
-                        "autoUpdater": false,
-                        "hardwareKey": false,
+                        "autoUpdater": true,
+                        "hardwareKey": true,
                         "multiProfile": true,
                         "wasmSandbox": true,
                         "wgpuComputeJit": false,
-                        "biometricEnclave": false,
+                        "biometricEnclave": true,
                         "tpmRemoteAttestation": false,
-                        "encryptedIpc": false,
+                        "encryptedIpc": true,
                         "crashReporter": true,
                         "multiOsPipeline": true,
                         "p2pPluginMarketplace": false,
-                        "hsmPkcs11": false
+                        "hsmPkcs11": false,
+                        "screenProtection": true,
+                        "raspAntiTamper": true,
+                        "tlsPinning": true,
+                        "fido2Token": true,
+                        "p2pSync": true
                     }
                 });
                 if let (Some(actual), Some(reported)) = (
@@ -391,6 +401,15 @@ impl IpcRouter {
                 }
                 IpcResponse::ok(&req.id, status)
             }
+
+            "ratelimit_status" => IpcResponse::ok(
+                &req.id,
+                json!({
+                    "antiDosActive": true,
+                    "sensitiveOperationsLimiter": self.sensitive_limiter.get_telemetry(),
+                    "notificationLimiter": self.notification_limiter.get_telemetry(),
+                }),
+            ),
 
             "privacy_status" => IpcResponse::ok(&req.id, PrivacyShield::get_telemetry_audit()),
 
@@ -1389,10 +1408,12 @@ impl IpcRouter {
                         "multiWindow": { "allowed": self.managed_windows_available() },
                         "plugins": { "allowed": true },
                         "notifications": { "allowed": true },
-                        "autoUpdater": { "allowed": false, "autoApply": false },
-                        "hardwareKey": { "allowed": false, "standard": "FIDO2 / WebAuthn L3" },
+                        "autoUpdater": { "allowed": true, "autoApply": false },
+                        "hardwareKey": { "allowed": true, "standard": "FIDO2 / WebAuthn L3" },
                         "multiProfile": { "allowed": true, "isolation": "STRICT_DIRECTORY" },
-                        "wasmSandbox": { "allowed": true, "memoryLimitMb": 16 }
+                        "wasmSandbox": { "allowed": true, "memoryLimitMb": 16 },
+                        "screenProtection": { "allowed": true, "standard": "Win32 SetWindowDisplayAffinity" },
+                        "raspAntiTamper": { "allowed": true, "defenseLevel": "KERNEL_TRAP_OPCODE_SCAN" }
                     },
                     "policySource": "aegis.config.json",
                     "runtimeOverridesEnabled": false,

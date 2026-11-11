@@ -62,11 +62,12 @@ impl StepUpAuthEngine {
     pub fn get_hardware_status(&self) -> BiometricHardwareStatus {
         #[cfg(target_os = "windows")]
         let (provider, methods) = (
-            "Windows Hello (BioAPI / WinRT UserConsentVerifier)",
+            "Windows Hello (BioAPI / WinRT UserConsentVerifier) + FIDO2 CTAP2",
             vec![
                 "Windows Hello Face".to_string(),
                 "Windows Hello Fingerprint".to_string(),
                 "Windows Hello PIN".to_string(),
+                "FIDO2 / YubiKey Hardware Token".to_string(),
             ],
         );
 
