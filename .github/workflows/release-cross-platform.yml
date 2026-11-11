@@ -192,4 +192,7 @@ jobs:
           find release-artifacts/ -type f -exec ls -lh {} +
 
           # Flatten and upload all artifact files
-          find release-artifacts/ -type f -exec gh release upload "$TAG" {} --clobber +
+          find release-artifacts/ -type f | while read -r file; do
+            echo "Uploading $file..."
+            gh release upload "$TAG" "$file" --clobber
+          done
