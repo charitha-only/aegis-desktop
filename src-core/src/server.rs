@@ -141,25 +141,6 @@ impl CoreServer {
                                                 self.csp.as_bytes(),
                                             )
                                             .unwrap(),
-                                        )
-                                        .with_header(
-                                            Header::from_bytes("X-Content-Type-Options", "nosniff")
-                                                .unwrap(),
-                                        )
-                                        .with_header(
-                                            Header::from_bytes("X-Frame-Options", "DENY")
-                                                .unwrap(),
-                                        )
-                                        .with_header(
-                                            Header::from_bytes("Referrer-Policy", "no-referrer")
-                                                .unwrap(),
-                                        )
-                                        .with_header(
-                                            Header::from_bytes(
-                                                "Permissions-Policy",
-                                                "geolocation=(), camera=(), microphone=()",
-                                            )
-                                            .unwrap(),
                                         );
                                     let _ = respond(request, response);
                                     return;
@@ -445,15 +426,33 @@ fn respond<R: std::io::Read>(
     {
         response.add_header(Header::from_bytes("X-Content-Type-Options", "nosniff").unwrap());
     }
-    response.add_header(Header::from_bytes("Referrer-Policy", "no-referrer").unwrap());
-    response.add_header(Header::from_bytes("X-Frame-Options", "DENY").unwrap());
-    response.add_header(
-        Header::from_bytes(
-            "Permissions-Policy",
-            "camera=(), microphone=(), geolocation=(), payment=()",
-        )
-        .unwrap(),
-    );
+    if !response
+        .headers()
+        .iter()
+        .any(|h| h.field.equiv("Referrer-Policy"))
+    {
+        response.add_header(Header::from_bytes("Referrer-Policy", "no-referrer").unwrap());
+    }
+    if !response
+        .headers()
+        .iter()
+        .any(|h| h.field.equiv("X-Frame-Options"))
+    {
+        response.add_header(Header::from_bytes("X-Frame-Options", "DENY").unwrap());
+    }
+    if !response
+        .headers()
+        .iter()
+        .any(|h| h.field.equiv("Permissions-Policy"))
+    {
+        response.add_header(
+            Header::from_bytes(
+                "Permissions-Policy",
+                "camera=(), microphone=(), geolocation=(), payment=()",
+            )
+            .unwrap(),
+        );
+    }
     // An additional CSP policy intersects with the configured asset policy.
     // It cannot be weakened by a custom app CSP or duplicate directives there.
     response.add_header(

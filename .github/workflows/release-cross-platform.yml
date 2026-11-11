@@ -62,14 +62,20 @@ jobs:
       - name: Sign Core Executable
         shell: pwsh
         run: |
-          $allowSelfSigned = if ('${{ steps.cert.outputs.has_cert }}' -eq 'true') { @() } else { @('-AllowSelfSigned') }
-          ./scripts/sign-windows.ps1 -Path ./dist-bundle/AegisDesktopApplication/aegis-core.exe -Thumbprint '${{ steps.cert.outputs.thumbprint }}' @allowSelfSigned
+          if ('${{ steps.cert.outputs.has_cert }}' -eq 'true') {
+            ./scripts/sign-windows.ps1 -Path ./dist-bundle/AegisDesktopApplication/aegis-core.exe -Thumbprint '${{ steps.cert.outputs.thumbprint }}'
+          } else {
+            ./scripts/sign-windows.ps1 -Path ./dist-bundle/AegisDesktopApplication/aegis-core.exe -Thumbprint '${{ steps.cert.outputs.thumbprint }}' -AllowSelfSigned
+          }
 
       - name: Build and Sign Inno Setup Installer
         shell: pwsh
         run: |
-          $allowSelfSigned = if ('${{ steps.cert.outputs.has_cert }}' -eq 'true') { @() } else { @('-AllowSelfSigned') }
-          ./scripts/build-installer.ps1 -ExpectedThumbprint '${{ steps.cert.outputs.thumbprint }}' @allowSelfSigned
+          if ('${{ steps.cert.outputs.has_cert }}' -eq 'true') {
+            ./scripts/build-installer.ps1 -ExpectedThumbprint '${{ steps.cert.outputs.thumbprint }}'
+          } else {
+            ./scripts/build-installer.ps1 -ExpectedThumbprint '${{ steps.cert.outputs.thumbprint }}' -AllowSelfSigned
+          }
 
       - name: Compress Standalone Zip Bundle
         shell: pwsh
