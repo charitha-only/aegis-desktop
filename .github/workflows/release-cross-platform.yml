@@ -191,6 +191,12 @@ jobs:
           echo "Publishing release assets for tag: $TAG"
           find release-artifacts/ -type f -exec ls -lh {} +
 
+          # Ensure GitHub release exists or create it
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Creating GitHub Release for $TAG..."
+            gh release create "$TAG" --title "Aegis Desktop Application $TAG" --generate-notes
+          fi
+
           # Flatten and upload all artifact files
           find release-artifacts/ -type f | while read -r file; do
             echo "Uploading $file..."
