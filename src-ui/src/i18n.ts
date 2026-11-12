@@ -18,6 +18,58 @@ export interface Translations {
     wasm: string;
     diagnostics: string;
     logs: string;
+    db: string;
+    tpm: string;
+    rbac: string;
+    traffic: string;
+    compliance: string;
+  };
+  db: {
+    title: string;
+    subtitle: string;
+    queryAccounts: string;
+    insertRecord: string;
+    startTx: string;
+    commitTx: string;
+    rollbackTx: string;
+    stats: string;
+  };
+  tpm: {
+    title: string;
+    subtitle: string;
+    pcrList: string;
+    sealSecret: string;
+    unsealSecret: string;
+    tamperSim: string;
+    tamperDesc: string;
+  };
+  rbac: {
+    title: string;
+    subtitle: string;
+    activeRole: string;
+    switchRole: string;
+    checkPerm: string;
+    matrix: string;
+    auditLog: string;
+  };
+  traffic: {
+    title: string;
+    subtitle: string;
+    killswitchActive: string;
+    killswitchInactive: string;
+    toggleKillswitch: string;
+    simulateTraffic: string;
+    clearHistory: string;
+    inspected: string;
+    blocked: string;
+  };
+  compliance: {
+    title: string;
+    subtitle: string;
+    generateCert: string;
+    verifyCert: string;
+    viewPrintable: string;
+    asvsScore: string;
   };
   banking: {
     title: string;
@@ -108,6 +160,58 @@ export const translations: Record<Language, Translations> = {
       wasm: 'Wasm Fuel Sandbox',
       diagnostics: 'Diagnostics',
       logs: 'Audit Logs',
+      db: 'Encrypted DB',
+      tpm: 'TPM PCR Enclave',
+      rbac: 'Enterprise RBAC',
+      traffic: 'Traffic Monitor',
+      compliance: 'Security Audit',
+    },
+    db: {
+      title: 'Encrypted Embedded Database Engine',
+      subtitle: 'ChaCha20-Poly1305 authenticated encryption, ACID transactions, and tamper-resistant storage.',
+      queryAccounts: 'Query Accounts Table',
+      insertRecord: 'Insert Record',
+      startTx: 'Begin Transaction',
+      commitTx: 'Commit Transaction',
+      rollbackTx: 'Rollback Transaction',
+      stats: 'Database Health & Cipher Specs',
+    },
+    tpm: {
+      title: 'Hardware TPM 2.0 PCR-Sealed Cryptographic Enclave',
+      subtitle: 'Hardware Root of Trust with cryptographic sealing to Platform Configuration Registers (0, 2, 7, 11).',
+      pcrList: 'Measured Hardware PCR Registers',
+      sealSecret: 'Seal Secret to Current PCR Composite',
+      unsealSecret: 'Unseal & Decrypt Secret',
+      tamperSim: 'Simulate Bootloader/Firmware Tamper',
+      tamperDesc: 'Simulates unauthorized rootkit or modified kernel, causing fail-closed enclave denial.',
+    },
+    rbac: {
+      title: 'Enterprise Granular RBAC Engine',
+      subtitle: 'Five corporate tiers with Basel III & PCI-DSS Segregation of Duties and dual-control enforcement.',
+      activeRole: 'Active Corporate Identity',
+      switchRole: 'Assume Enterprise Role',
+      checkPerm: 'Evaluate Capability Permission',
+      matrix: 'Enterprise Role Permission Matrix',
+      auditLog: 'Privileged Access Audit Trail',
+    },
+    traffic: {
+      title: 'Outbound Network Firewall & Real-Time Flow Monitor',
+      subtitle: 'Zero-trust packet inspection, latency measurement, threat scoring, and emergency air-gap killswitch.',
+      killswitchActive: 'AIR-GAP KILLSWITCH ACTIVE (100% BLOCKED)',
+      killswitchInactive: 'OUTBOUND TRAFFIC FILTERING ACTIVE',
+      toggleKillswitch: 'Toggle Air-Gap Panic Killswitch',
+      simulateTraffic: 'Inject Test Outbound Packet',
+      clearHistory: 'Clear Packet History',
+      inspected: 'Total Flows Inspected',
+      blocked: 'Threats Neutralized & Blocked',
+    },
+    compliance: {
+      title: 'Automated Security Audit & Compliance Certificate Generator',
+      subtitle: 'Real-time telemetry aggregator evaluating OWASP ASVS 5.0 (143/143 controls) with Ed25519 digital signature.',
+      generateCert: 'Generate Attested Certificate',
+      verifyCert: 'Verify Cryptographic Signature',
+      viewPrintable: 'View Printable Certificate',
+      asvsScore: 'Verification Score',
     },
     banking: {
       title: 'Enterprise Banking & Financial Suite',
@@ -196,6 +300,58 @@ export const translations: Record<Language, Translations> = {
       wasm: 'Wasm Fuel වැලිපිල්ල',
       diagnostics: 'පද්ධති රෝග විනිශ්චය',
       logs: 'විගණන සටහන් (Logs)',
+      db: 'ගුප්තකේතන දත්ත සමුදාය',
+      tpm: 'TPM PCR රහස් කලාපය',
+      rbac: 'ආයතනික RBAC පද්ධතිය',
+      traffic: 'ජාල ගමනාගමන නිරීක්ෂකය',
+      compliance: 'ආරක්ෂක විගණන සහතිකය',
+    },
+    db: {
+      title: 'ගුප්තකේතනය කළ අභ්‍යන්තර දත්ත සමුදාය (ChaCha20-Poly1305)',
+      subtitle: 'ChaCha20-Poly1305 AEAD සත්‍යාපිත ගුප්තකේතනය, ACID ගනුදෙනු සහ අනවසර වෙනස්කම් වැළැක්වීමේ ගබඩාව.',
+      queryAccounts: 'ගිණුම් ලේඛනය විමසන්න (Accounts Query)',
+      insertRecord: 'නව වාර්තාවක් ඇතුළත් කරන්න',
+      startTx: 'ගනුදෙනුවක් (Transaction) අරඹන්න',
+      commitTx: 'ගනුදෙනුව සුරකින්න (Commit)',
+      rollbackTx: 'ගනුදෙනුව ආපසු හරවන්න (Rollback)',
+      stats: 'දත්ත සමුදායේ සෞඛ්‍යය සහ විස්තර',
+    },
+    tpm: {
+      title: 'දෘඩාංග TPM 2.0 PCR-Sealed ගුප්තකේතන කලාපය',
+      subtitle: 'දෘඩාංග මට්ටමේ Root of Trust සහ Platform Configuration Registers (0, 2, 7, 11) මඟින් රහස් මුද්‍රා තැබීම.',
+      pcrList: 'මනින ලද දෘඩාංග PCR රෙජිස්ටර',
+      sealSecret: 'වත්මන් PCR එකතුවට රහසක් මුද්‍රා තබන්න (Seal)',
+      unsealSecret: 'මුද්‍රාව ඉවත් කර රහස කියවන්න (Unseal)',
+      tamperSim: 'Bootloader/Firmware වෙනස්වීමක් අනුකරණය කරන්න',
+      tamperDesc: 'අනවසර rootkit හෝ වෙනස් කළ kernel එකක් අනුකරණය කරමින් Fail-Closed ලෙස ප්‍රවේශය අවහිර කරයි.',
+    },
+    rbac: {
+      title: 'ආයතනික ශ්‍රේණිගත RBAC අවසර පාලනය',
+      subtitle: 'ආයතනික තනතුරු 5ක්, Basel III සහ PCI-DSS කාර්ය වෙන්කිරීම (SoD) සහ ද්විත්ව අනුමැතිය.',
+      activeRole: 'ක්‍රියාකාරී ආයතනික අනන්‍යතාව',
+      switchRole: 'තනතුර මාරු කරන්න',
+      checkPerm: 'ක්‍රියාකාරී අවසරය පරීක්ෂා කරන්න',
+      matrix: 'සම්පූර්ණ ආයතනික අවසර වගුව',
+      auditLog: 'ප්‍රවේශ විගණන වාර්තාව (Audit Trail)',
+    },
+    traffic: {
+      title: 'පිටතට යන ජාල ගමනාගමන නිරීක්ෂක සහ ගිනිපවුර (Firewall)',
+      subtitle: 'Zero-trust පැකට් පරීක්ෂාව, ප්‍රතිචාර කාලය, තර්ජන ලකුණු සහ හදිසි Air-Gap අගුල (Killswitch).',
+      killswitchActive: 'හදිසි AIR-GAP අගුල ක්‍රියාත්මකයි (100% ක් අවහිරයි)',
+      killswitchInactive: 'ජාල පෙරහන් ක්‍රියාකාරීයි (පිටතට සබඳතා අවසර)',
+      toggleKillswitch: 'හදිසි Air-Gap අගුල ක්‍රියාත්මක/අක්‍රිය කරන්න',
+      simulateTraffic: 'පරීක්ෂණ ජාල පැකට්ටුවක් යවන්න',
+      clearHistory: 'පැකට් ඉතිහාසය මකන්න',
+      inspected: 'පරීක්ෂා කළ මුළු පැකට්',
+      blocked: 'අවහිර කළ තර්ජන සංඛ්‍යාව',
+    },
+    compliance: {
+      title: 'ස්වයංක්‍රීය ආරක්ෂක විගණන සහතික ජනකය (OWASP ASVS 5.0)',
+      subtitle: 'සියලුම ආරක්ෂක දත්ත එකතු කර OWASP ASVS 5.0 (143/143) සහතිකය Ed25519 අත්සනින් නිකුත් කිරීම.',
+      generateCert: 'තහවුරු කළ සහතිකය ලබාගන්න',
+      verifyCert: 'ඩිජිටල් අත්සන පරීක්ෂා කරන්න',
+      viewPrintable: 'මුද්‍රණය කළ හැකි සහතිකය බලන්න',
+      asvsScore: 'විගණන ලකුණු ප්‍රමාණය',
     },
     banking: {
       title: 'ආයතනික බැංකු හා මූල්‍ය ආරක්ෂණ පද්ධතිය',

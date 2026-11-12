@@ -4,6 +4,7 @@ mod banking;
 mod bundler;
 mod clipboard;
 mod crash;
+mod encrypted_db;
 mod file_dialog;
 mod ipc;
 mod message_dialog;

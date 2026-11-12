@@ -81,29 +81,25 @@ if peb_debugger || remote_debugger != 0 {
     {
       id: 'layer-kernel',
       number: '03',
-      title: isSi ? 'AEGIS RUST ශුන්‍ය-විශ්වාස මයික්‍රෝ-කර්නලය' : 'AEGIS ZERO-TRUST RUST MICRO-CORE',
-      badge: 'RUST 1.92 / ZERO-ALLOCATION',
-      category: isSi ? 'පද්ධති කර්නලය' : 'CORE CRYPTOGRAPHIC ENGINE',
-      schematicTag: 'ZERO_ALLOC_RING // CONSTANT_TIME_CRYPTO',
+      title: isSi ? 'CHACHA20-POLY1305 ගුප්තකේතන දත්ත සමුදාය' : 'CHACHA20-POLY1305 AEAD DATABASE & CORE',
+      badge: 'AEAD CIPHER / ACID ENGINE',
+      category: isSi ? 'දත්ත සමුදාය සහ කර්නලය' : 'CORE CRYPTOGRAPHIC ENGINE',
+      schematicTag: 'CHACHA20_POLY1305 // ATOMIC_ACID_COMMIT',
       description: isSi
-        ? 'මතක ආරක්ෂිත Rust 1.92 මත පදනම් වූ ශුන්‍ය-alloc IPC සේවාදායකය. කාල-නියත (constant-time) සංසන්දන සහ ස්ලයිඩින්-වින්ඩෝ anti-DoS සීමාකාරක.'
-        : 'High-concurrency, memory-safe IPC server with scoped thread execution, O(1) sliding-window rate limiting, and constant-time cryptographic zeroization.',
+        ? 'සත්‍යාපිත ChaCha20-Poly1305 AEAD ගුප්තකේතනය සහ ACID ගනුදෙනු සහිත අභ්‍යන්තර දත්ත සමුදාය. ශුන්‍ය-alloc මතක ආරක්ෂණය සහ ස්ලයිඩින්-වින්ඩෝ anti-DoS සීමාකාරක.'
+        : 'High-concurrency authenticated database with ChaCha20-Poly1305 AEAD, ACID snapshot transactions, constant-time comparisons, and automatic memory zeroization.',
       specs: [
+        'ChaCha20-Poly1305 AEAD 256-bit encrypted table storage',
+        'ACID transactions (begin, commit, rollback) with snapshot isolation',
         'Constant-time crypto comparisons (timing-attack immune)',
         'Ring-buffer O(1) sliding window anti-DoS rate limiter',
-        'Memory-guarded zeroize on all plaintext crypt-buffers',
-        'Sub-millisecond IPC response latency (p50: 1.6ms)',
       ],
-      code: `// Constant-time authenticated token verification
-pub fn constant_time_eq_ascii(a: &str, b: &str) -> bool {
-    if a.len() != b.len() { return false; }
-    let mut acc = 0u8;
-    for (x, y) in a.bytes().zip(b.bytes()) {
-        acc |= x ^ y;
-    }
-    acc == 0
-}`,
-      icon: ShieldCheck,
+      code: `// ACID Commit to ChaCha20-Poly1305 authenticated storage
+let cipher = ChaCha20Poly1305::new(&key);
+let ciphertext = cipher.encrypt(&nonce, plaintext.as_ref())?;
+std::fs::write(&self.db_path, &ciphertext)?;
+self.transaction_snapshot.lock().unwrap().take();`,
+      icon: Database,
       accentColor: 'from-cyan-500 to-blue-600',
     },
     {

@@ -1269,6 +1269,249 @@ export class AegisBridge {
   }>> {
     return this.invoke('p2p_sync_decrypt', bundle);
   }
+
+  // ── Pillar 1: Encrypted Embedded Database Engine ───────────────────────────
+  public async queryEncryptedDb(table: string, filterCol?: string, filterVal?: string): Promise<IpcResponse<{
+    table: string;
+    rows: any[];
+    count: number;
+  }>> {
+    return this.invoke('db_query', { table, filterCol, filterVal });
+  }
+
+  public async insertEncryptedDb(table: string, row: any): Promise<IpcResponse<{
+    status: string;
+    table: string;
+    id: string;
+    record: any;
+  }>> {
+    return this.invoke('db_insert', { table, row });
+  }
+
+  public async updateEncryptedDb(table: string, id: string, row: any): Promise<IpcResponse<{
+    status: string;
+    table: string;
+    id: string;
+    record: any;
+  }>> {
+    return this.invoke('db_update', { table, id, row });
+  }
+
+  public async deleteEncryptedDb(table: string, id: string): Promise<IpcResponse<{
+    deleted: boolean;
+    table: string;
+    id: string;
+  }>> {
+    return this.invoke('db_delete', { table, id });
+  }
+
+  public async getEncryptedDbStats(): Promise<IpcResponse<{
+    version: number;
+    total_tables: number;
+    total_records: number;
+    estimated_size_bytes: number;
+    key_fingerprint: string;
+    tables: string[];
+    in_transaction: boolean;
+  }>> {
+    return this.invoke('db_stats');
+  }
+
+  public async transactionEncryptedDb(action: 'begin' | 'commit' | 'rollback'): Promise<IpcResponse<{
+    status: string;
+  }>> {
+    return this.invoke('db_transaction', { action });
+  }
+
+  // ── Pillar 2: Hardware TPM 2.0 PCR-Sealed Cryptographic Enclave ───────────
+  public async getPcrEnclaveStatus(): Promise<IpcResponse<{
+    tpm_version: string;
+    hardware_detected: boolean;
+    manufacturer: string;
+    secure_boot_enforced: boolean;
+    pcr_registers: Array<{ index: number; description: string; digest_hex: string }>;
+    total_sealed_packages: number;
+    defense_tier: string;
+  }>> {
+    return this.invoke('pcr_enclave_status');
+  }
+
+  public async sealPcrSecret(packageId: string, secret: string, pcrs?: number[]): Promise<IpcResponse<{
+    package_id: string;
+    created_at: number;
+    required_pcrs: number[];
+    pcr_composite_hash: string;
+    nonce_hex: string;
+    ciphertext_hex: string;
+  }>> {
+    return this.invoke('pcr_enclave_seal', { packageId, secret, pcrs });
+  }
+
+  public async unsealPcrSecret(packageId: string): Promise<IpcResponse<{
+    packageId: string;
+    secretUtf8: string;
+    secretHex: string;
+    verified: boolean;
+  }>> {
+    return this.invoke('pcr_enclave_unseal', { packageId });
+  }
+
+  public async simulatePcrTamper(pcrIndex: number = 7, mockCode?: string): Promise<IpcResponse<{
+    tampered: boolean;
+    pcrIndex: number;
+    message: string;
+  }>> {
+    return this.invoke('pcr_enclave_tamper_sim', { pcrIndex, mockCode });
+  }
+
+  // ── Pillar 3: Enterprise Granular RBAC Engine ──────────────────────────────
+  public async getRbacIdentity(): Promise<IpcResponse<{
+    user_id: string;
+    display_name: string;
+    role: string;
+    department: string;
+    permissions: {
+      can_initiate_transaction: boolean;
+      can_approve_transaction: boolean;
+      can_view_ledger: boolean;
+      can_export_compliance: boolean;
+      can_modify_security_policies: boolean;
+      can_rotate_keys: boolean;
+      can_access_database: boolean;
+      max_single_transaction_cents: number;
+    };
+    session_id: string;
+  }>> {
+    return this.invoke('rbac_identity');
+  }
+
+  public async switchRbacRole(role: string, actorName?: string): Promise<IpcResponse<any>> {
+    return this.invoke('rbac_switch_role', { role, actorName });
+  }
+
+  public async checkRbacPermission(action: string, resource: string = '*'): Promise<IpcResponse<{
+    allowed: boolean;
+    action: string;
+    resource: string;
+    reason: string;
+  }>> {
+    return this.invoke('rbac_check', { action, resource });
+  }
+
+  public async getRbacMatrix(): Promise<IpcResponse<{
+    roles: Array<{
+      role: string;
+      display_name: string;
+      description: string;
+      permissions: any;
+    }>;
+    count: number;
+  }>> {
+    return this.invoke('rbac_matrix');
+  }
+
+  public async getRbacAuditLog(): Promise<IpcResponse<{
+    auditLog: Array<{
+      timestamp: number;
+      actor_id: string;
+      role: string;
+      requested_action: string;
+      target_resource: string;
+      decision: string;
+      reason: string;
+    }>;
+    count: number;
+  }>> {
+    return this.invoke('rbac_audit');
+  }
+
+  // ── Pillar 4: Outbound Network Firewall & Flow Monitor ─────────────────────
+  public async getRecentTraffic(limit: number = 50): Promise<IpcResponse<{
+    flows: Array<{
+      id: string;
+      timestamp: number;
+      target_host: string;
+      port: number;
+      protocol: string;
+      bytes_transferred: number;
+      latency_ms: number;
+      threat_score: number;
+      decision: string;
+      matched_rule: string;
+      geo_region: string;
+    }>;
+    count: number;
+  }>> {
+    return this.invoke('traffic_recent', { limit });
+  }
+
+  public async getTrafficStats(): Promise<IpcResponse<{
+    total_flows_inspected: number;
+    total_allowed: number;
+    total_blocked: number;
+    total_bytes_transferred: number;
+    active_threats_neutralized: number;
+    killswitch_active: boolean;
+    average_latency_ms: number;
+  }>> {
+    return this.invoke('traffic_stats');
+  }
+
+  public async toggleTrafficKillswitch(enabled: boolean): Promise<IpcResponse<{
+    killswitchActive: boolean;
+  }>> {
+    return this.invoke('traffic_killswitch', { enabled });
+  }
+
+  public async simulateTrafficFlow(host: string, threat: number = 0): Promise<IpcResponse<any>> {
+    return this.invoke('traffic_simulate', { host, threat });
+  }
+
+  public async clearTrafficHistory(): Promise<IpcResponse<{ status: string }>> {
+    return this.invoke('traffic_clear');
+  }
+
+  // ── Pillar 5: Security Audit & Compliance Certificate Generator ─────────────
+  public async generateComplianceCertificate(): Promise<IpcResponse<{
+    payload: {
+      certificate_id: string;
+      timestamp: number;
+      framework_version: string;
+      standard: string;
+      tier: string;
+      score: string;
+      total_controls: number;
+      passed_controls: number;
+      rasp_status: string;
+      tpm_pcr_status: string;
+      fido2_status: string;
+      dwm_protection_status: string;
+      maker_checker_sod_status: string;
+      mtls_status: string;
+      categories: Array<{
+        category_id: string;
+        name: string;
+        level: string;
+        controls_evaluated: number;
+        controls_passed: number;
+        status: string;
+      }>;
+    };
+    payload_sha256: string;
+    signature_hex: string;
+    public_key_hex: string;
+    printable_html: string;
+  }>> {
+    return this.invoke('compliance_generate');
+  }
+
+  public async verifyComplianceCertificate(
+    payloadSha256: string,
+    signatureHex: string,
+    publicKeyHex: string
+  ): Promise<IpcResponse<{ verified: boolean }>> {
+    return this.invoke('compliance_verify', { payloadSha256, signatureHex, publicKeyHex });
+  }
 }
 
 export const aegis = new AegisBridge();

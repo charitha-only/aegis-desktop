@@ -1,3 +1,7 @@
+pub mod traffic_monitor;
+#[allow(unused_imports)]
+pub use traffic_monitor::{PacketFlowRecord, TrafficMonitorEngine, TrafficStats};
+
 use crate::security::attestation::{TpmAttestationEngine, TpmAttestationProof};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

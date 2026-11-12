@@ -149,5 +149,57 @@ export function validCommandData(command: string, data: unknown): boolean {
   if (command === 'p2p_sync_decrypt') {
     return record(data) && typeof data.verified === 'boolean' && text(data.plaintextHex);
   }
+  // ── v1.3.0 Enterprise Pillars Contracts ────────────────────────────────────
+  if (command === 'db_query') {
+    return record(data) && text(data.table) && Array.isArray(data.rows) && typeof data.count === 'number';
+  }
+  if (command === 'db_insert' || command === 'db_update') {
+    return record(data) && text(data.status) && text(data.table);
+  }
+  if (command === 'db_stats') {
+    return record(data) && typeof data.version === 'number' && typeof data.total_tables === 'number';
+  }
+  if (command === 'db_transaction') {
+    return record(data) && text(data.status);
+  }
+  if (command === 'pcr_enclave_status') {
+    return record(data) && text(data.tpm_version) && Array.isArray(data.pcr_registers);
+  }
+  if (command === 'pcr_enclave_seal' || command === 'pcr_enclave_unseal') {
+    return record(data) && text(data.packageId || (data as any).package_id);
+  }
+  if (command === 'pcr_enclave_tamper_sim') {
+    return record(data) && (data as any).tampered === true;
+  }
+  if (command === 'rbac_identity' || command === 'rbac_switch_role') {
+    return record(data) && text((data as any).user_id) && text((data as any).display_name);
+  }
+  if (command === 'rbac_check') {
+    return record(data) && typeof (data as any).allowed === 'boolean';
+  }
+  if (command === 'rbac_matrix') {
+    return record(data) && Array.isArray((data as any).roles);
+  }
+  if (command === 'rbac_audit') {
+    return record(data) && Array.isArray((data as any).auditLog);
+  }
+  if (command === 'traffic_recent') {
+    return record(data) && Array.isArray((data as any).flows);
+  }
+  if (command === 'traffic_stats') {
+    return record(data) && typeof (data as any).total_flows_inspected === 'number';
+  }
+  if (command === 'traffic_killswitch') {
+    return record(data) && typeof (data as any).killswitchActive === 'boolean';
+  }
+  if (command === 'traffic_simulate') {
+    return record(data) && text((data as any).target_host);
+  }
+  if (command === 'compliance_generate') {
+    return record(data) && record((data as any).payload) && text((data as any).payload_sha256) && text((data as any).signature_hex);
+  }
+  if (command === 'compliance_verify') {
+    return record(data) && typeof (data as any).verified === 'boolean';
+  }
   return true;
 }

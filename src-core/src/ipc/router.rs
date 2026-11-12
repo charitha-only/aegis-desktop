@@ -48,6 +48,10 @@ pub struct IpcRouter {
     tls_pinning: Arc<crate::security::TlsPinningEngine>,
     fido2_engine: Arc<crate::security::Fido2TokenEngine>,
     p2p_sync: Arc<crate::security::P2pSyncEngine>,
+    encrypted_db: Arc<crate::encrypted_db::EncryptedDbEngine>,
+    tpm_sealing: Arc<crate::security::TpmSealingEngine>,
+    traffic_monitor: Arc<crate::network::TrafficMonitorEngine>,
+    compliance_report: Arc<crate::security::ComplianceReportEngine>,
     sensitive_limiter: crate::security::RateLimiter,
     vault_sessions: Arc<crate::security::vault_session::VaultSessions>,
     dispatch: std::sync::Mutex<()>,
@@ -137,6 +141,10 @@ impl IpcRouter {
             tls_pinning: Arc::new(crate::security::TlsPinningEngine::new()),
             fido2_engine: Arc::new(crate::security::Fido2TokenEngine::new()),
             p2p_sync: Arc::new(crate::security::P2pSyncEngine::new()),
+            encrypted_db: Arc::new(crate::encrypted_db::EncryptedDbEngine::new(std::path::Path::new("."))),
+            tpm_sealing: Arc::new(crate::security::TpmSealingEngine::new()),
+            traffic_monitor: Arc::new(crate::network::TrafficMonitorEngine::new()),
+            compliance_report: Arc::new(crate::security::ComplianceReportEngine::new()),
             sensitive_limiter: crate::security::RateLimiter::new(20, 60, 60),
         }
     }
@@ -388,7 +396,12 @@ impl IpcRouter {
                         "raspAntiTamper": true,
                         "tlsPinning": true,
                         "fido2Token": true,
-                        "p2pSync": true
+                        "p2pSync": true,
+                        "encryptedDb": true,
+                        "tpmPcrSealing": true,
+                        "enterpriseRbac": true,
+                        "trafficMonitor": true,
+                        "complianceReport": true
                     }
                 });
                 if let (Some(actual), Some(reported)) = (
@@ -2365,6 +2378,274 @@ impl IpcRouter {
                             "verified": true
                         }),
                     ),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ── Pillar 1: Encrypted Embedded Database Engine ────────────────
+            "db_query" => {
+                let table = match req.payload.get("table").and_then(|t| t.as_str()) {
+                    Some(t) => t,
+                    None => return IpcResponse::err(&req.id, "Missing 'table' parameter"),
+                };
+                let filter_col = req.payload.get("filterCol").or_else(|| req.payload.get("filter_col")).and_then(|c| c.as_str());
+                let filter_val = req.payload.get("filterVal").or_else(|| req.payload.get("filter_val")).and_then(|v| v.as_str());
+
+                match self.encrypted_db.query(table, filter_col, filter_val) {
+                    Ok(rows) => IpcResponse::ok(&req.id, json!({ "table": table, "rows": rows, "count": rows.len() })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "db_insert" => {
+                let table = match req.payload.get("table").and_then(|t| t.as_str()) {
+                    Some(t) => t,
+                    None => return IpcResponse::err(&req.id, "Missing 'table' parameter"),
+                };
+                let row = match req.payload.get("row") {
+                    Some(r) => r.clone(),
+                    None => return IpcResponse::err(&req.id, "Missing 'row' object parameter"),
+                };
+
+                match self.encrypted_db.insert(table, row.clone()) {
+                    Ok(pk) => IpcResponse::ok(&req.id, json!({ "status": "Inserted", "table": table, "id": pk, "record": row })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "db_update" => {
+                let table = match req.payload.get("table").and_then(|t| t.as_str()) {
+                    Some(t) => t,
+                    None => return IpcResponse::err(&req.id, "Missing 'table' parameter"),
+                };
+                let id = match req.payload.get("id").and_then(|i| i.as_str()) {
+                    Some(i) => i,
+                    None => return IpcResponse::err(&req.id, "Missing 'id' parameter"),
+                };
+                let row = match req.payload.get("row") {
+                    Some(r) => r.clone(),
+                    None => return IpcResponse::err(&req.id, "Missing 'row' object parameter"),
+                };
+
+                match self.encrypted_db.update(table, id, row.clone()) {
+                    Ok(()) => IpcResponse::ok(&req.id, json!({ "status": "Updated", "table": table, "id": id, "record": row })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "db_delete" => {
+                let table = match req.payload.get("table").and_then(|t| t.as_str()) {
+                    Some(t) => t,
+                    None => return IpcResponse::err(&req.id, "Missing 'table' parameter"),
+                };
+                let id = match req.payload.get("id").and_then(|i| i.as_str()) {
+                    Some(i) => i,
+                    None => return IpcResponse::err(&req.id, "Missing 'id' parameter"),
+                };
+
+                match self.encrypted_db.delete(table, id) {
+                    Ok(existed) => IpcResponse::ok(&req.id, json!({ "deleted": existed, "table": table, "id": id })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "db_stats" => {
+                IpcResponse::ok(&req.id, self.encrypted_db.stats())
+            }
+
+            "db_transaction" => {
+                let action = match req.payload.get("action").and_then(|a| a.as_str()) {
+                    Some(a) => a,
+                    None => return IpcResponse::err(&req.id, "Missing 'action' parameter (begin, commit, rollback)"),
+                };
+
+                match action {
+                    "begin" => match self.encrypted_db.begin_transaction() {
+                        Ok(()) => IpcResponse::ok(&req.id, json!({ "status": "Transaction started" })),
+                        Err(e) => IpcResponse::err(&req.id, &e),
+                    },
+                    "commit" => match self.encrypted_db.commit_transaction() {
+                        Ok(()) => IpcResponse::ok(&req.id, json!({ "status": "Transaction committed to AEAD cipher storage" })),
+                        Err(e) => IpcResponse::err(&req.id, &e),
+                    },
+                    "rollback" => match self.encrypted_db.rollback_transaction() {
+                        Ok(()) => IpcResponse::ok(&req.id, json!({ "status": "Transaction rolled back" })),
+                        Err(e) => IpcResponse::err(&req.id, &e),
+                    },
+                    _ => IpcResponse::err(&req.id, "Invalid transaction action; expected 'begin', 'commit', or 'rollback'"),
+                }
+            }
+
+            // ── Pillar 2: Hardware TPM 2.0 PCR-Sealed Cryptographic Enclave ──
+            "pcr_enclave_status" => {
+                let status = self.tpm_sealing.get_enclave_status();
+                IpcResponse::ok(&req.id, json!(status))
+            }
+
+            "pcr_enclave_seal" => {
+                let package_id = match req.payload.get("packageId").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'packageId' parameter"),
+                };
+                let secret_str = match req.payload.get("secret").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'secret' parameter"),
+                };
+                let pcrs: Vec<u32> = req.payload.get("pcrs")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter().filter_map(|x| x.as_u64().map(|n| n as u32)).collect())
+                    .unwrap_or_else(|| vec![0, 2, 7, 11]);
+
+                match self.tpm_sealing.seal_secret(package_id, secret_str.as_bytes(), &pcrs) {
+                    Ok(pkg) => IpcResponse::ok(&req.id, json!(pkg)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "pcr_enclave_unseal" => {
+                let package_id = match req.payload.get("packageId").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'packageId' parameter"),
+                };
+
+                match self.tpm_sealing.unseal_secret(package_id) {
+                    Ok(bytes) => {
+                        let text = String::from_utf8(bytes.clone()).unwrap_or_default();
+                        IpcResponse::ok(&req.id, json!({
+                            "packageId": package_id,
+                            "secretUtf8": text,
+                            "secretHex": hex::encode(&bytes),
+                            "verified": true
+                        }))
+                    }
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "pcr_enclave_tamper_sim" => {
+                let pcr_index = req.payload.get("pcrIndex").and_then(|i| i.as_u64()).unwrap_or(7) as u32;
+                let mock_code = req.payload.get("mockCode").and_then(|m| m.as_str()).unwrap_or("INJECTED_UNAUTHORIZED_BOOTLOADER_PAYLOAD");
+
+                match self.tpm_sealing.simulate_pcr_tamper(pcr_index, mock_code.as_bytes()) {
+                    Ok(()) => IpcResponse::ok(&req.id, json!({
+                        "tampered": true,
+                        "pcrIndex": pcr_index,
+                        "message": format!("PCR[{}] digest intentionally mutated with simulated untrusted payload.", pcr_index)
+                    })),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ── Pillar 3: Enterprise Granular RBAC Engine ───────────────────
+            "rbac_identity" => {
+                let id = self.banking.rbac.get_identity();
+                IpcResponse::ok(&req.id, json!(id))
+            }
+
+            "rbac_switch_role" => {
+                let role_str = match req.payload.get("role").and_then(|r| r.as_str()) {
+                    Some(r) => r,
+                    None => return IpcResponse::err(&req.id, "Missing 'role' parameter"),
+                };
+                let actor_name = req.payload.get("actorName").and_then(|a| a.as_str());
+
+                match crate::banking::RoleType::from_str(role_str) {
+                    Ok(new_role) => {
+                        let new_id = self.banking.rbac.switch_role(new_role, actor_name);
+                        IpcResponse::ok(&req.id, json!(new_id))
+                    }
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "rbac_check" => {
+                let action = match req.payload.get("action").and_then(|a| a.as_str()) {
+                    Some(a) => a,
+                    None => return IpcResponse::err(&req.id, "Missing 'action' parameter"),
+                };
+                let resource = req.payload.get("resource").and_then(|r| r.as_str()).unwrap_or("*");
+
+                let (allowed, reason) = self.banking.rbac.check_permission(action, resource);
+                IpcResponse::ok(&req.id, json!({ "allowed": allowed, "action": action, "resource": resource, "reason": reason }))
+            }
+
+            "rbac_matrix" => {
+                let matrix = self.banking.rbac.get_role_matrix();
+                IpcResponse::ok(&req.id, json!({ "roles": matrix, "count": matrix.len() }))
+            }
+
+            "rbac_audit" => {
+                let log = self.banking.rbac.get_audit_log();
+                IpcResponse::ok(&req.id, json!({ "auditLog": log, "count": log.len() }))
+            }
+
+            // ── Pillar 4: Outbound Network Firewall & Flow Monitor ──────────
+            "traffic_recent" => {
+                let limit = req.payload.get("limit").and_then(|l| l.as_u64()).unwrap_or(50) as usize;
+                let flows = self.traffic_monitor.get_recent_flows(limit);
+                IpcResponse::ok(&req.id, json!({ "flows": flows, "count": flows.len() }))
+            }
+
+            "traffic_stats" => {
+                let stats = self.traffic_monitor.get_stats();
+                IpcResponse::ok(&req.id, json!(stats))
+            }
+
+            "traffic_killswitch" => {
+                let enabled = match req.payload.get("enabled").and_then(|e| e.as_bool()) {
+                    Some(e) => e,
+                    None => return IpcResponse::err(&req.id, "Missing 'enabled' boolean parameter"),
+                };
+                let active = self.traffic_monitor.toggle_killswitch(enabled);
+                IpcResponse::ok(&req.id, json!({ "killswitchActive": active }))
+            }
+
+            "traffic_simulate" => {
+                let host = req.payload.get("host").and_then(|h| h.as_str()).unwrap_or("api.payment-gateway.internal");
+                let threat = req.payload.get("threat").and_then(|t| t.as_u64()).unwrap_or(0) as u8;
+                let flow = self.traffic_monitor.inspect_and_log(
+                    host,
+                    443,
+                    "mTLS",
+                    2048,
+                    14,
+                    Some("rule-enterprise-vault"),
+                    threat == 0,
+                );
+                IpcResponse::ok(&req.id, json!(flow))
+            }
+
+            "traffic_clear" => {
+                self.traffic_monitor.clear_history();
+                IpcResponse::ok(&req.id, json!({ "status": "Traffic history cleared" }))
+            }
+
+            // ── Pillar 5: Security Audit & Compliance Certificate Generator ──
+            "compliance_generate" => {
+                let cert = self.compliance_report.generate_certificate(
+                    env!("CARGO_PKG_VERSION"),
+                    true,
+                    true,
+                );
+                IpcResponse::ok(&req.id, json!(cert))
+            }
+
+            "compliance_verify" => {
+                let digest = match req.payload.get("payloadSha256").and_then(|d| d.as_str()) {
+                    Some(d) => d,
+                    None => return IpcResponse::err(&req.id, "Missing 'payloadSha256' parameter"),
+                };
+                let sig = match req.payload.get("signatureHex").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'signatureHex' parameter"),
+                };
+                let pubkey = match req.payload.get("publicKeyHex").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'publicKeyHex' parameter"),
+                };
+
+                match self.compliance_report.verify_certificate_signature(digest, sig, pubkey) {
+                    Ok(valid) => IpcResponse::ok(&req.id, json!({ "verified": valid })),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }
