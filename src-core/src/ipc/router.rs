@@ -2797,6 +2797,64 @@ impl IpcRouter {
                 IpcResponse::ok(&req.id, crate::security::pq_kem::PqKemEngine::get_spec_metadata())
             }
 
+            // ── Post-Quantum Digital Signatures (NIST FIPS 204 ML-DSA-65 / Dilithium) ──
+            "pq_dsa_keypair" => {
+                match crate::security::pq_dsa::MlDsaEngine::generate_keypair() {
+                    Ok(kp) => IpcResponse::ok(&req.id, json!(kp)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "pq_dsa_sign" => {
+                let sk_hex = match req.payload.get("hybridSecretKeyHex").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'hybridSecretKeyHex' parameter"),
+                };
+                let payload_str = match req.payload.get("payload").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'payload' parameter"),
+                };
+                let sk_bytes = match hex::decode(sk_hex) {
+                    Ok(b) => b,
+                    Err(_) => return IpcResponse::err(&req.id, "Invalid hex encoding for secret key"),
+                };
+                match crate::security::pq_dsa::MlDsaEngine::sign(&sk_bytes, payload_str.as_bytes()) {
+                    Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "pq_dsa_verify" => {
+                let pk_hex = match req.payload.get("hybridPublicKeyHex").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'hybridPublicKeyHex' parameter"),
+                };
+                let payload_str = match req.payload.get("payload").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'payload' parameter"),
+                };
+                let sig_hex = match req.payload.get("hybridSignatureHex").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'hybridSignatureHex' parameter"),
+                };
+                let pk_bytes = match hex::decode(pk_hex) {
+                    Ok(b) => b,
+                    Err(_) => return IpcResponse::err(&req.id, "Invalid hex encoding for public key"),
+                };
+                let sig_bytes = match hex::decode(sig_hex) {
+                    Ok(b) => b,
+                    Err(_) => return IpcResponse::err(&req.id, "Invalid hex encoding for signature"),
+                };
+                match crate::security::pq_dsa::MlDsaEngine::verify(&pk_bytes, payload_str.as_bytes(), &sig_bytes) {
+                    Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "pq_dsa_metadata" => {
+                IpcResponse::ok(&req.id, json!(crate::security::pq_dsa::MlDsaEngine::metadata()))
+            }
+
             // ── Smart Card & YubiKey PIV Slot Management (NIST SP 800-73-4) ──
             "piv_state" => {
                 IpcResponse::ok(&req.id, json!(self.piv_engine.get_device_state()))

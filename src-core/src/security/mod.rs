@@ -10,6 +10,7 @@ pub mod mtls_pinning;
 pub mod p2p_sync;
 pub mod piv_slots;
 pub mod plugin_sig;
+pub mod pq_dsa;
 pub mod pq_kem;
 pub mod privacy;
 pub mod rasp;
@@ -34,6 +35,8 @@ pub use p2p_sync::P2pSyncEngine;
 #[allow(unused_imports)]
 pub use piv_slots::{PivDeviceState, PivEngine, PivSignResult, PivSlotId, PivSlotInfo};
 pub use plugin_sig::SignatureVerifier;
+#[allow(unused_imports)]
+pub use pq_dsa::{MlDsaEngine, MlDsaKeypairOutput, MlDsaMetadata, MlDsaSignOutput, MlDsaVerifyOutput};
 #[allow(unused_imports)]
 pub use pq_kem::{PqDecapsulationResult, PqEncapsulationResult, PqKemEngine, PqKemKeypair};
 pub use privacy::PrivacyShield;
