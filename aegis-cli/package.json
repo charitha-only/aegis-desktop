@@ -1,6 +1,6 @@
 {
   "name": "aegis-cli",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "description": "Command line tool to build and run Aegis desktop apps",
   "bin": {
     "aegis": "./bin/aegis.js"
