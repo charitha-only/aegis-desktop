@@ -201,5 +201,50 @@ export function validCommandData(command: string, data: unknown): boolean {
   if (command === 'compliance_verify') {
     return record(data) && typeof (data as any).verified === 'boolean';
   }
+  if (command === 'updater_delta_verify') {
+    return record(data) && typeof (data as any).valid === 'boolean';
+  }
+  if (command === 'updater_delta_create') {
+    return record(data) && text((data as any).magic);
+  }
+  if (command === 'updater_delta_apply') {
+    return record(data) && (data as any).success === true;
+  }
+  if (command === 'pq_kem_keypair') {
+    return record(data) && text((data as any).hybrid_public_key_hex);
+  }
+  if (command === 'pq_kem_encapsulate') {
+    return record(data) && text((data as any).shared_secret_hex);
+  }
+  if (command === 'pq_kem_decapsulate') {
+    return record(data) && typeof (data as any).verified === 'boolean';
+  }
+  if (command === 'pq_kem_metadata') {
+    return record(data) && text((data as any).standard);
+  }
+  if (command === 'piv_state') {
+    return record(data) && Array.isArray((data as any).slots);
+  }
+  if (command === 'piv_pin_verify') {
+    return record(data) && typeof (data as any).authenticated === 'boolean';
+  }
+  if (command === 'piv_logout') {
+    return record(data) && (data as any).sessionUnlocked === false;
+  }
+  if (command === 'piv_sign') {
+    return record(data) && text((data as any).signature_hex);
+  }
+  if (command === 'piv_cert_export') {
+    return record(data) && text((data as any).slot_id);
+  }
+  if (command === 'tray_status_get') {
+    return record(data) && typeof (data as any).daemonActive === 'boolean';
+  }
+  if (command === 'tray_quick_killswitch') {
+    return record(data) && typeof (data as any).killswitchActive === 'boolean';
+  }
+  if (command === 'tray_menu_action') {
+    return record(data);
+  }
   return true;
 }

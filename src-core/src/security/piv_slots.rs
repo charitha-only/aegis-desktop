@@ -433,3 +433,4 @@ mod tests {
         assert!(cert_info.cert_subject.unwrap().contains("CN=Aegis Terminal Operator"));
     }
 }
+

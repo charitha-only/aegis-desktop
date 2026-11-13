@@ -1512,6 +1512,182 @@ export class AegisBridge {
   ): Promise<IpcResponse<{ verified: boolean }>> {
     return this.invoke('compliance_verify', { payloadSha256, signatureHex, publicKeyHex });
   }
+
+  // ── Differential Binary Delta Auto-Updater (Quantum-Safe Patching) ──────────
+  public async verifyDeltaPatch(patch: string, baseData?: string): Promise<IpcResponse<{
+    valid: boolean;
+    magic: string;
+    baseVersion: string;
+    targetVersion: string;
+    baseSha256Expected: string;
+    baseSha256Computed: string;
+    targetSha256: string;
+    originalSize: number;
+    patchedSize: number;
+    operationsCount: number;
+    patchSizeBytes: number;
+    bytesSaved: number;
+    compressionRatio: string;
+  }>> {
+    return this.invoke('updater_delta_verify', { patch, baseData });
+  }
+
+  public async createDeltaPatch(
+    targetData: string,
+    targetVersion: string = '1.4.0',
+    baseData?: string
+  ): Promise<IpcResponse<any>> {
+    return this.invoke('updater_delta_create', { targetData, targetVersion, baseData });
+  }
+
+  public async applyDeltaPatch(patch: string, baseData?: string): Promise<IpcResponse<{
+    success: boolean;
+    baseVersion: string;
+    targetVersion: string;
+    targetSha256: string;
+    originalSize: number;
+    patchSize: number;
+    reconstructedSize: number;
+    bytesSaved: number;
+    compressionRatio: string;
+  }>> {
+    return this.invoke('updater_delta_apply', { patch, baseData });
+  }
+
+  // ── Post-Quantum Hybrid Cryptography (NIST FIPS 203 ML-KEM-768 + X25519) ────
+  public async generatePqKeypair(): Promise<IpcResponse<{
+    algorithm: string;
+    nist_standard: string;
+    hybrid_public_key_hex: string;
+    hybrid_secret_key_hex: string;
+    classical_algorithm: string;
+    pq_algorithm: string;
+    created_at: number;
+  }>> {
+    return this.invoke('pq_kem_keypair');
+  }
+
+  public async encapsulatePqKem(hybridPublicKeyHex: string): Promise<IpcResponse<{
+    algorithm: string;
+    hybrid_ciphertext_hex: string;
+    shared_secret_hex: string;
+    classical_component: string;
+    pq_component: string;
+    kdf: string;
+    security_bits: number;
+  }>> {
+    return this.invoke('pq_kem_encapsulate', { hybridPublicKeyHex });
+  }
+
+  public async decapsulatePqKem(
+    hybridSecretKeyHex: string,
+    hybridCiphertextHex: string
+  ): Promise<IpcResponse<{
+    algorithm: string;
+    shared_secret_hex: string;
+    verified: boolean;
+    quantum_safe: boolean;
+  }>> {
+    return this.invoke('pq_kem_decapsulate', { hybridSecretKeyHex, hybridCiphertextHex });
+  }
+
+  public async getPqKemMetadata(): Promise<IpcResponse<any>> {
+    return this.invoke('pq_kem_metadata');
+  }
+
+  // ── Smart Card & YubiKey PIV Slot Management (NIST SP 800-73-4) ─────────────
+  public async getPivState(): Promise<IpcResponse<{
+    card_present: boolean;
+    reader_name: string;
+    card_model: string;
+    serial_number: string;
+    firmware_version: string;
+    pin_retries_remaining: number;
+    is_locked_out: boolean;
+    session_unlocked: boolean;
+    slots: Array<{
+      slot_id: string;
+      name: string;
+      purpose: string;
+      key_algorithm: string;
+      certificate_installed: boolean;
+      cert_subject?: string;
+      cert_serial?: string;
+      cert_fingerprint_sha256?: string;
+      pin_policy: string;
+      touch_policy: string;
+      is_unlocked: boolean;
+    }>;
+  }>> {
+    return this.invoke('piv_state');
+  }
+
+  public async verifyPivPin(pin: string): Promise<IpcResponse<{
+    authenticated: boolean;
+    retriesRemaining: number;
+    sessionUnlocked: boolean;
+    message: string;
+  }>> {
+    return this.invoke('piv_pin_verify', { pin });
+  }
+
+  public async logoutPiv(): Promise<IpcResponse<{ status: string; sessionUnlocked: boolean }>> {
+    return this.invoke('piv_logout');
+  }
+
+  public async signWithPiv(
+    slotId: string,
+    payload: string,
+    pin?: string
+  ): Promise<IpcResponse<{
+    slot_id: string;
+    mechanism: string;
+    payload_sha256: string;
+    signature_hex: string;
+    token_serial: string;
+    timestamp: number;
+    non_repudiation_verified: boolean;
+  }>> {
+    return this.invoke('piv_sign', { slotId, payload, pin });
+  }
+
+  public async exportPivCertificate(slotId: string): Promise<IpcResponse<any>> {
+    return this.invoke('piv_cert_export', { slotId });
+  }
+
+  // ── Native OS System Tray Daemon & Quick-Killswitch Controls ────────────────
+  public async getTrayStatus(): Promise<IpcResponse<{
+    apiVersion: string;
+    daemonActive: boolean;
+    securityBadge: string;
+    quickKillswitchActive: boolean;
+    pendingMakerCheckerApprovals: number;
+    hardwareTokenConnected: boolean;
+    tpmSealed: boolean;
+    menuItems: Array<{
+      id: string;
+      label: string;
+      item_type: string;
+      enabled: boolean;
+      checked?: boolean;
+    }>;
+    notificationBackend: string;
+    lastEventTimestamp: number;
+  }>> {
+    return this.invoke('tray_status_get');
+  }
+
+  public async toggleTrayQuickKillswitch(enabled: boolean): Promise<IpcResponse<{
+    killswitchActive: boolean;
+    badge: string;
+    status: string;
+  }>> {
+    return this.invoke('tray_quick_killswitch', { enabled });
+  }
+
+  public async triggerTrayMenuAction(actionId: string): Promise<IpcResponse<any>> {
+    return this.invoke('tray_menu_action', { actionId });
+  }
 }
 
 export const aegis = new AegisBridge();

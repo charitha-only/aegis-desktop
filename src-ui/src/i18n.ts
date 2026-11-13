@@ -23,6 +23,46 @@ export interface Translations {
     rbac: string;
     traffic: string;
     compliance: string;
+    delta: string;
+    pq: string;
+    piv: string;
+    tray: string;
+  };
+  delta: {
+    title: string;
+    subtitle: string;
+    createPatch: string;
+    verifyPatch: string;
+    applyPatch: string;
+    bytesSaved: string;
+    ratio: string;
+  };
+  pq: {
+    title: string;
+    subtitle: string;
+    genKeypair: string;
+    encaps: string;
+    decaps: string;
+    specMetadata: string;
+    sharedSecret: string;
+  };
+  piv: {
+    title: string;
+    subtitle: string;
+    verifyPin: string;
+    logout: string;
+    signSlot: string;
+    certExport: string;
+    retries: string;
+    lockoutStatus: string;
+  };
+  tray: {
+    title: string;
+    subtitle: string;
+    quickKillswitch: string;
+    lockWorkstation: string;
+    statusBadge: string;
+    menuActions: string;
   };
   db: {
     title: string;
@@ -165,6 +205,46 @@ export const translations: Record<Language, Translations> = {
       rbac: 'Enterprise RBAC',
       traffic: 'Traffic Monitor',
       compliance: 'Security Audit',
+      delta: 'Differential Delta Updater',
+      pq: 'Post-Quantum KEM',
+      piv: 'Smart Card & PIV',
+      tray: 'Tray & Killswitch',
+    },
+    delta: {
+      title: 'Differential Binary Delta Auto-Updater (Quantum-Safe Patching)',
+      subtitle: 'Byte-level binary diffing, SHA-256 target validation, and zero-downtime rollback journal.',
+      createPatch: 'Generate Binary Delta Patch',
+      verifyPatch: 'Verify Delta Patch Integrity',
+      applyPatch: 'Atomically Apply Delta Update',
+      bytesSaved: 'Bandwidth Saved',
+      ratio: 'Compression Efficiency',
+    },
+    pq: {
+      title: 'Post-Quantum Hybrid Cryptography (NIST FIPS 203)',
+      subtitle: 'Dual-envelope KEM combining classical X25519 with lattice-based ML-KEM-768 for quantum Shor immunity.',
+      genKeypair: 'Generate Hybrid Keypair (1216B PK / 2432B SK)',
+      encaps: 'Encapsulate Quantum-Safe Ciphertext (1120B)',
+      decaps: 'Decapsulate & Verify Dual Shared Secret',
+      specMetadata: 'View NIST FIPS 203 Audit Metadata',
+      sharedSecret: '256-bit Hybrid Quantum Shared Secret',
+    },
+    piv: {
+      title: 'Smart Card & YubiKey PIV Slot Management (NIST SP 800-73-4)',
+      subtitle: 'Hardware-grade PKCS#11 slots (9A Auth, 9C Digital Signature, 9D Key Mgmt, 9E Card Auth) with 3-attempt lockout defense.',
+      verifyPin: 'Authenticate Smart Card User PIN',
+      logout: 'Revoke Session Unlock',
+      signSlot: 'Execute Hardware-Bound Digital Signature',
+      certExport: 'Export Slot X.509 Certificate Metadata',
+      retries: 'PIN Retries Remaining',
+      lockoutStatus: 'Hardware Lockout Defense',
+    },
+    tray: {
+      title: 'Native OS System Tray Daemon & Quick-Killswitch Controls',
+      subtitle: 'Always-on background defensive monitor, real-time security badge, instant panic air-gap, and Maker-Checker alerts.',
+      quickKillswitch: 'Emergency Panic Air-Gap Killswitch',
+      lockWorkstation: 'Immediate Zero-Trust Lock',
+      statusBadge: 'Enclave Security State',
+      menuActions: 'Execute Tray Daemon Action',
     },
     db: {
       title: 'Encrypted Embedded Database Engine',
@@ -305,6 +385,46 @@ export const translations: Record<Language, Translations> = {
       rbac: 'ආයතනික RBAC පද්ධතිය',
       traffic: 'ජාල ගමනාගමන නිරීක්ෂකය',
       compliance: 'ආරක්ෂක විගණන සහතිකය',
+      delta: 'ද්විමය ඩෙල්ටා යාවත්කාලීන',
+      pq: 'පශ්චාත්-ක්වොන්ටම් KEM',
+      piv: 'ස්මාර්ට් කාඩ් සහ PIV',
+      tray: 'පද්ධති තැටිය සහ Killswitch',
+    },
+    delta: {
+      title: 'අවකල්‍ය ද්විමය ඩෙල්ටා ස්වයංක්‍රීය යාවත්කාලීන පද්ධතිය',
+      subtitle: 'බයිට් මට්ටමේ ද්විමය වෙනස්කම් (Diffing), SHA-256 අඛණ්ඩතා පරීක්ෂාව සහ ආරක්ෂිත Rollback පද්ධතිය.',
+      createPatch: 'ඩෙල්ටා පැච් එකක් සාදන්න',
+      verifyPatch: 'ඩෙල්ටා පැච් එකේ අඛණ්ඩතාව පරීක්ෂා කරන්න',
+      applyPatch: 'යාවත්කාලීනය ක්ෂණිකව ස්ථාපනය කරන්න',
+      bytesSaved: 'ඉතිරි වූ දත්ත ප්‍රමාණය (Bandwidth)',
+      ratio: 'දත්ත සම්පීඩන කාර්යක්ෂමතාව',
+    },
+    pq: {
+      title: 'පශ්චාත්-ක්වොන්ටම් දෙමුහුන් ගුප්තකේතනය (NIST FIPS 203)',
+      subtitle: 'ක්වොන්ටම් පරිගණක ප්‍රහාර (Shor\'s Algorithm) වලට ඔරොත්තු දෙන X25519 සහ ML-KEM-768 දෙමුහුන් පද්ධතිය.',
+      genKeypair: 'දෙමුහුන් යතුරු යුගලක් සාදන්න (1216B PK / 2432B SK)',
+      encaps: 'ක්වොන්ටම්-ආරක්ෂිත Ciphertext (1120B) ගුප්තකේතනය කරන්න',
+      decaps: 'රහස් යතුරෙන් විකේතනය කර හවුල් රහස තහවුරු කරන්න',
+      specMetadata: 'NIST FIPS 203 තාක්ෂණික විස්තර බලන්න',
+      sharedSecret: '256-bit දෙමුහුන් ක්වොන්ටම් හවුල් රහස',
+    },
+    piv: {
+      title: 'ස්මාර්ට් කාඩ් සහ YubiKey PIV කළමනාකරණය (NIST SP 800-73-4)',
+      subtitle: 'දෘඩාංග PKCS#11 Slots (9A Auth, 9C Digital Signature, 9D Key Mgmt, 9E Card Auth) සහ 3-වර අවහිරතා ආරක්ෂණය.',
+      verifyPin: 'ස්මාර්ට් කාඩ් පරිශීලක PIN එක තහවුරු කරන්න',
+      logout: 'කාඩ්පතේ සැසිය අගුලු දමන්න (Logout)',
+      signSlot: 'දෘඩාංග ඩිජිටල් අත්සනක් තබන්න',
+      certExport: 'Slot X.509 සහතික තොරතුරු ලබාගන්න',
+      retries: 'ඉතිරිව ඇති PIN උත්සාහයන්',
+      lockoutStatus: 'දෘඩාංග අගුලු දැමීමේ තත්ත්වය',
+    },
+    tray: {
+      title: 'ස්වදේශික පද්ධති තැටි ඩීමන් සහ ක්ෂණික Killswitch පාලකය',
+      subtitle: 'පසුබිමේ ක්‍රියාත්මක ආරක්ෂණ නිරීක්ෂකය, සජීවී ආරක්ෂණ ලාංඡනය, ක්ෂණික ජාල විසන්ධි කිරීම සහ අනුමැති අනතුරු ඇඟවීම්.',
+      quickKillswitch: 'ක්ෂණික හදිසි වායු-පරතර (Air-Gap) Killswitch',
+      lockWorkstation: 'වහාම Zero-Trust අගුලු දමන්න',
+      statusBadge: 'ආරක්ෂණ කලාපයේ තත්ත්වය',
+      menuActions: 'තැටි මෙනු ක්‍රියාමාර්ගයක් තෝරන්න',
     },
     db: {
       title: 'ගුප්තකේතනය කළ අභ්‍යන්තර දත්ත සමුදාය (ChaCha20-Poly1305)',

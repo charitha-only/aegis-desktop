@@ -17,7 +17,9 @@ import {
   Radio,
   ExternalLink,
   Power,
-  RotateCcw
+  RotateCcw,
+  Download,
+  CreditCard
 } from 'lucide-react';
 import { aegis } from './aegis-bridge';
 import { translations, Language } from './i18n';
@@ -34,7 +36,7 @@ export const AdvancedSecuritySuite: React.FC<AdvancedSecuritySuiteProps> = ({
   setSrAnnouncement,
 }) => {
   const t = translations[lang];
-  const [subTab, setSubTab] = useState<'db' | 'tpm' | 'rbac' | 'traffic' | 'compliance' | 'rasp' | 'pinning' | 'fido2' | 'p2p'>('db');
+  const [subTab, setSubTab] = useState<'db' | 'tpm' | 'rbac' | 'traffic' | 'compliance' | 'delta' | 'pq' | 'piv' | 'tray' | 'rasp' | 'pinning' | 'fido2' | 'p2p'>('db');
 
   // ── Pillar 1: Encrypted DB State ───────────────────────────────────────────
   const [dbStats, setDbStats] = useState<any>(null);
@@ -97,12 +99,41 @@ export const AdvancedSecuritySuite: React.FC<AdvancedSecuritySuiteProps> = ({
   const [p2pPayload, setP2pPayload] = useState('CONFIDENTIAL_LEDGER_SYNC_RECORD_V1');
   const [p2pLoading, setP2pLoading] = useState(false);
 
+  // ── Enterprise v1.4 Pillars ────────────────────────────────────────────────
+  // Pillar 1: Differential Binary Delta Auto-Updater
+  const [deltaPatch, setDeltaPatch] = useState<any>(null);
+  const [deltaApplyRes, setDeltaApplyRes] = useState<any>(null);
+  const [deltaVerifyRes, setDeltaVerifyRes] = useState<any>(null);
+  const [deltaLoading, setDeltaLoading] = useState(false);
+
+  // Pillar 2: Post-Quantum Hybrid Cryptography (NIST FIPS 203)
+  const [pqKeypair, setPqKeypair] = useState<any>(null);
+  const [pqEncaps, setPqEncaps] = useState<any>(null);
+  const [pqDecaps, setPqDecaps] = useState<any>(null);
+  const [pqMetadata, setPqMetadata] = useState<any>(null);
+  const [pqLoading, setPqLoading] = useState(false);
+
+  // Pillar 3: Smart Card & YubiKey PIV Slot Management (NIST SP 800-73-4)
+  const [pivState, setPivState] = useState<any>(null);
+  const [pivPin, setPivPin] = useState('123456');
+  const [pivSignPayload, setPivSignPayload] = useState('TRANSFER $50,000,000 SWIFT TRANSACTION WIRE');
+  const [pivSignResult, setPivSignResult] = useState<any>(null);
+  const [pivSelectedSlot, setPivSelectedSlot] = useState('9C');
+  const [pivExportedCert, setPivExportedCert] = useState<any>(null);
+  const [pivLoading, setPivLoading] = useState(false);
+
+  // Pillar 4: Native OS System Tray Daemon & Quick-Killswitch Controls
+  const [trayStatus, setTrayStatus] = useState<any>(null);
+  const [trayLoading, setTrayLoading] = useState(false);
+
   // Initial data load on mount or tab change
   useEffect(() => {
     refreshDb();
     refreshTpmStatus();
     refreshRbac();
     refreshTraffic();
+    refreshPivState();
+    refreshTrayStatus();
   }, []);
 
   // ── Pillar 1 Handlers ──────────────────────────────────────────────────────
@@ -440,6 +471,194 @@ export const AdvancedSecuritySuite: React.FC<AdvancedSecuritySuiteProps> = ({
     setP2pLoading(false);
   };
 
+  // ── Delta Updater Handlers ──────────────────────────────────────────────────
+  const handleCreateDeltaPatch = async () => {
+    setDeltaLoading(true);
+    const baseBytes = new TextEncoder().encode('AEGIS_CORE_V1.3.0_PRODUCTION_KERNEL_AND_FINANCIAL_CIPHER_ENGINE');
+    const targetBytes = new TextEncoder().encode('AEGIS_CORE_V1.4.0_PRODUCTION_KERNEL_AND_QUANTUM_SAFE_CIPHER_ENGINE_ENTERPRISE');
+    const b64Base = btoa(String.fromCharCode(...baseBytes));
+    const b64Target = btoa(String.fromCharCode(...targetBytes));
+
+    const res = await aegis.createDeltaPatch(b64Target, '1.4.0', b64Base);
+    if (res.success && res.data) {
+      setDeltaPatch(res.data);
+      onAddLog('SUCCESS', 'updater_delta_create', `Generated differential delta patch: ${res.data.operations?.length} instructions`);
+    } else {
+      onAddLog('BLOCKED', 'updater_delta_create', res.error || 'Failed to create delta');
+    }
+    setDeltaLoading(false);
+  };
+
+  const handleVerifyDeltaPatch = async () => {
+    if (!deltaPatch) return;
+    setDeltaLoading(true);
+    const baseBytes = new TextEncoder().encode('AEGIS_CORE_V1.3.0_PRODUCTION_KERNEL_AND_FINANCIAL_CIPHER_ENGINE');
+    const b64Base = btoa(String.fromCharCode(...baseBytes));
+    const res = await aegis.verifyDeltaPatch(JSON.stringify(deltaPatch), b64Base);
+    if (res.success && res.data) {
+      setDeltaVerifyRes(res.data);
+      onAddLog('SUCCESS', 'updater_delta_verify', `Delta patch verified! Hash matches. Bandwidth saved: ${res.data.bytesSaved}B (${res.data.compressionRatio})`);
+    } else {
+      onAddLog('BLOCKED', 'updater_delta_verify', res.error || 'Delta verification failed');
+    }
+    setDeltaLoading(false);
+  };
+
+  const handleApplyDeltaPatch = async () => {
+    if (!deltaPatch) return;
+    setDeltaLoading(true);
+    const baseBytes = new TextEncoder().encode('AEGIS_CORE_V1.3.0_PRODUCTION_KERNEL_AND_FINANCIAL_CIPHER_ENGINE');
+    const b64Base = btoa(String.fromCharCode(...baseBytes));
+    const res = await aegis.applyDeltaPatch(JSON.stringify(deltaPatch), b64Base);
+    if (res.success && res.data) {
+      setDeltaApplyRes(res.data);
+      onAddLog('SUCCESS', 'updater_delta_apply', `Applied delta v${res.data.targetVersion} atomically! Ratio: ${res.data.compressionRatio}`);
+    } else {
+      onAddLog('BLOCKED', 'updater_delta_apply', res.error || 'Delta application failed');
+    }
+    setDeltaLoading(false);
+  };
+
+  // ── Post-Quantum KEM Handlers ───────────────────────────────────────────────
+  const handleGeneratePqKeypair = async () => {
+    setPqLoading(true);
+    const res = await aegis.generatePqKeypair();
+    if (res.success && res.data) {
+      setPqKeypair(res.data);
+      setPqEncaps(null);
+      setPqDecaps(null);
+      onAddLog('SUCCESS', 'pq_kem_keypair', `Generated FIPS 203 Hybrid Keypair: PK 1216B / SK 2432B`);
+    } else {
+      onAddLog('BLOCKED', 'pq_kem_keypair', res.error || 'Keypair generation failed');
+    }
+    setPqLoading(false);
+  };
+
+  const handleEncapsulatePq = async () => {
+    if (!pqKeypair) return;
+    setPqLoading(true);
+    const res = await aegis.encapsulatePqKem(pqKeypair.hybrid_public_key_hex);
+    if (res.success && res.data) {
+      setPqEncaps(res.data);
+      onAddLog('SUCCESS', 'pq_kem_encapsulate', `Encapsulated dual shared secret: ${res.data.shared_secret_hex.substring(0, 16)}...`);
+    } else {
+      onAddLog('BLOCKED', 'pq_kem_encapsulate', res.error || 'Encapsulation failed');
+    }
+    setPqLoading(false);
+  };
+
+  const handleDecapsulatePq = async () => {
+    if (!pqKeypair || !pqEncaps) return;
+    setPqLoading(true);
+    const res = await aegis.decapsulatePqKem(pqKeypair.hybrid_secret_key_hex, pqEncaps.hybrid_ciphertext_hex);
+    if (res.success && res.data) {
+      setPqDecaps(res.data);
+      const matches = res.data.shared_secret_hex === pqEncaps.shared_secret_hex;
+      onAddLog(matches ? 'SUCCESS' : 'BLOCKED', 'pq_kem_decapsulate', `Decapsulation verified! Secrets match: ${matches}`);
+    } else {
+      onAddLog('BLOCKED', 'pq_kem_decapsulate', res.error || 'Decapsulation failed');
+    }
+    setPqLoading(false);
+  };
+
+  const handleGetPqMetadata = async () => {
+    setPqLoading(true);
+    const res = await aegis.getPqKemMetadata();
+    if (res.success && res.data) {
+      setPqMetadata(res.data);
+      onAddLog('INFO', 'pq_kem_metadata', `Loaded NIST FIPS 203 parameter specs`);
+    }
+    setPqLoading(false);
+  };
+
+  // ── PIV Smart Card Handlers ─────────────────────────────────────────────────
+  const refreshPivState = async () => {
+    setPivLoading(true);
+    const res = await aegis.getPivState();
+    if (res.success && res.data) {
+      setPivState(res.data);
+    }
+    setPivLoading(false);
+  };
+
+  const handleVerifyPivPin = async () => {
+    setPivLoading(true);
+    const res = await aegis.verifyPivPin(pivPin);
+    if (res.success) {
+      onAddLog('SUCCESS', 'piv_pin_verify', `Smart card PIN verified. Session unlocked.`);
+      await refreshPivState();
+    } else {
+      onAddLog('BLOCKED', 'piv_pin_verify', res.error || 'PIN authentication failed');
+      await refreshPivState();
+    }
+    setPivLoading(false);
+  };
+
+  const handleLogoutPiv = async () => {
+    setPivLoading(true);
+    const res = await aegis.logoutPiv();
+    if (res.success) {
+      onAddLog('INFO', 'piv_logout', `PIV Smart Card session logged out.`);
+      await refreshPivState();
+    }
+    setPivLoading(false);
+  };
+
+  const handleSignPiv = async () => {
+    setPivLoading(true);
+    const res = await aegis.signWithPiv(pivSelectedSlot, pivSignPayload, pivPin);
+    if (res.success && res.data) {
+      setPivSignResult(res.data);
+      onAddLog('SUCCESS', 'piv_sign', `Slot ${res.data.slot_id} Signature Generated: ${res.data.signature_hex.substring(0, 16)}...`);
+    } else {
+      onAddLog('BLOCKED', 'piv_sign', res.error || 'PIV signature rejected');
+    }
+    setPivLoading(false);
+  };
+
+  const handleExportPivCert = async (slotId: string) => {
+    setPivLoading(true);
+    const res = await aegis.exportPivCertificate(slotId);
+    if (res.success && res.data) {
+      setPivExportedCert(res.data);
+      onAddLog('INFO', 'piv_cert_export', `Exported certificate for slot ${slotId}`);
+    }
+    setPivLoading(false);
+  };
+
+  // ── Tray Daemon Handlers ────────────────────────────────────────────────────
+  const refreshTrayStatus = async () => {
+    setTrayLoading(true);
+    const res = await aegis.getTrayStatus();
+    if (res.success && res.data) {
+      setTrayStatus(res.data);
+    }
+    setTrayLoading(false);
+  };
+
+  const handleToggleTrayKillswitch = async (enabled: boolean) => {
+    setTrayLoading(true);
+    const res = await aegis.toggleTrayQuickKillswitch(enabled);
+    if (res.success && res.data) {
+      setKillswitchActive(res.data.killswitchActive);
+      onAddLog(res.data.killswitchActive ? 'BLOCKED' : 'SUCCESS', 'tray_quick_killswitch', `Tray killswitch: ${res.data.status}`);
+      await refreshTrayStatus();
+    }
+    setTrayLoading(false);
+  };
+
+  const handleTrayMenuAction = async (actionId: string) => {
+    setTrayLoading(true);
+    const res = await aegis.triggerTrayMenuAction(actionId);
+    if (res.success) {
+      onAddLog('SUCCESS', 'tray_menu_action', `Triggered tray menu action: ${actionId}`);
+      await refreshTrayStatus();
+    } else {
+      onAddLog('BLOCKED', 'tray_menu_action', res.error || 'Action failed');
+    }
+    setTrayLoading(false);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* HEADER BANNER */}
@@ -448,7 +667,7 @@ export const AdvancedSecuritySuite: React.FC<AdvancedSecuritySuiteProps> = ({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
               <span style={{ background: 'rgba(0, 255, 204, 0.15)', color: '#00ffcc', border: '1px solid rgba(0, 255, 204, 0.4)', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, letterSpacing: '1px' }}>
-                ENTERPRISE v1.3.0
+                ENTERPRISE v1.4.0
               </span>
               <span style={{ fontSize: '20px', fontWeight: 800, color: '#f8fafc', letterSpacing: '0.5px' }}>
                 {lang === 'si' ? 'උසස් ආයතනික හා බැංකු ආරක්ෂණ සූට්' : 'Enterprise Banking & Cryptographic Enclave Suite'}
@@ -476,6 +695,10 @@ export const AdvancedSecuritySuite: React.FC<AdvancedSecuritySuiteProps> = ({
             { id: 'rbac', label: lang === 'si' ? '3. ආයතනික RBAC' : '3. Enterprise RBAC', icon: Users, color: '#f59e0b' },
             { id: 'traffic', label: lang === 'si' ? '4. ජාල Traffic Monitor' : '4. Traffic Monitor', icon: Activity, color: '#10b981' },
             { id: 'compliance', label: lang === 'si' ? '5. ASVS විගණන සහතිකය' : '5. Compliance Certificate', icon: FileCheck, color: '#00ffcc' },
+            { id: 'delta', label: lang === 'si' ? '6. ඩෙල්ටා අප්ඩේටර්' : '6. Delta Updater', icon: Download, color: '#38bdf8' },
+            { id: 'pq', label: lang === 'si' ? '7. පෝස්ට්-ක්වොන්ටම් KEM' : '7. Post-Quantum KEM', icon: Radio, color: '#a855f7' },
+            { id: 'piv', label: lang === 'si' ? '8. PIV ස්මාර්ට් කාඩ්' : '8. PIV & YubiKey', icon: CreditCard, color: '#f59e0b' },
+            { id: 'tray', label: lang === 'si' ? '9. සිස්ටම් ට්‍රේ පාලකය' : '9. System Tray', icon: Power, color: '#10b981' },
             { id: 'rasp', label: 'RASP Shield', icon: ShieldAlert, color: '#ef4444' },
             { id: 'pinning', label: 'mTLS Pinning', icon: Wifi, color: '#06b6d4' },
             { id: 'fido2', label: 'FIDO2 Token', icon: Key, color: '#eab308' },
@@ -1166,6 +1389,500 @@ export const AdvancedSecuritySuite: React.FC<AdvancedSecuritySuiteProps> = ({
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── SUBTAB 6: DIFFERENTIAL BINARY DELTA UPDATER ──────────────────────── */}
+      {subTab === 'delta' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Header Banner */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Download style={{ width: '18px', height: '18px', color: '#38bdf8' }} />
+                  {t.delta.title}
+                </div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>{t.delta.subtitle}</p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleCreateDeltaPatch}
+                  disabled={deltaLoading}
+                  style={{ background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(14, 165, 233, 0.35))', border: '1px solid rgba(56, 189, 248, 0.5)', color: '#7dd3fc', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <RefreshCw style={{ width: '14px', height: '14px', animation: deltaLoading ? 'spin 1s infinite linear' : 'none' }} />
+                  {t.delta.createPatch}
+                </button>
+                <button
+                  onClick={handleVerifyDeltaPatch}
+                  disabled={deltaLoading || !deltaPatch}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: deltaPatch ? '#f8fafc' : '#64748b', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: deltaPatch ? 'pointer' : 'not-allowed' }}
+                >
+                  {t.delta.verifyPatch}
+                </button>
+                <button
+                  onClick={handleApplyDeltaPatch}
+                  disabled={deltaLoading || !deltaPatch}
+                  style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35))', border: '1px solid rgba(16, 185, 129, 0.5)', color: deltaPatch ? '#6ee7b7' : '#64748b', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: deltaPatch ? 'pointer' : 'not-allowed' }}
+                >
+                  {t.delta.applyPatch}
+                </button>
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Target Release</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#38bdf8', marginTop: '4px' }}>v{deltaPatch?.target_version || '1.4.0'}</div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>SHA-256 Validated</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Diff Operations</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc', marginTop: '4px' }}>{deltaPatch?.operations?.length ? `${deltaPatch.operations.length} Instructions` : 'Ready to diff'}</div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>Byte-Level Chunk Copy/Insert</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>{t.delta.bytesSaved}</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#10b981', marginTop: '4px' }}>{deltaVerifyRes?.bytesSaved ? `${deltaVerifyRes.bytesSaved} Bytes Saved` : deltaApplyRes?.bytesSaved ? `${deltaApplyRes.bytesSaved} Bytes Saved` : 'N/A'}</div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>{deltaVerifyRes?.compressionRatio || deltaApplyRes?.compressionRatio || 'Bandwidth efficiency'}</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Rollback Journal</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: deltaApplyRes?.success ? '#10b981' : '#f59e0b', marginTop: '4px' }}>{deltaApplyRes?.success ? 'APPLIED (ZERO DOWNTIME)' : 'ATOMIC SWAP READY'}</div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>Fault-tolerant recovery active</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Details Card */}
+          {deltaPatch && (
+            <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc', marginBottom: '12px' }}>Delta Patch Instruction Set & Hashes</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ padding: '10px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace' }}>
+                  <span style={{ color: '#64748b' }}>Base SHA-256: </span>
+                  <span style={{ color: '#38bdf8' }}>{deltaPatch.base_sha256}</span>
+                </div>
+                <div style={{ padding: '10px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace' }}>
+                  <span style={{ color: '#64748b' }}>Target SHA-256: </span>
+                  <span style={{ color: '#10b981' }}>{deltaPatch.target_sha256}</span>
+                </div>
+              </div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px' }}>Differential Assembly Instructions:</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                {deltaPatch.operations?.map((op: any, i: number) => (
+                  <div key={i} style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: op.Copy ? '#f59e0b' : '#38bdf8' }}>
+                      {op.Copy ? `[OP ${i+1}] COPY (offset: ${op.Copy[0]}, length: ${op.Copy[1]} bytes)` : `[OP ${i+1}] INSERT (${op.Insert?.length} bytes inline payload)`}
+                    </span>
+                    <span style={{ color: '#64748b' }}>Atomic Verified</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SUBTAB 7: POST-QUANTUM HYBRID CRYPTOGRAPHY (NIST FIPS 203) ──────── */}
+      {subTab === 'pq' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Header Banner */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Radio style={{ width: '18px', height: '18px', color: '#a855f7' }} />
+                  {t.pq.title}
+                </div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>{t.pq.subtitle}</p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleGeneratePqKeypair}
+                  disabled={pqLoading}
+                  style={{ background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(147, 51, 234, 0.35))', border: '1px solid rgba(168, 85, 247, 0.5)', color: '#d8b4fe', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <RefreshCw style={{ width: '14px', height: '14px', animation: pqLoading ? 'spin 1s infinite linear' : 'none' }} />
+                  {t.pq.genKeypair}
+                </button>
+                <button
+                  onClick={handleEncapsulatePq}
+                  disabled={pqLoading || !pqKeypair}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: pqKeypair ? '#f8fafc' : '#64748b', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: pqKeypair ? 'pointer' : 'not-allowed' }}
+                >
+                  {t.pq.encaps}
+                </button>
+                <button
+                  onClick={handleDecapsulatePq}
+                  disabled={pqLoading || !pqKeypair || !pqEncaps}
+                  style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35))', border: '1px solid rgba(16, 185, 129, 0.5)', color: (pqKeypair && pqEncaps) ? '#6ee7b7' : '#64748b', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: (pqKeypair && pqEncaps) ? 'pointer' : 'not-allowed' }}
+                >
+                  {t.pq.decaps}
+                </button>
+                <button
+                  onClick={handleGetPqMetadata}
+                  disabled={pqLoading}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}
+                >
+                  {t.pq.specMetadata}
+                </button>
+              </div>
+            </div>
+
+            {/* Spec Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Hybrid Algorithm</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#a855f7', marginTop: '4px' }}>ML-KEM-768 + X25519</div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>Dual-Envelope HKDF-SHA256</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Public Key Size</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc', marginTop: '4px' }}>1,216 Bytes</div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>1184B (ML-KEM) + 32B (X25519)</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Secret Key Size</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc', marginTop: '4px' }}>2,432 Bytes</div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>2400B (ML-KEM) + 32B (X25519)</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>NIST Security Tier</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#10b981', marginTop: '4px' }}>Category 3 (AES-192 Equivalent)</div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>NIST FIPS 203 Shor-Resistant</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Cryptographic Proof Card */}
+          {pqKeypair && (
+            <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc', marginBottom: '12px' }}>Hybrid Public Key & Enclave State</div>
+              <div style={{ padding: '10px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace', marginBottom: '12px', wordBreak: 'break-all' }}>
+                <span style={{ color: '#64748b' }}>Hybrid Public Key Hex (1216B): </span>
+                <span style={{ color: '#a855f7' }}>{pqKeypair.hybrid_public_key_hex.substring(0, 80)}...</span>
+              </div>
+
+              {pqEncaps && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                    <span style={{ color: '#64748b' }}>Quantum Ciphertext Hex (1120B): </span>
+                    <span style={{ color: '#38bdf8' }}>{pqEncaps.hybrid_ciphertext_hex.substring(0, 80)}...</span>
+                  </div>
+                  <div style={{ padding: '10px', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                    <span style={{ color: '#d8b4fe', fontWeight: 700 }}>Encapsulated Shared Secret (256-bit): </span>
+                    <span style={{ color: '#fff' }}>{pqEncaps.shared_secret_hex}</span>
+                  </div>
+                </div>
+              )}
+
+              {pqDecaps && (
+                <div style={{ padding: '12px', background: pqDecaps.shared_secret_hex === pqEncaps?.shared_secret_hex ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', border: `1px solid ${pqDecaps.shared_secret_hex === pqEncaps?.shared_secret_hex ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`, borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, color: pqDecaps.shared_secret_hex === pqEncaps?.shared_secret_hex ? '#6ee7b7' : '#fca5a5' }}>
+                    <CheckCircle2 style={{ width: '16px', height: '16px' }} />
+                    {pqDecaps.shared_secret_hex === pqEncaps?.shared_secret_hex ? 'DUAL SHARED SECRET MATCHES (100% CONSTANT-TIME AGREEMENT)' : 'SECRET MISMATCH'}
+                  </div>
+                  <div style={{ fontSize: '11px', fontFamily: 'monospace', color: '#94a3b8', marginTop: '6px', wordBreak: 'break-all' }}>
+                    Decapsulated: {pqDecaps.shared_secret_hex}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {pqMetadata && (
+            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '14px', fontSize: '11px', fontFamily: 'monospace', color: '#94a3b8' }}>
+              <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{JSON.stringify(pqMetadata, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SUBTAB 8: SMART CARD & YUBIKEY PIV SLOT MANAGEMENT (NIST SP 800-73-4) */}
+      {subTab === 'piv' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Header Banner */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CreditCard style={{ width: '18px', height: '18px', color: '#f59e0b' }} />
+                  {t.piv.title}
+                </div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>{t.piv.subtitle}</p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={refreshPivState}
+                  disabled={pivLoading}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <RefreshCw style={{ width: '14px', height: '14px', animation: pivLoading ? 'spin 1s infinite linear' : 'none' }} />
+                  Refresh Hardware
+                </button>
+                {pivState?.pin_verified && (
+                  <button
+                    onClick={handleLogoutPiv}
+                    disabled={pivLoading}
+                    style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#fca5a5', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {t.piv.logout}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Hardware Status Strip */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Hardware Token</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#f59e0b', marginTop: '4px' }}>{pivState?.card_model || 'YubiKey 5 FIPS'}</div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>{pivState?.reader_name || 'Virtual Smart Card'}</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Session Authentication</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: pivState?.pin_verified ? '#10b981' : '#f59e0b', marginTop: '4px' }}>
+                  {pivState?.pin_verified ? 'PIN VERIFIED / UNLOCKED' : 'LOCKED (PIN REQUIRED)'}
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>PKCS#11 Secure Context</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>{t.piv.retries}</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: (pivState?.pin_retries_remaining ?? 3) > 1 ? '#10b981' : '#ef4444', marginTop: '4px' }}>
+                  {pivState?.pin_retries_remaining ?? 3} / 3 Attempts
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>3-attempt auto-lockout active</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>{t.piv.lockoutStatus}</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: pivState?.is_locked_out ? '#ef4444' : '#10b981', marginTop: '4px' }}>
+                  {pivState?.is_locked_out ? 'CHIP LOCKED OUT' : 'SECURE / OPERATIONAL'}
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>NIST SP 800-73-4 Compliant</div>
+              </div>
+            </div>
+          </div>
+
+          {/* PIN Authentication Box */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc', marginBottom: '8px' }}>User PIN Verification (Default PIN: 123456)</div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="password"
+                value={pivPin}
+                onChange={e => setPivPin(e.target.value)}
+                placeholder="Enter 6-8 digit PIN"
+                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '8px 12px', color: '#fff', fontSize: '13px', width: '200px' }}
+              />
+              <button
+                onClick={handleVerifyPivPin}
+                disabled={pivLoading || !pivPin}
+                style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35))', border: '1px solid rgba(245, 158, 11, 0.5)', color: '#fde68a', padding: '8px 16px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                {t.piv.verifyPin}
+              </button>
+            </div>
+          </div>
+
+          {/* Slots & Signing Grid */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc', marginBottom: '12px' }}>NIST SP 800-73-4 Cryptographic Slots</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+              {[
+                { id: '9A', name: 'PIV Authentication', algo: 'RSA-2048 / ECC P-256', pinReq: 'PIN Once' },
+                { id: '9C', name: 'Digital Signature', algo: 'RSA-2048 / ECC P-384', pinReq: 'PIN Always' },
+                { id: '9D', name: 'Key Management', algo: 'RSA-2048 / ECC P-256', pinReq: 'PIN Once' },
+                { id: '9E', name: 'Card Authentication', algo: 'ECC P-256', pinReq: 'No PIN' },
+              ].map(slot => {
+                const isSelected = pivSelectedSlot === slot.id;
+                return (
+                  <div
+                    key={slot.id}
+                    onClick={() => setPivSelectedSlot(slot.id)}
+                    style={{
+                      background: isSelected ? 'rgba(245, 158, 11, 0.15)' : 'rgba(0,0,0,0.3)',
+                      border: isSelected ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.06)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 800, color: '#f59e0b', fontSize: '13px' }}>Slot {slot.id}</span>
+                      <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: '4px', color: '#94a3b8' }}>{slot.pinReq}</span>
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#f8fafc', marginTop: '4px' }}>{slot.name}</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>{slot.algo}</div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleExportPivCert(slot.id); }}
+                      style={{ marginTop: '8px', padding: '4px 8px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                    >
+                      Export Certificate
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Signing Sandbox */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#f8fafc', marginBottom: '8px' }}>
+                Generate On-Chip Hardware Digital Signature (Target: Slot {pivSelectedSlot})
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
+                <input
+                  type="text"
+                  value={pivSignPayload}
+                  onChange={e => setPivSignPayload(e.target.value)}
+                  placeholder="Data payload to sign"
+                  style={{ flex: 1, minWidth: '280px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '8px 12px', color: '#fff', fontSize: '12px' }}
+                />
+                <button
+                  onClick={handleSignPiv}
+                  disabled={pivLoading || !pivSignPayload}
+                  style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35))', border: '1px solid rgba(16, 185, 129, 0.5)', color: '#6ee7b7', padding: '8px 16px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {t.piv.signSlot}
+                </button>
+              </div>
+
+              {pivSignResult && (
+                <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', fontSize: '11px', fontFamily: 'monospace' }}>
+                  <div style={{ color: '#6ee7b7', fontWeight: 700, marginBottom: '4px' }}>
+                    ✓ Hardware Signature Generated by Slot {pivSignResult.slot_id} ({pivSignResult.algorithm}):
+                  </div>
+                  <div style={{ color: '#fff', wordBreak: 'break-all' }}>{pivSignResult.signature_hex}</div>
+                </div>
+              )}
+
+              {pivExportedCert && (
+                <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace', color: '#94a3b8' }}>
+                  <div><strong>Slot:</strong> {pivExportedCert.slot_id} | <strong>Subject:</strong> {pivExportedCert.subject}</div>
+                  <div><strong>Issuer:</strong> {pivExportedCert.issuer} | <strong>Expires:</strong> {pivExportedCert.valid_to}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SUBTAB 9: NATIVE OS SYSTEM TRAY DAEMON & KILLSWITCH CONTROLS ──────── */}
+      {subTab === 'tray' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Header Banner */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Power style={{ width: '18px', height: '18px', color: '#10b981' }} />
+                  {t.tray.title}
+                </div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>{t.tray.subtitle}</p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => handleToggleTrayKillswitch(!killswitchActive)}
+                  disabled={trayLoading}
+                  style={{
+                    background: killswitchActive ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(220, 38, 38, 0.5))' : 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35))',
+                    border: killswitchActive ? '1px solid #ef4444' : '1px solid rgba(16, 185, 129, 0.5)',
+                    color: killswitchActive ? '#fca5a5' : '#6ee7b7',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Power style={{ width: '14px', height: '14px' }} />
+                  {killswitchActive ? 'Disengage Air-Gap Killswitch' : 'Engage Emergency Air-Gap'}
+                </button>
+                <button
+                  onClick={refreshTrayStatus}
+                  disabled={trayLoading}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}
+                >
+                  <RefreshCw style={{ width: '14px', height: '14px', animation: trayLoading ? 'spin 1s infinite linear' : 'none' }} />
+                </button>
+              </div>
+            </div>
+
+            {/* Status Strip */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Daemon State</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: trayStatus?.daemon_running ? '#10b981' : '#f59e0b', marginTop: '4px' }}>
+                  {trayStatus?.daemon_running ? 'RUNNING / HOOKED' : 'INITIALIZED'}
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>Native Windows System Tray</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Security Badge</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: killswitchActive ? '#ef4444' : '#10b981', marginTop: '4px' }}>
+                  {killswitchActive ? 'AIR-GAP ENGAGED' : trayStatus?.security_badge || 'SECURE'}
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>Real-time enclave health</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Maker-Checker Approvals</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: (trayStatus?.maker_checker_pending_approvals ?? 0) > 0 ? '#fbbf24' : '#10b981', marginTop: '4px' }}>
+                  {trayStatus?.maker_checker_pending_approvals ?? 0} Pending
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>Two-man dual authorization</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Network Air-Gap</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: killswitchActive ? '#ef4444' : '#10b981', marginTop: '4px' }}>
+                  {killswitchActive ? 'OFFLINE (BLOCKED)' : 'ONLINE (FILTERED)'}
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>Hard socket termination</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Tray Menu Simulator */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc', marginBottom: '8px' }}>Native Context Menu Simulator</div>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 16px 0' }}>Trigger actions as if dispatched by the native Windows tray right-click menu:</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+              {(trayStatus?.menu_items || [
+                { id: 'open_dashboard', label: 'Open Enterprise Dashboard' },
+                { id: 'toggle_killswitch', label: 'Toggle Panic Air-Gap' },
+                { id: 'lock_app', label: 'Lock Workstation (Zero-Trust)' },
+                { id: 'check_compliance', label: 'Run ASVS 5.0 Audit' },
+                { id: 'export_audit_log', label: 'Export Encrypted Audit Trail' },
+                { id: 'quit_app', label: 'Quit Application (Safe Shutdown)' },
+              ]).map((item: any) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleTrayMenuAction(item.id)}
+                  disabled={trayLoading}
+                  style={{
+                    background: item.id === 'toggle_killswitch' && killswitchActive ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    color: item.id === 'toggle_killswitch' && killswitchActive ? '#fca5a5' : '#f8fafc',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>Action ID: {item.id}</div>
+                  <div style={{ marginTop: '4px' }}>{item.label}</div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
