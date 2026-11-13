@@ -2755,6 +2755,44 @@ impl IpcRouter {
                 }
             }
 
+            // ── Post-Quantum Hybrid Cryptography (NIST FIPS 203 ML-KEM-768 + X25519) ──
+            "pq_kem_keypair" => {
+                match crate::security::pq_kem::PqKemEngine::generate_keypair() {
+                    Ok(kp) => IpcResponse::ok(&req.id, json!(kp)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "pq_kem_encapsulate" => {
+                let pk = match req.payload.get("hybridPublicKeyHex").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'hybridPublicKeyHex' parameter"),
+                };
+                match crate::security::pq_kem::PqKemEngine::encapsulate(pk) {
+                    Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "pq_kem_decapsulate" => {
+                let sk = match req.payload.get("hybridSecretKeyHex").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'hybridSecretKeyHex' parameter"),
+                };
+                let ct = match req.payload.get("hybridCiphertextHex").and_then(|c| c.as_str()) {
+                    Some(c) => c,
+                    None => return IpcResponse::err(&req.id, "Missing 'hybridCiphertextHex' parameter"),
+                };
+                match crate::security::pq_kem::PqKemEngine::decapsulate(sk, ct) {
+                    Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "pq_kem_metadata" => {
+                IpcResponse::ok(&req.id, crate::security::pq_kem::PqKemEngine::get_spec_metadata())
+            }
+
             "execute_shell" => {
                 // Strictly blocked by capability policy
                 match self.security.check_shell() {

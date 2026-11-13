@@ -9,6 +9,7 @@ pub mod hsm_pkcs11;
 pub mod mtls_pinning;
 pub mod p2p_sync;
 pub mod plugin_sig;
+pub mod pq_kem;
 pub mod privacy;
 pub mod rasp;
 pub mod ratelimit;
@@ -30,6 +31,8 @@ pub use hsm_pkcs11::{HsmKeyObject, HsmPkcs11Engine, HsmSignatureResult, HsmSlotI
 pub use mtls_pinning::TlsPinningEngine;
 pub use p2p_sync::P2pSyncEngine;
 pub use plugin_sig::SignatureVerifier;
+#[allow(unused_imports)]
+pub use pq_kem::{PqDecapsulationResult, PqEncapsulationResult, PqKemEngine, PqKemKeypair};
 pub use privacy::PrivacyShield;
 pub use rasp::RaspEngine;
 pub use ratelimit::RateLimiter;
