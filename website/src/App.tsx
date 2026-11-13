@@ -192,7 +192,7 @@ export const App: React.FC = () => {
               <Github className="w-4 h-4 text-slate-300" />
               <span>GITHUB</span>
               <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                v1.5.0
+                v1.6.0
               </span>
             </a>
 

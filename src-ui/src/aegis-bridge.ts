@@ -1845,6 +1845,57 @@ export class AegisBridge {
   }>> {
     return this.invoke('zk_proof_verify', proof);
   }
+
+  // ── v1.6.0: Smart Card, P2P Mesh & SIEM Telemetry ──────────────────────────
+  public async getSmartCardReaders(): Promise<IpcResponse<{
+    reader_name: string;
+    is_card_present: boolean;
+    atr_hex: string;
+    card_type: any;
+    pin_retries_remaining: number;
+    piv_applet_selected: boolean;
+  }>> {
+    return this.invoke('smartcard_readers');
+  }
+
+  public async verifySmartCardPin(pin: string): Promise<IpcResponse<{
+    authenticated: boolean;
+    retriesRemaining: number;
+  }>> {
+    return this.invoke('smartcard_verify_pin', { pin });
+  }
+
+  public async signSmartCardSlot9c(challenge: string): Promise<IpcResponse<{
+    signatureHex: string;
+    slot: string;
+    mechanism: string;
+  }>> {
+    return this.invoke('smartcard_sign_slot_9c', { challenge });
+  }
+
+  public async getMeshStatus(): Promise<IpcResponse<{
+    localNodeId: string;
+    listenPort: number;
+    knownPeers: any[];
+    protocol: string;
+  }>> {
+    return this.invoke('mesh_status');
+  }
+
+  public async exportSiemCef(): Promise<IpcResponse<string[]>> {
+    return this.invoke('siem_export_cef');
+  }
+
+  public async getDevToolsTelemetry(): Promise<IpcResponse<{
+    version: string;
+    ipcTargetLatencyMicros: number;
+    coreMemoryRssMb: number;
+    canaryGuardStatus: string;
+    sandboxEngine: string;
+    activeUnitTests: number;
+  }>> {
+    return this.invoke('devtools_telemetry');
+  }
 }
 
 export const aegis = new AegisBridge();
