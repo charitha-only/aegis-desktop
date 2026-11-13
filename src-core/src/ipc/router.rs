@@ -52,6 +52,7 @@ pub struct IpcRouter {
     tpm_sealing: Arc<crate::security::TpmSealingEngine>,
     traffic_monitor: Arc<crate::network::TrafficMonitorEngine>,
     compliance_report: Arc<crate::security::ComplianceReportEngine>,
+    piv_engine: Arc<crate::security::PivEngine>,
     sensitive_limiter: crate::security::RateLimiter,
     vault_sessions: Arc<crate::security::vault_session::VaultSessions>,
     dispatch: std::sync::Mutex<()>,
@@ -145,6 +146,7 @@ impl IpcRouter {
             tpm_sealing: Arc::new(crate::security::TpmSealingEngine::new()),
             traffic_monitor: Arc::new(crate::network::TrafficMonitorEngine::new()),
             compliance_report: Arc::new(crate::security::ComplianceReportEngine::new()),
+            piv_engine: Arc::new(crate::security::PivEngine::new()),
             sensitive_limiter: crate::security::RateLimiter::new(20, 60, 60),
         }
     }
@@ -2791,6 +2793,57 @@ impl IpcRouter {
 
             "pq_kem_metadata" => {
                 IpcResponse::ok(&req.id, crate::security::pq_kem::PqKemEngine::get_spec_metadata())
+            }
+
+            // ── Smart Card & YubiKey PIV Slot Management (NIST SP 800-73-4) ──
+            "piv_state" => {
+                IpcResponse::ok(&req.id, json!(self.piv_engine.get_device_state()))
+            }
+
+            "piv_pin_verify" => {
+                let pin = match req.payload.get("pin").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'pin' parameter"),
+                };
+                match self.piv_engine.verify_pin(pin) {
+                    Ok(res) => IpcResponse::ok(&req.id, res),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "piv_logout" => {
+                match self.piv_engine.logout() {
+                    Ok(res) => IpcResponse::ok(&req.id, res),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "piv_sign" => {
+                let slot_id = match req.payload.get("slotId").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'slotId' parameter (9A, 9C, 9D, or 9E)"),
+                };
+                let payload = match req.payload.get("payload").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'payload' parameter"),
+                };
+                let pin_override = req.payload.get("pin").and_then(|p| p.as_str());
+
+                match self.piv_engine.sign_payload(slot_id, payload, pin_override) {
+                    Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "piv_cert_export" => {
+                let slot_id = match req.payload.get("slotId").and_then(|s| s.as_str()) {
+                    Some(s) => s,
+                    None => return IpcResponse::err(&req.id, "Missing 'slotId' parameter"),
+                };
+                match self.piv_engine.export_slot_certificate(slot_id) {
+                    Ok(cert) => IpcResponse::ok(&req.id, json!(cert)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
             }
 
             "execute_shell" => {

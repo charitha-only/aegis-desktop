@@ -8,6 +8,7 @@ pub mod hardware_key;
 pub mod hsm_pkcs11;
 pub mod mtls_pinning;
 pub mod p2p_sync;
+pub mod piv_slots;
 pub mod plugin_sig;
 pub mod pq_kem;
 pub mod privacy;
@@ -30,6 +31,8 @@ pub use hardware_key::HardwareKeyEngine;
 pub use hsm_pkcs11::{HsmKeyObject, HsmPkcs11Engine, HsmSignatureResult, HsmSlotInfo};
 pub use mtls_pinning::TlsPinningEngine;
 pub use p2p_sync::P2pSyncEngine;
+#[allow(unused_imports)]
+pub use piv_slots::{PivDeviceState, PivEngine, PivSignResult, PivSlotId, PivSlotInfo};
 pub use plugin_sig::SignatureVerifier;
 #[allow(unused_imports)]
 pub use pq_kem::{PqDecapsulationResult, PqEncapsulationResult, PqKemEngine, PqKemKeypair};
