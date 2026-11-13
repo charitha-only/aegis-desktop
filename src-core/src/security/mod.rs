@@ -1,5 +1,6 @@
 pub mod app_container;
 pub mod attestation;
+pub mod canary_guard;
 pub mod capabilities;
 pub mod compliance_report;
 pub mod enclave;
@@ -29,6 +30,8 @@ pub mod zk_proofs;
 pub use app_container::{AppContainerCapability, AppContainerEngine, AppContainerProfile};
 #[allow(unused_imports)]
 pub use attestation::{AttestationVerification, TpmAttestationEngine, TpmAttestationProof};
+#[allow(unused_imports)]
+pub use canary_guard::CanaryProtectedBuffer;
 pub use capabilities::{CapabilityManifest, SecurityEngine};
 #[allow(unused_imports)]
 pub use compliance_report::{ComplianceReportEngine, ComplianceReportPayload, SignedComplianceCertificate};

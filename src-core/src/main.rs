@@ -24,6 +24,8 @@ mod tray;
 mod updater;
 mod wasm;
 mod window;
+mod window_modal_parenting;
+mod window_process_supervisor;
 mod window_requests;
 
 use crash::CrashReporter;
