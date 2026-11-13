@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -488,8 +489,294 @@ impl AutoUpdater {
             "securityPolicy": "All updates must pass SHA-256 hash verification before execution",
             "airGapCompatible": true,
             "autoApply": false,
+            "deltaPatchingSupported": true,
             "note": "Supply your own manifest URL — Aegis never auto-downloads without developer opt-in"
         })
+    }
+
+    /// Differential Binary Delta Update Application:
+    /// Reconstructs target binary from base binary and differential delta patch,
+    /// verifies cryptographic integrity, stages the binary, and atomically replaces the executable.
+    pub fn apply_delta_payload(
+        &self,
+        base_bytes: &[u8],
+        patch_bytes: &[u8],
+        target_binary: Option<&Path>,
+    ) -> Result<serde_json::Value, String> {
+        let patch: DeltaPatch = serde_json::from_slice(patch_bytes)
+            .map_err(|e| format!("Failed to parse delta patch payload: {}", e))?;
+        if patch.magic != "AEGIS_DELTA_V1" {
+            return Err(format!("Invalid delta patch magic header: {}", patch.magic));
+        }
+        let reconstructed = patch.apply(base_bytes)?;
+        let staged = self.stage_update_bytes(
+            &format!("delta-applied-{}.bin", patch.target_version),
+            &reconstructed,
+            &patch.target_version,
+            Some(&patch.target_sha256),
+        )?;
+        let apply_res = self.apply_staged(target_binary)?;
+        let bytes_saved = if patch.patched_size > patch_bytes.len() {
+            patch.patched_size - patch_bytes.len()
+        } else {
+            0
+        };
+        let ratio = if patch.patched_size > 0 {
+            ((bytes_saved as f64 / patch.patched_size as f64) * 100.0).round()
+        } else {
+            0.0
+        };
+        Ok(serde_json::json!({
+            "success": true,
+            "baseVersion": patch.base_version,
+            "targetVersion": patch.target_version,
+            "targetSha256": patch.target_sha256,
+            "originalSize": patch.original_size,
+            "patchSize": patch_bytes.len(),
+            "reconstructedSize": reconstructed.len(),
+            "bytesSaved": bytes_saved,
+            "compressionRatio": format!("{}%", ratio),
+            "stage": staged,
+            "appliedResult": apply_res
+        }))
+    }
+
+    /// Creates a delta patch between base bytes and target bytes.
+    pub fn create_delta(
+        &self,
+        base_bytes: &[u8],
+        target_bytes: &[u8],
+        target_version: &str,
+    ) -> Result<DeltaPatch, String> {
+        Ok(DeltaPatch::create(
+            base_bytes,
+            target_bytes,
+            &self.current_version,
+            target_version,
+        ))
+    }
+
+    /// Verifies delta patch header and applicability against a local base binary.
+    pub fn verify_delta_header(
+        &self,
+        base_bytes: &[u8],
+        patch_bytes: &[u8],
+    ) -> Result<serde_json::Value, String> {
+        let patch: DeltaPatch = serde_json::from_slice(patch_bytes)
+            .map_err(|e| format!("Failed to parse delta patch: {}", e))?;
+        if patch.magic != "AEGIS_DELTA_V1" {
+            return Err("Invalid delta patch magic header".to_string());
+        }
+        let mut hasher = Sha256::new();
+        hasher.update(base_bytes);
+        let base_computed = format!("{:x}", hasher.finalize());
+        let base_matches = constant_time_eq_ascii(&base_computed, &patch.base_sha256);
+        let bytes_saved = if patch.patched_size > patch_bytes.len() {
+            patch.patched_size - patch_bytes.len()
+        } else {
+            0
+        };
+        let ratio = if patch.patched_size > 0 {
+            ((bytes_saved as f64 / patch.patched_size as f64) * 100.0).round()
+        } else {
+            0.0
+        };
+        Ok(serde_json::json!({
+            "valid": base_matches,
+            "magic": patch.magic,
+            "baseVersion": patch.base_version,
+            "targetVersion": patch.target_version,
+            "baseSha256Expected": patch.base_sha256,
+            "baseSha256Computed": base_computed,
+            "targetSha256": patch.target_sha256,
+            "originalSize": patch.original_size,
+            "patchedSize": patch.patched_size,
+            "operationsCount": patch.operations.len(),
+            "patchSizeBytes": patch_bytes.len(),
+            "bytesSaved": bytes_saved,
+            "compressionRatio": format!("{}%", ratio)
+        }))
+    }
+}
+
+// ─── Differential Binary Delta Engine (Quantum-Safe Patching) ────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "type")]
+pub enum DeltaOp {
+    #[serde(rename = "copy")]
+    Copy { offset: usize, len: usize },
+    #[serde(rename = "insert")]
+    Insert { data: Vec<u8> },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeltaPatch {
+    pub magic: String,              // "AEGIS_DELTA_V1"
+    pub base_version: String,
+    pub target_version: String,
+    pub base_sha256: String,
+    pub target_sha256: String,
+    pub original_size: usize,
+    pub patched_size: usize,
+    pub operations: Vec<DeltaOp>,
+}
+
+impl DeltaPatch {
+    /// Generates a differential binary delta patch between base and target binary payloads.
+    /// Utilizes chunk block matching to detect unmodified spans and emit Copy instructions,
+    /// while emitting Insert instructions for modified or new bytes.
+    pub fn create(
+        base_bytes: &[u8],
+        target_bytes: &[u8],
+        base_version: &str,
+        target_version: &str,
+    ) -> Self {
+        let mut hasher = Sha256::new();
+        hasher.update(base_bytes);
+        let base_sha256 = format!("{:x}", hasher.finalize());
+
+        let mut hasher = Sha256::new();
+        hasher.update(target_bytes);
+        let target_sha256 = format!("{:x}", hasher.finalize());
+
+        let block_size = 16;
+        let mut block_index: HashMap<[u8; 16], Vec<usize>> = HashMap::new();
+
+        if base_bytes.len() >= block_size {
+            for i in 0..=(base_bytes.len() - block_size) {
+                let mut chunk = [0u8; 16];
+                chunk.copy_from_slice(&base_bytes[i..i + block_size]);
+                block_index.entry(chunk).or_default().push(i);
+            }
+        }
+
+        let mut operations = Vec::new();
+        let mut pending_insert = Vec::new();
+        let mut t_idx = 0;
+
+        while t_idx < target_bytes.len() {
+            let mut match_found = false;
+            let mut best_base_offset = 0;
+            let mut best_len = 0;
+
+            if t_idx + block_size <= target_bytes.len() {
+                let mut probe = [0u8; 16];
+                probe.copy_from_slice(&target_bytes[t_idx..t_idx + block_size]);
+
+                if let Some(offsets) = block_index.get(&probe) {
+                    for &base_off in offsets {
+                        let mut curr_len = 0;
+                        while t_idx + curr_len < target_bytes.len()
+                            && base_off + curr_len < base_bytes.len()
+                            && target_bytes[t_idx + curr_len] == base_bytes[base_off + curr_len]
+                        {
+                            curr_len += 1;
+                        }
+                        if curr_len > best_len {
+                            best_len = curr_len;
+                            best_base_offset = base_off;
+                        }
+                    }
+                    if best_len >= block_size {
+                        match_found = true;
+                    }
+                }
+            }
+
+            if match_found {
+                if !pending_insert.is_empty() {
+                    operations.push(DeltaOp::Insert {
+                        data: std::mem::take(&mut pending_insert),
+                    });
+                }
+                operations.push(DeltaOp::Copy {
+                    offset: best_base_offset,
+                    len: best_len,
+                });
+                t_idx += best_len;
+            } else {
+                pending_insert.push(target_bytes[t_idx]);
+                t_idx += 1;
+            }
+        }
+
+        if !pending_insert.is_empty() {
+            operations.push(DeltaOp::Insert {
+                data: pending_insert,
+            });
+        }
+
+        Self {
+            magic: "AEGIS_DELTA_V1".to_string(),
+            base_version: base_version.to_string(),
+            target_version: target_version.to_string(),
+            base_sha256,
+            target_sha256,
+            original_size: base_bytes.len(),
+            patched_size: target_bytes.len(),
+            operations,
+        }
+    }
+
+    /// Applies differential patch instructions to the base binary.
+    /// Strictly verifies the base SHA-256 before patch application,
+    /// checks bounds on every copy operation, and verifies the target
+    /// SHA-256 against the expected digest upon reconstruction.
+    pub fn apply(&self, base_bytes: &[u8]) -> Result<Vec<u8>, String> {
+        let mut hasher = Sha256::new();
+        hasher.update(base_bytes);
+        let base_computed = format!("{:x}", hasher.finalize());
+
+        if !constant_time_eq_ascii(&base_computed, &self.base_sha256) {
+            return Err(format!(
+                "DELTA PATCH BASE MISMATCH: Expected base hash {}, got {}. Cannot apply patch to untrusted base binary.",
+                self.base_sha256, base_computed
+            ));
+        }
+
+        let mut reconstructed = Vec::with_capacity(self.patched_size);
+
+        for op in &self.operations {
+            match op {
+                DeltaOp::Copy { offset, len } => {
+                    let end = offset.checked_add(*len).ok_or_else(|| {
+                        "Integer overflow in delta copy offset calculation".to_string()
+                    })?;
+                    if end > base_bytes.len() {
+                        return Err(format!(
+                            "DELTA PATCH CORRUPTION: Copy operation out of bounds (offset: {}, len: {}, base size: {})",
+                            offset, len, base_bytes.len()
+                        ));
+                    }
+                    reconstructed.extend_from_slice(&base_bytes[*offset..end]);
+                }
+                DeltaOp::Insert { data } => {
+                    reconstructed.extend_from_slice(data);
+                }
+            }
+        }
+
+        if reconstructed.len() != self.patched_size {
+            return Err(format!(
+                "DELTA RECONSTRUCTION SIZE ERROR: Expected {} bytes, produced {} bytes",
+                self.patched_size,
+                reconstructed.len()
+            ));
+        }
+
+        let mut hasher = Sha256::new();
+        hasher.update(&reconstructed);
+        let target_computed = format!("{:x}", hasher.finalize());
+
+        if !constant_time_eq_ascii(&target_computed, &self.target_sha256) {
+            return Err(format!(
+                "DELTA TARGET INTEGRITY VIOLATION: Computed target hash {} does not match expected hash {}",
+                target_computed, self.target_sha256
+            ));
+        }
+
+        Ok(reconstructed)
     }
 }
 
@@ -738,5 +1025,77 @@ mod tests {
 
         let journal_bad = updater.read_journal();
         assert_eq!(journal_bad.state, JournalState::RolledBack);
+    }
+
+    #[test]
+    fn test_delta_patch_create_and_apply_roundtrip() {
+        let base_data = b"AEGIS_CORE_V1_BASE_BINARY_0123456789_COMMON_KERNEL_ROUTINE_SECURITY_MODULE_TAIL";
+        let target_data = b"AEGIS_CORE_V1_PATCHED_BINARY_0123456789_COMMON_KERNEL_ROUTINE_QUANTUM_SAFE_MODULE_TAIL_EXTRA";
+
+        let patch = DeltaPatch::create(base_data, target_data, "1.3.0", "1.4.0");
+        assert_eq!(patch.magic, "AEGIS_DELTA_V1");
+        assert_eq!(patch.base_version, "1.3.0");
+        assert_eq!(patch.target_version, "1.4.0");
+        assert_eq!(patch.original_size, base_data.len());
+        assert_eq!(patch.patched_size, target_data.len());
+
+        // Reconstruct from base
+        let reconstructed = patch.apply(base_data).expect("Should apply cleanly");
+        assert_eq!(&reconstructed[..], &target_data[..]);
+
+        // Verify JSON serialization round-trip
+        let patch_json = serde_json::to_vec(&patch).expect("serialize patch");
+        let deserialized: DeltaPatch = serde_json::from_slice(&patch_json).expect("deserialize patch");
+        let reconstructed_from_json = deserialized.apply(base_data).expect("reconstruct from serialized");
+        assert_eq!(&reconstructed_from_json[..], &target_data[..]);
+    }
+
+    #[test]
+    fn test_delta_patch_rejects_mismatched_base() {
+        let base_data = b"ORIGINAL_ENTERPRISE_SYSTEM_CORE_BLOCK_0001";
+        let target_data = b"PATCHED_ENTERPRISE_SYSTEM_CORE_BLOCK_0002";
+        let patch = DeltaPatch::create(base_data, target_data, "1.3.0", "1.4.0");
+
+        let foreign_base = b"FOREIGN_MALICIOUS_SYSTEM_CORE_BLOCK_0001";
+        let res = patch.apply(foreign_base);
+        assert!(res.is_err());
+        assert!(res.unwrap_err().contains("DELTA PATCH BASE MISMATCH"));
+    }
+
+    #[test]
+    fn test_delta_patch_rejects_corrupted_patch() {
+        let base_data = b"BASE_DATA_FOR_DELTA_CORRUPTION_TEST_XYZ";
+        let target_data = b"TARGET_DATA_FOR_DELTA_CORRUPTION_TEST_XYZ";
+        let mut patch = DeltaPatch::create(base_data, target_data, "1.3.0", "1.4.0");
+
+        // Tamper target sha256
+        patch.target_sha256 = "0".repeat(64);
+        let res = patch.apply(base_data);
+        assert!(res.is_err());
+        assert!(res.unwrap_err().contains("DELTA TARGET INTEGRITY VIOLATION"));
+    }
+
+    #[test]
+    fn test_auto_updater_apply_delta_payload_workflow() {
+        let temp = TempDir::new();
+        let updater = AutoUpdater::new("1.3.0", temp.path());
+
+        let mock_exe = temp.path().join("aegis-core-active.exe");
+        let base_bytes = b"AEGIS_BASE_ENTERPRISE_APPLICATION_PAYLOAD_V130_STABLE";
+        fs::write(&mock_exe, base_bytes).unwrap();
+
+        let target_bytes = b"AEGIS_BASE_ENTERPRISE_APPLICATION_PAYLOAD_V140_QUANTUM_READY";
+        let patch = DeltaPatch::create(base_bytes, target_bytes, "1.3.0", "1.4.0");
+        let patch_bytes = serde_json::to_vec(&patch).unwrap();
+
+        let result = updater
+            .apply_delta_payload(base_bytes, &patch_bytes, Some(&mock_exe))
+            .expect("Delta application should succeed");
+
+        assert_eq!(result["success"], true);
+        assert_eq!(result["targetVersion"], "1.4.0");
+
+        let updated_exe = fs::read(&mock_exe).unwrap();
+        assert_eq!(&updated_exe[..], &target_bytes[..]);
     }
 }

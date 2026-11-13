@@ -1406,6 +1406,111 @@ impl IpcRouter {
                 serde_json::to_value(self.updater.read_journal()).unwrap_or(json!({})),
             ),
 
+            "updater_delta_verify" => {
+                let patch_raw = match req.payload.get("patch").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'patch' parameter (JSON string or base64)"),
+                };
+                let patch_bytes = if patch_raw.trim_start().starts_with('{') {
+                    patch_raw.as_bytes().to_vec()
+                } else {
+                    match crate::updater::decode_base64(patch_raw) {
+                        Ok(b) => b,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Invalid patch base64: {e}")),
+                    }
+                };
+
+                let base_bytes = if let Some(base_b64) = req.payload.get("baseData").and_then(|b| b.as_str()) {
+                    match crate::updater::decode_base64(base_b64) {
+                        Ok(b) => b,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Invalid baseData base64: {e}")),
+                    }
+                } else {
+                    let exe_path = match std::env::current_exe() {
+                        Ok(p) => p,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Cannot locate current executable: {e}")),
+                    };
+                    match std::fs::read(&exe_path) {
+                        Ok(b) => b,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Failed to read active executable for delta verification: {e}")),
+                    }
+                };
+
+                match self.updater.verify_delta_header(&base_bytes, &patch_bytes) {
+                    Ok(val) => IpcResponse::ok(&req.id, val),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "updater_delta_create" => {
+                let target_version = req.payload.get("targetVersion").and_then(|v| v.as_str()).unwrap_or("1.4.0");
+                let base_bytes = if let Some(base_b64) = req.payload.get("baseData").and_then(|b| b.as_str()) {
+                    match crate::updater::decode_base64(base_b64) {
+                        Ok(b) => b,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Invalid baseData base64: {e}")),
+                    }
+                } else {
+                    let exe_path = match std::env::current_exe() {
+                        Ok(p) => p,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Cannot locate current executable: {e}")),
+                    };
+                    match std::fs::read(&exe_path) {
+                        Ok(b) => b,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Failed to read active executable: {e}")),
+                    }
+                };
+
+                let target_b64 = match req.payload.get("targetData").and_then(|b| b.as_str()) {
+                    Some(b) => b,
+                    None => return IpcResponse::err(&req.id, "Missing 'targetData' base64 parameter"),
+                };
+                let target_bytes = match crate::updater::decode_base64(target_b64) {
+                    Ok(b) => b,
+                    Err(e) => return IpcResponse::err(&req.id, &format!("Invalid targetData base64: {e}")),
+                };
+
+                match self.updater.create_delta(&base_bytes, &target_bytes, target_version) {
+                    Ok(patch) => IpcResponse::ok(&req.id, serde_json::to_value(&patch).unwrap_or(json!({}))),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "updater_delta_apply" => {
+                let patch_raw = match req.payload.get("patch").and_then(|p| p.as_str()) {
+                    Some(p) => p,
+                    None => return IpcResponse::err(&req.id, "Missing 'patch' parameter (JSON string or base64)"),
+                };
+                let patch_bytes = if patch_raw.trim_start().starts_with('{') {
+                    patch_raw.as_bytes().to_vec()
+                } else {
+                    match crate::updater::decode_base64(patch_raw) {
+                        Ok(b) => b,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Invalid patch base64: {e}")),
+                    }
+                };
+
+                let base_bytes = if let Some(base_b64) = req.payload.get("baseData").and_then(|b| b.as_str()) {
+                    match crate::updater::decode_base64(base_b64) {
+                        Ok(b) => b,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Invalid baseData base64: {e}")),
+                    }
+                } else {
+                    let exe_path = match std::env::current_exe() {
+                        Ok(p) => p,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Cannot locate current executable: {e}")),
+                    };
+                    match std::fs::read(&exe_path) {
+                        Ok(b) => b,
+                        Err(e) => return IpcResponse::err(&req.id, &format!("Failed to read active executable: {e}")),
+                    }
+                };
+
+                match self.updater.apply_delta_payload(&base_bytes, &patch_bytes, None) {
+                    Ok(val) => IpcResponse::ok(&req.id, val),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
             // ─── PERMISSION MANAGER IPC (v0.13 / v0.14) ────────────────────
             "permissions_status" => IpcResponse::ok(
                 &req.id,
