@@ -7,12 +7,12 @@
 [![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v1.5.0-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/Tests-189%20Passing%20(100%25)-success?logo=github-actions)](https://github.com/charitha-only/aegis-desktop)
+[![Tests](https://img.shields.io/badge/Tests-209%20Passing%20(100%25)-success?logo=github-actions)](https://github.com/charitha-only/aegis-desktop)
 [![Compliance](https://img.shields.io/badge/Compliance-OWASP%20ASVS%205.0%20L3-00ffcc?logo=shield)](docs/ENTERPRISE_SECURITY_WHITEPAPER.md)
 [![PQ Signatures](https://img.shields.io/badge/Signatures-NIST%20FIPS%20204%20ML--DSA--65-38bdf8)](src-core/src/security/pq_dsa.rs)
 [![Native IPC](https://img.shields.io/badge/IPC-Sub--Millisecond%20Native%20Pipes-10b981)](src-core/src/ipc/native_transport.rs)
-[![RAM Guard](https://img.shields.io/badge/RAM%20Guard-DPAPI%20%2B%20VirtualLock-f59e0b)](src-core/src/security/mem_guard.rs)
-[![Kernel Sandbox](https://img.shields.io/badge/Sandbox-Windows%20Job%20Objects%20%2B%20Landlock-ef4444)](src-core/src/security/kernel_sandbox.rs)
+[![DevTools](https://img.shields.io/badge/DevTools-Security%20Inspector%20(Ctrl%2BShift%2BI)-f59e0b)](src-ui/src/DevToolsSecurityInspector.tsx)
+[![Kernel Sandbox](https://img.shields.io/badge/Sandbox-AppContainer%20%2B%20Landlock-ef4444)](src-core/src/security/app_container.rs)
 [![ZK Proofs](https://img.shields.io/badge/ZK%20Proofs-Bulletproofs%20Ristretto255-a855f7)](src-core/src/security/zk_proofs.rs)
 
 **A high-security, ultra-lightweight alternative to Electron for building sovereign enterprise desktop applications.**<br>
@@ -31,7 +31,7 @@ Bridging an ultra-fast **memory-safe Rust systems core** with **any modern web f
 > - **Kernel-Level In-Memory Protection & RAM Anti-Dump Sentinel:** Transient DPAPI `CryptProtectMemory` encryption, `VirtualLock` physical RAM pinning, and active external handle dump interception.
 > - **OS Kernel Sandboxing:** Windows Job Object hard limits (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, child process blocking, UI desktop isolation) and Linux Landlock LSM system call filters.
 > - **Privacy-Preserving Zero-Knowledge (ZK) Compliance Proofs:** Bulletproof-style range proofs and Pedersen commitments over the prime-order Ristretto255 curve proving financial bounds with exact 0 bits disclosed.
-> - **100% Verified Quality Guarantee:** **189 Rust core unit tests passing**, live sensitive operations and session lifecycle smoke tests passing, and zero compiler warnings on `aegis-core`.
+> - **100% Verified Quality Guarantee:** **209 Rust core unit tests passing**, live sensitive operations and session lifecycle smoke tests passing, and zero compiler warnings on `aegis-core`.
 
 > [!CAUTION]
 > ### ⚠️ Open Learning Initiative, AI Provenance & Security Disclaimer
@@ -40,7 +40,7 @@ Bridging an ultra-fast **memory-safe Rust systems core** with **any modern web f
 > This project was undertaken as a passionate personal learning journey by an independent developer to explore zero-trust systems engineering, low-level OS boundaries, and post-quantum cryptographic primitives. **It was engineered entirely utilizing generative AI assistance (Google Gemini and OpenAI ChatGPT).**
 >
 > 🛡️ **Security Notice & Humble Apology:**  
-> **Please be kindly advised that this software is NOT yet 100% security hardened or production-certified.** While it implements cutting-edge specifications (NIST FIPS 203/204, DPAPI, Kernel Sandboxing, Ristretto255 ZK proofs) and passes 189 unit tests, **it has NOT undergone independent third-party cryptographic audits, professional code verification, or live financial stress-testing.**  
+> **Please be kindly advised that this software is NOT yet 100% security hardened or production-certified.** While it implements cutting-edge specifications (NIST FIPS 203/204, DPAPI, Kernel Sandboxing, Ristretto255 ZK proofs) and passes 209 unit tests, **it has NOT undergone independent third-party cryptographic audits, professional code verification, or live financial stress-testing.**  
 > There may be unforeseen edge cases, implementation shortcomings, or bugs. **We humbly apologize for any inconveniences or deficiencies encountered.** Do not deploy in mission-critical banking or sovereign environments without your own independent security audits.
 >
 > 🤝 **Call for Contributors & Security Researchers:**  
@@ -67,6 +67,10 @@ Bridging an ultra-fast **memory-safe Rust systems core** with **any modern web f
 * 🛡️ **Win32 Ring-0 RASP & Memory Defense:** Live detection of attached debuggers, hardware breakpoints, and in-memory function hooks on Win32 symbols (`VirtualProtect`, `NtQueryInformationProcess`).
 * 👁️‍🗨️ **Hardware Anti-Screen Capture:** Win32 `SetWindowDisplayAffinity` (`WDA_EXCLUDEFROMCAPTURE`) hardware-enforced DWM display masking against OBS Studio, Zoom, Teams, and screen-scraping malware.
 * 📦 **Quantum-Safe Delta Auto-Updater:** Bounded differential patching with atomic rollback journals and SHA-256 target validation.
+* 🛠️ **Built-in DevTools & Security Inspector:** Real-time in-app telemetry HUD (`Ctrl+Shift+I`) monitoring <150 µs IPC latency, memory allocations, and firewall packet flows.
+* 🪟 **Process-Per-Window Sandboxing & Modal Parenting:** Multi-process window isolation with capability attenuation and Win32/Wayland native modal locking.
+* 🌐 **Zero-Trust Mesh & CRDT Sync:** Decentralized local peer discovery with authenticated Noise_XX handshakes and vector-clock state delta synchronization.
+* 📡 **Enterprise SIEM Telemetry Exporter:** Real-time event streaming compliant with CEF (Common Event Format) and RFC 5424 Syslog standards.
 * 🌐 **Frontend Agnostic:** Use React, Vue, Svelte, or plain HTML/TypeScript with seamless, type-safe IPC communication to Rust.
 
 ---
@@ -375,7 +379,7 @@ All capabilities, origin boundaries, and sandbox rules are declaratively defined
 
 | Version | Status | Architectural Highlights | Verified Tests |
 | :---: | :---: | :--- | :---: |
-| **`v1.5.0`** | 🟢 **Current Release** | Post-Quantum Digital Signatures (NIST FIPS 204 ML-DSA-65 / Dilithium), Sub-Millisecond Native OS IPC Transport (Named Pipes & Unix Domain Sockets), Kernel-Level In-Memory Protection & RAM Anti-Dump Sentinel (DPAPI & VirtualLock), OS Kernel Sandboxing (Job Objects / Landlock LSM), and Privacy-Preserving Zero-Knowledge (ZK) Compliance Proofs. | **189 Core Tests** |
+| **`v1.5.0`** | 🟢 **Current Release** | Post-Quantum Digital Signatures (NIST FIPS 204 ML-DSA-65 / Dilithium), Sub-Millisecond Native OS IPC Transport (Named Pipes & Unix Domain Sockets), Kernel-Level In-Memory Protection & RAM Anti-Dump Sentinel (DPAPI & VirtualLock), OS Kernel Sandboxing (Job Objects / Landlock LSM), and Privacy-Preserving Zero-Knowledge (ZK) Compliance Proofs. | **209 Core Tests** |
 | **`v1.4.0`** | ⚪ *Enterprise Release* | Differential Binary Delta Auto-Updater, NIST FIPS 203 Hybrid Post-Quantum KEM (ML-KEM-768 + X25519), NIST SP 800-73-4 PIV Smart Card Slots (9A, 9C, 9D, 9E), Native OS System Tray Daemon with Quick Air-Gap Killswitch, `aegis new` scaffolding & `aegis audit` command. | **173 Core Tests** |
 | **`v1.3.0`** | ⚪ *Enterprise Release* | Encrypted ChaCha20-Poly1305 DB with ACID transactions, Hardware TPM 2.0 PCR Sealing (PCR 0/2/7/11), Basel III / PCI-DSS Granular RBAC, Outbound Traffic Monitor with Panic Killswitch, and OWASP ASVS 5.0 L3 Compliance Auditor. | **155 Core Tests** |
 | **`v1.2.0`** | ⚪ *Security Release* | Win32 Ring-0 RASP anti-tampering (`IsDebuggerPresent` & `VirtualProtect` hook scans), mTLS SPKI public key pinning, physical FIDO2 / YubiKey CTAP2 touch signing, decentralized P2P Noise vault sync, and bilingual (EN/SI) localization. | **143 Core Tests** |
@@ -391,7 +395,7 @@ All capabilities, origin boundaries, and sandbox rules are declaratively defined
 Aegis enforces a strict zero-warning policy across all compiler targets and verification test suites:
 
 ```bash
-# 1. Run full Rust Core Unit Test Suite (189 passing tests)
+# 1. Run full Rust Core Unit Test Suite (209 passing tests)
 cargo test --manifest-path src-core/Cargo.toml
 
 # 2. Run Live Core Smoke Suite (Sensitive operations, session lifecycles, and IPC contracts)
@@ -457,7 +461,7 @@ Working alongside these AI models made it possible to rapidly implement advanced
 ### ⚠️ Security Limitations & Sincere Apology
 Because this project represents a single developer's experimental exploration:
 1. **No Independent Cryptographic Audit:** This software has **not** yet been vetted or certified by certified cybersecurity auditors, mathematical cryptographers, or formal verification tools.
-2. **Not 100% Production Ready:** While the project achieves clean compilation, zero warnings, and passes 189 comprehensive automated test vectors, real-world deployment in mission-critical financial, sovereign, or industrial settings carries inherent risks.
+2. **Not 100% Production Ready:** While the project achieves clean compilation, zero warnings, and passes 209 comprehensive automated test vectors, real-world deployment in mission-critical financial, sovereign, or industrial settings carries inherent risks.
 3. **Shortcomings & Bugs:** There may still be edge-case memory leaks, timing side-channels, or logical flaws. **We offer a sincere and humble apology to anyone who encounters unexpected behaviors, crashes, or inconveniences.**
 
 ### 🌐 An Open Invitation to the Community

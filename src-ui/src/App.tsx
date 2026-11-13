@@ -43,6 +43,7 @@ import {
   IpcResponse,
 } from './aegis-bridge';
 import { AdvancedSecuritySuite } from './AdvancedSecuritySuite';
+import { DevToolsSecurityInspector } from './DevToolsSecurityInspector';
 import { translations, Language } from './i18n';
 
 interface AuditLog {
@@ -72,6 +73,18 @@ export default function App() {
   }, [lang]);
 
   const [connected, setConnected] = useState(false);
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
+
+  useEffect(() => {
+    const handleDevToolsShortcut = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+        e.preventDefault();
+        setIsDevToolsOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleDevToolsShortcut);
+    return () => window.removeEventListener('keydown', handleDevToolsShortcut);
+  }, []);
   const [srAnnouncement, setSrAnnouncement] = useState('Aegis Desktop Dashboard Ready');
   const [nonce, setNonce] = useState<string | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
@@ -1267,7 +1280,7 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', color: '#f1f5f9' }}>
-              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#34d399', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '2px 8px', borderRadius: '4px', marginLeft: '6px', fontWeight: 600 }}>v1.0.0 PRODUCTION</span>
+              AEGIS DESKTOP <span style={{ fontSize: '11px', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '2px 8px', borderRadius: '4px', marginLeft: '6px', fontWeight: 600 }}>v1.5.0 SOVEREIGN</span>
             </div>
             <div style={{ fontSize: '11px', color: '#64748b' }}>Custom Rust Core + React Sandboxed Framework</div>
           </div>
@@ -1327,6 +1340,32 @@ export default function App() {
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#94a3b8' }}
           >
             <RefreshCw style={{ width: '14px', height: '14px' }} />
+          </button>
+
+          {/* DevTools Security Inspector Trigger */}
+          <button
+            onClick={() => setIsDevToolsOpen(true)}
+            title="Open Aegis DevTools (Ctrl+Shift+I)"
+            aria-label="Open Aegis DevTools"
+            style={{
+              background: 'rgba(6, 182, 212, 0.15)',
+              border: '1px solid rgba(6, 182, 212, 0.4)',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: '#22d3ee',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              fontWeight: 700,
+            }}
+          >
+            <Terminal style={{ width: '13px', height: '13px' }} />
+            <span>DEVTOOLS</span>
+            <span style={{ fontSize: '9px', opacity: 0.7, background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: '3px' }}>
+              ^⇧I
+            </span>
           </button>
         </div>
       </header>
@@ -5259,6 +5298,11 @@ export default function App() {
           )}
         </main>
       </div>
+
+      <DevToolsSecurityInspector
+        isOpen={isDevToolsOpen}
+        onClose={() => setIsDevToolsOpen(false)}
+      />
     </div>
   );
 }
