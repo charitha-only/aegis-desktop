@@ -20,6 +20,7 @@ pub mod ratelimit;
 pub mod tpm_sealing;
 pub mod validator;
 pub mod vault;
+pub mod zk_proofs;
 
 #[allow(unused_imports)]
 pub use attestation::{AttestationVerification, TpmAttestationEngine, TpmAttestationProof};
@@ -52,6 +53,8 @@ pub use ratelimit::RateLimiter;
 pub use tpm_sealing::{PcrRegister, SealedDataPackage, TpmEnclaveStatus, TpmSealingEngine};
 pub use validator::OriginValidator;
 pub use vault::VaultEngine;
+#[allow(unused_imports)]
+pub use zk_proofs::{ZkProofEngine, ZkProofMetadata, ZkProofVerificationResult, ZkRangeProof};
 
 pub mod lifecycle;
 #[cfg(all(target_os = "linux", feature = "linux-lifecycle"))]

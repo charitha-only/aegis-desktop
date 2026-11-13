@@ -2989,6 +2989,35 @@ impl IpcRouter {
                 }
             }
 
+            // ── Privacy-Preserving Zero-Knowledge (ZK) Compliance Proofs (Bulletproofs) ──
+            "zk_proof_metadata" => {
+                IpcResponse::ok(&req.id, json!(crate::security::zk_proofs::ZkProofEngine::metadata()))
+            }
+
+            "zk_proof_create" => {
+                let secret_val = match req.payload.get("secretValue").and_then(|v| v.as_u64()) {
+                    Some(v) => v,
+                    None => return IpcResponse::err(&req.id, "Missing 'secretValue' parameter"),
+                };
+                let min_bound = req.payload.get("minBound").and_then(|v| v.as_u64()).unwrap_or(0);
+                let max_bound = req.payload.get("maxBound").and_then(|v| v.as_u64()).unwrap_or(1_000_000);
+                match crate::security::zk_proofs::ZkProofEngine::create_range_proof(secret_val, min_bound, max_bound) {
+                    Ok(proof) => IpcResponse::ok(&req.id, json!(proof)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "zk_proof_verify" => {
+                let proof: crate::security::zk_proofs::ZkRangeProof = match serde_json::from_value(req.payload.clone()) {
+                    Ok(p) => p,
+                    Err(e) => return IpcResponse::err(&req.id, &format!("Invalid ZK proof payload: {}", e)),
+                };
+                match crate::security::zk_proofs::ZkProofEngine::verify_range_proof(&proof) {
+                    Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
             "execute_shell" => {
                 // Strictly blocked by capability policy
                 match self.security.check_shell() {
