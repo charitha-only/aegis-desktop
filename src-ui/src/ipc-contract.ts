@@ -246,5 +246,47 @@ export function validCommandData(command: string, data: unknown): boolean {
   if (command === 'tray_menu_action') {
     return record(data);
   }
+  if (command === 'pq_dsa_keypair') {
+    return record(data) && text((data as any).hybrid_public_key_hex);
+  }
+  if (command === 'pq_dsa_sign') {
+    return record(data) && text((data as any).hybrid_signature_hex);
+  }
+  if (command === 'pq_dsa_verify') {
+    return record(data) && typeof (data as any).verified === 'boolean';
+  }
+  if (command === 'pq_dsa_metadata') {
+    return record(data) && text((data as any).standard);
+  }
+  if (command === 'native_ipc_status') {
+    return record(data) && typeof (data as any).is_listening === 'boolean';
+  }
+  if (command === 'native_ipc_benchmark') {
+    return record(data) && typeof (data as any).avg_latency_micros === 'number';
+  }
+  if (command === 'memory_guard_status') {
+    return record(data) && typeof (data as any).dpapi_memory_protection_active === 'boolean';
+  }
+  if (command === 'memory_guard_protect') {
+    return record(data) && text((data as any).secret_id);
+  }
+  if (command === 'memory_guard_anti_dump') {
+    return record(data) && typeof (data as any).antiDumpActive === 'boolean';
+  }
+  if (command === 'kernel_sandbox_status') {
+    return record(data) && typeof (data as any).is_active === 'boolean';
+  }
+  if (command === 'kernel_sandbox_enforce') {
+    return record(data) && typeof (data as any).is_active === 'boolean';
+  }
+  if (command === 'zk_proof_metadata') {
+    return record(data) && text((data as any).proof_system);
+  }
+  if (command === 'zk_proof_create') {
+    return record(data) && text((data as any).commitment_hex);
+  }
+  if (command === 'zk_proof_verify') {
+    return record(data) && typeof (data as any).valid === 'boolean';
+  }
   return true;
 }

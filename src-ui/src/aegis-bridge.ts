@@ -1688,6 +1688,163 @@ export class AegisBridge {
   public async triggerTrayMenuAction(actionId: string): Promise<IpcResponse<any>> {
     return this.invoke('tray_menu_action', { actionId });
   }
+
+  // ── Pillar 1: Post-Quantum Digital Signatures (NIST FIPS 204 ML-DSA-65) ─────
+  public async generatePqDsaKeypair(): Promise<IpcResponse<{
+    hybrid_public_key_hex: string;
+    hybrid_secret_key_hex: string;
+    classical_public_key_hex: string;
+    quantum_public_key_hex: string;
+    algorithm: string;
+    created_at: number;
+  }>> {
+    return this.invoke('pq_dsa_keypair');
+  }
+
+  public async signWithPqDsa(
+    hybridSecretKeyHex: string,
+    payload: string
+  ): Promise<IpcResponse<{
+    hybrid_signature_hex: string;
+    classical_signature_hex: string;
+    quantum_signature_hex: string;
+    payload_sha256: string;
+    algorithm: string;
+  }>> {
+    return this.invoke('pq_dsa_sign', { hybridSecretKeyHex, payload });
+  }
+
+  public async verifyPqDsaSignature(
+    hybridPublicKeyHex: string,
+    payload: string,
+    hybridSignatureHex: string
+  ): Promise<IpcResponse<{
+    verified: boolean;
+    classical_verified: boolean;
+    quantum_verified: boolean;
+    algorithm: string;
+    message_digest_sha256: string;
+  }>> {
+    return this.invoke('pq_dsa_verify', { hybridPublicKeyHex, payload, hybridSignatureHex });
+  }
+
+  public async getPqDsaMetadata(): Promise<IpcResponse<any>> {
+    return this.invoke('pq_dsa_metadata');
+  }
+
+  // ── Pillar 2: Sub-Millisecond Native OS IPC Transport ───────────────────────
+  public async getNativeIpcStatus(): Promise<IpcResponse<{
+    is_listening: boolean;
+    endpoint_path: string;
+    transport_type: string;
+    total_messages_processed: number;
+    total_bytes_transferred: number;
+    active_connections: number;
+    avg_latency_micros: number;
+    kernel_acl_enforced: boolean;
+  }>> {
+    return this.invoke('native_ipc_status');
+  }
+
+  public async runNativeIpcBenchmark(iterations = 100): Promise<IpcResponse<{
+    iterations: number;
+    total_elapsed_micros: number;
+    avg_latency_micros: number;
+    p50_micros: number;
+    p99_micros: number;
+    throughput_msgs_per_sec: number;
+    transport: string;
+  }>> {
+    return this.invoke('native_ipc_benchmark', { iterations });
+  }
+
+  // ── Pillar 3: Kernel In-Memory Protection & RAM Anti-Dump Sentinel ──────────
+  public async getMemoryGuardStatus(): Promise<IpcResponse<{
+    dpapi_memory_protection_active: boolean;
+    page_locking_enabled: boolean;
+    locked_memory_pages_count: number;
+    anti_dump_sentinel_active: boolean;
+    swapfile_leak_mitigation: boolean;
+    active_guarded_secrets: number;
+    memory_integrity_tier: string;
+  }>> {
+    return this.invoke('memory_guard_status');
+  }
+
+  public async protectTransientSecret(secret: string): Promise<IpcResponse<{
+    secret_id: string;
+    is_encrypted_in_ram: boolean;
+    page_locked: boolean;
+    access_counter: number;
+    created_at_timestamp: number;
+  }>> {
+    return this.invoke('memory_guard_protect', { secret });
+  }
+
+  public async toggleAntiDumpSentinel(enable: boolean): Promise<IpcResponse<{
+    antiDumpActive: boolean;
+  }>> {
+    return this.invoke('memory_guard_anti_dump', { enable });
+  }
+
+  // ── Pillar 4: OS Kernel Sandboxing (Linux Landlock & Windows Job Objects) ───
+  public async getKernelSandboxStatus(): Promise<IpcResponse<{
+    is_active: boolean;
+    sandbox_backend: string;
+    max_memory_limit_mb: number;
+    child_process_blocked: boolean;
+    ui_desktop_isolated: boolean;
+    ambient_privileges_dropped: boolean;
+    syscall_filter_active: boolean;
+    isolation_tier: string;
+  }>> {
+    return this.invoke('kernel_sandbox_status');
+  }
+
+  public async enforceKernelSandboxPolicy(
+    maxMemoryLimitMb = 512,
+    blockChildProcess = true,
+    restrictUi = true
+  ): Promise<IpcResponse<any>> {
+    return this.invoke('kernel_sandbox_enforce', { maxMemoryLimitMb, blockChildProcess, restrictUi });
+  }
+
+  // ── Pillar 5: Privacy-Preserving Zero-Knowledge (ZK) Compliance Proofs ─────
+  public async getZkProofMetadata(): Promise<IpcResponse<{
+    proof_system: string;
+    curve: string;
+    commitment_scheme: string;
+    zero_knowledge: boolean;
+    computational_soundness_bits: number;
+  }>> {
+    return this.invoke('zk_proof_metadata');
+  }
+
+  public async createZkRangeProof(
+    secretValue: number,
+    minBound: number,
+    maxBound: number
+  ): Promise<IpcResponse<{
+    commitment_hex: string;
+    min_bound: number;
+    max_bound: number;
+    response_scalar_v_hex: string;
+    response_scalar_r_hex: string;
+    challenge_hex: string;
+    created_at: number;
+  }>> {
+    return this.invoke('zk_proof_create', { secretValue, minBound, maxBound });
+  }
+
+  public async verifyZkRangeProof(proof: any): Promise<IpcResponse<{
+    valid: boolean;
+    commitment_verified: boolean;
+    range_verified: boolean;
+    statement: string;
+    commitment_hex: string;
+  }>> {
+    return this.invoke('zk_proof_verify', proof);
+  }
 }
 
 export const aegis = new AegisBridge();

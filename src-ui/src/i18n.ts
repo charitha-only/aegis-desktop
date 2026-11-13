@@ -27,6 +27,53 @@ export interface Translations {
     pq: string;
     piv: string;
     tray: string;
+    pqDsa: string;
+    nativeIpc: string;
+    memGuard: string;
+    kernelSandbox: string;
+    zkProof: string;
+  };
+  pqDsa: {
+    title: string;
+    subtitle: string;
+    genKeypair: string;
+    sign: string;
+    verify: string;
+    specMetadata: string;
+    signatureStatus: string;
+  };
+  nativeIpc: {
+    title: string;
+    subtitle: string;
+    runBenchmark: string;
+    status: string;
+    endpoint: string;
+    latency: string;
+    throughput: string;
+  };
+  memGuard: {
+    title: string;
+    subtitle: string;
+    protectSecret: string;
+    toggleAntiDump: string;
+    dpapiStatus: string;
+    lockedPages: string;
+  };
+  kernelSandbox: {
+    title: string;
+    subtitle: string;
+    enforce: string;
+    backend: string;
+    isolationTier: string;
+    childProcessBlocked: string;
+  };
+  zkProof: {
+    title: string;
+    subtitle: string;
+    generateProof: string;
+    verifyProof: string;
+    statement: string;
+    soundness: string;
   };
   delta: {
     title: string;
@@ -209,6 +256,11 @@ export const translations: Record<Language, Translations> = {
       pq: 'Post-Quantum KEM',
       piv: 'Smart Card & PIV',
       tray: 'Tray & Killswitch',
+      pqDsa: 'Post-Quantum Signatures',
+      nativeIpc: 'Sub-ms Native IPC',
+      memGuard: 'In-Memory RAM Guard',
+      kernelSandbox: 'OS Kernel Sandbox',
+      zkProof: 'ZK Compliance Proofs',
     },
     delta: {
       title: 'Differential Binary Delta Auto-Updater (Quantum-Safe Patching)',
@@ -241,10 +293,52 @@ export const translations: Record<Language, Translations> = {
     tray: {
       title: 'Native OS System Tray Daemon & Quick-Killswitch Controls',
       subtitle: 'Always-on background defensive monitor, real-time security badge, instant panic air-gap, and Maker-Checker alerts.',
-      quickKillswitch: 'Emergency Panic Air-Gap Killswitch',
-      lockWorkstation: 'Immediate Zero-Trust Lock',
-      statusBadge: 'Enclave Security State',
-      menuActions: 'Execute Tray Daemon Action',
+      quickKillswitch: 'Emergency Air-Gap Killswitch',
+      lockWorkstation: 'Lock Workstation Immediately',
+      statusBadge: 'Security Enclave Badge',
+      menuActions: 'Select Tray Action',
+    },
+    pqDsa: {
+      title: 'Post-Quantum Digital Signatures (NIST FIPS 204 ML-DSA-65 / Dilithium)',
+      subtitle: 'Lattice-based digital signatures combined with Ed25519 for dual-defense quantum forgery immunity.',
+      genKeypair: 'Generate Hybrid Keypair (1984B PK / 4064B SK)',
+      sign: 'Sign Payload with Hybrid Secret Key',
+      verify: 'Verify Dual Classical + Quantum Signature',
+      specMetadata: 'View NIST FIPS 204 Specifications',
+      signatureStatus: 'Dual-Envelope Signature Verified',
+    },
+    nativeIpc: {
+      title: 'Sub-Millisecond Native OS IPC Transport (Named Pipes & Sockets)',
+      subtitle: 'Zero-copy length-delimited binary framing bypassing loopback TCP network overhead with kernel ACLs.',
+      runBenchmark: 'Run Latency & Throughput Benchmark',
+      status: 'Transport Daemon Health',
+      endpoint: 'OS Kernel Endpoint',
+      latency: 'Average Roundtrip Latency',
+      throughput: 'Message Throughput Rate',
+    },
+    memGuard: {
+      title: 'Kernel In-Memory Protection & RAM Anti-Dump Sentinel',
+      subtitle: 'Transient DPAPI memory encryption and VirtualLock page pinning preventing Mimikatz and pagefile dumps.',
+      protectSecret: 'Encrypt Secret in Volatile RAM',
+      toggleAntiDump: 'Toggle Anti-Dump Sentinel',
+      dpapiStatus: 'DPAPI RAM Protection State',
+      lockedPages: 'Physical Memory Pages Pinned',
+    },
+    kernelSandbox: {
+      title: 'OS Kernel Sandboxing (Windows Job Objects & Landlock LSM)',
+      subtitle: 'Kernel-level process boundary enforcement restricting rogue child execution, desktop handles, and memory caps.',
+      enforce: 'Enforce Kernel Policy',
+      backend: 'Active Kernel Sandbox Backend',
+      isolationTier: 'OS Confinement Tier',
+      childProcessBlocked: 'Child Process Spawning Blocked',
+    },
+    zkProof: {
+      title: 'Privacy-Preserving Zero-Knowledge (ZK) Compliance Proofs',
+      subtitle: 'Dual-base Schnorr & Bulletproof range proofs verifying values without disclosing sensitive balances or amounts.',
+      generateProof: 'Generate ZK Range Proof',
+      verifyProof: 'Verify Range Statement',
+      statement: 'Certified Mathematical Statement',
+      soundness: 'Computational Soundness',
     },
     db: {
       title: 'Encrypted Embedded Database Engine',
@@ -389,6 +483,11 @@ export const translations: Record<Language, Translations> = {
       pq: 'පශ්චාත්-ක්වොන්ටම් KEM',
       piv: 'ස්මාර්ට් කාඩ් සහ PIV',
       tray: 'පද්ධති තැටිය සහ Killswitch',
+      pqDsa: 'පශ්චාත්-ක්වොන්ටම් අත්සන්',
+      nativeIpc: 'අතිවේගී ස්වදේශික IPC',
+      memGuard: 'මතකයේ සංකේතන ආරක්ෂණය',
+      kernelSandbox: 'කර්නල් මට්ටමේ සීමා පවුර',
+      zkProof: 'ශුන්‍ය-දැනුම් අනුකූලතා සාධන',
     },
     delta: {
       title: 'අවකල්‍ය ද්විමය ඩෙල්ටා ස්වයංක්‍රීය යාවත්කාලීන පද්ධතිය',
@@ -425,6 +524,48 @@ export const translations: Record<Language, Translations> = {
       lockWorkstation: 'වහාම Zero-Trust අගුලු දමන්න',
       statusBadge: 'ආරක්ෂණ කලාපයේ තත්ත්වය',
       menuActions: 'තැටි මෙනු ක්‍රියාමාර්ගයක් තෝරන්න',
+    },
+    pqDsa: {
+      title: 'පශ්චාත්-ක්වොන්ටම් ඩිජිටල් අත්සන් (NIST FIPS 204 ML-DSA-65 / Dilithium)',
+      subtitle: 'Ed25519 සමඟ ඒකාබද්ධ වූ දැලිස්-පාදක (Lattice-based) ද්විත්ව-ආරක්ෂණ ක්වොන්ටම් ව්‍යාජ-නොකළ හැකි අත්සන් පද්ධතිය.',
+      genKeypair: 'දෙමුහුන් යතුරු යුගලක් සාදන්න (1984B PK / 4064B SK)',
+      sign: 'රහස් යතුරෙන් දත්ත පෙළ ඩිජිටල්ව අත්සන් කරන්න',
+      verify: 'දෙමුහුන් සම්භාව්‍ය + ක්වොන්ටම් අත්සන සත්‍යාපනය කරන්න',
+      specMetadata: 'NIST FIPS 204 ප්‍රමිතියේ තාක්ෂණික විස්තර',
+      signatureStatus: 'ද්විත්ව-ආවරණ අත්සන සාර්ථකව තහවුරු විය',
+    },
+    nativeIpc: {
+      title: 'ක්ෂුද්‍ර තත්පර මට්ටමේ ස්වදේශික OS IPC නාලිකාව (Named Pipes & Sockets)',
+      subtitle: 'TCP/IP loopback ප්‍රමාදය ඉවත් කර සෘජු කර්නල් ACLs සහිත Zero-copy ද්විමය පද්ධති සන්නිවේදනය.',
+      runBenchmark: 'වේගය සහ කාර්යක්ෂමතාව (Benchmark) පරීක්ෂා කරන්න',
+      status: 'ස්වදේශික ප්‍රවාහන ඩීමන් තත්ත්වය',
+      endpoint: 'OS කර්නල් අන්ත ලක්ෂ්‍යය',
+      latency: 'සාමාන්‍ය රවුම් ගමන් කාලය (Latency)',
+      throughput: 'තත්පරයකට පණිවිඩ සංඛ්‍යාව (Throughput)',
+    },
+    memGuard: {
+      title: 'කර්නල් මට්ටමේ RAM මතක සංකේතනය සහ Anti-Dump ආරක්ෂකයා',
+      subtitle: 'මතකයේ පවතින රහස් සංකේතනය (DPAPI) සහ පිටු මාරුවීම් වැළැක්වීම (VirtualLock) මඟින් Mimikatz dump අවහිර කිරීම.',
+      protectSecret: 'RAM මතකයේ රහස සංකේතනය කර සුරකින්න',
+      toggleAntiDump: 'Anti-Dump මුරපොළ සක්‍රීය/අක්‍රීය කරන්න',
+      dpapiStatus: 'DPAPI RAM ආරක්ෂණ තත්ත්වය',
+      lockedPages: 'භෞතික මතකයේ රඳවා ඇති පිටු ගණන',
+    },
+    kernelSandbox: {
+      title: 'OS කර්නල් මට්ටමේ සීමා පවුර (Windows Job Objects & Landlock LSM)',
+      subtitle: 'අනවසර Child Process ක්‍රියාත්මක වීම්, ඩෙස්ක්ටොප් හැසිරවීම් සහ උපරිම මතක සීමා පනවන කර්නල් ආරක්ෂණය.',
+      enforce: 'කර්නල් ප්‍රතිපත්තිය බලාත්මක කරන්න',
+      backend: 'ක්‍රියාකාරී කර්නල් සැන්ඩ්බොක්ස් තාක්ෂණය',
+      isolationTier: 'OS සීමා කිරීමේ මට්ටම (Confinement Tier)',
+      childProcessBlocked: 'අනුබද්ධ ක්‍රියාවලි (Child Processes) අවහිර කර ඇත',
+    },
+    zkProof: {
+      title: 'රහස්‍යතා-ආරක්ෂිත ශුන්‍ය-දැනුම් (ZK) අනුකූලතා සාධන',
+      subtitle: 'සැබෑ ගිණුම් ශේෂ හෝ මුදල් ප්‍රමාණය හෙළි නොකර අගයන් නියමිත පරාසයක පවතින බව ඔප්පු කරන Bulletproofs පද්ධතිය.',
+      generateProof: 'ZK පරාස සාධනයක් (Range Proof) සාදන්න',
+      verifyProof: 'පරාස ප්‍රකාශනය සත්‍යාපනය කරන්න',
+      statement: 'සත්‍යාපිත ගණිතමය ප්‍රකාශය',
+      soundness: 'ගණනය කිරීමේ නිරවද්‍යතාව (Soundness)',
     },
     db: {
       title: 'ගුප්තකේතනය කළ අභ්‍යන්තර දත්ත සමුදාය (ChaCha20-Poly1305)',
