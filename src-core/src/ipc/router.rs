@@ -53,6 +53,7 @@ pub struct IpcRouter {
     traffic_monitor: Arc<crate::network::TrafficMonitorEngine>,
     compliance_report: Arc<crate::security::ComplianceReportEngine>,
     piv_engine: Arc<crate::security::PivEngine>,
+    tray_daemon: Arc<crate::tray::TrayDaemonEngine>,
     sensitive_limiter: crate::security::RateLimiter,
     vault_sessions: Arc<crate::security::vault_session::VaultSessions>,
     dispatch: std::sync::Mutex<()>,
@@ -147,6 +148,7 @@ impl IpcRouter {
             traffic_monitor: Arc::new(crate::network::TrafficMonitorEngine::new()),
             compliance_report: Arc::new(crate::security::ComplianceReportEngine::new()),
             piv_engine: Arc::new(crate::security::PivEngine::new()),
+            tray_daemon: Arc::new(crate::tray::TrayDaemonEngine::new()),
             sensitive_limiter: crate::security::RateLimiter::new(20, 60, 60),
         }
     }
@@ -2842,6 +2844,36 @@ impl IpcRouter {
                 };
                 match self.piv_engine.export_slot_certificate(slot_id) {
                     Ok(cert) => IpcResponse::ok(&req.id, json!(cert)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            // ── Native OS System Tray Daemon & Quick-Killswitch Controls ────
+            "tray_status_get" => {
+                IpcResponse::ok(&req.id, self.tray_daemon.get_tray_status())
+            }
+
+            "tray_quick_killswitch" => {
+                let enabled = req.payload.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true);
+                self.traffic_monitor.toggle_killswitch(enabled);
+                match self.tray_daemon.set_quick_killswitch(enabled) {
+                    Ok(res) => IpcResponse::ok(&req.id, res),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
+            }
+
+            "tray_menu_action" => {
+                let action_id = match req.payload.get("actionId").and_then(|a| a.as_str()) {
+                    Some(a) => a,
+                    None => return IpcResponse::err(&req.id, "Missing 'actionId' parameter"),
+                };
+                if action_id == "quick_killswitch" {
+                    let curr_status = self.tray_daemon.get_tray_status();
+                    let is_active = curr_status.get("quickKillswitchActive").and_then(|v| v.as_bool()).unwrap_or(false);
+                    self.traffic_monitor.toggle_killswitch(!is_active);
+                }
+                match self.tray_daemon.trigger_menu_action(action_id) {
+                    Ok(res) => IpcResponse::ok(&req.id, res),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
             }
