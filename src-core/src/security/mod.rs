@@ -6,6 +6,7 @@ pub mod fido2_token;
 pub mod handshake;
 pub mod hardware_key;
 pub mod hsm_pkcs11;
+pub mod mem_guard;
 pub mod mtls_pinning;
 pub mod p2p_sync;
 pub mod piv_slots;
@@ -30,6 +31,8 @@ pub use handshake::HandshakeSession;
 pub use hardware_key::HardwareKeyEngine;
 #[allow(unused_imports)]
 pub use hsm_pkcs11::{HsmKeyObject, HsmPkcs11Engine, HsmSignatureResult, HsmSlotInfo};
+#[allow(unused_imports)]
+pub use mem_guard::{GuardedBuffer, GuardedSecretDescriptor, MemoryGuardEngine, MemoryGuardStatus};
 pub use mtls_pinning::TlsPinningEngine;
 pub use p2p_sync::P2pSyncEngine;
 #[allow(unused_imports)]

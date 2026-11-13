@@ -55,6 +55,7 @@ pub struct IpcRouter {
     piv_engine: Arc<crate::security::PivEngine>,
     tray_daemon: Arc<crate::tray::TrayDaemonEngine>,
     native_transport: Arc<crate::ipc::native_transport::NativeTransportEngine>,
+    memory_guard: Arc<crate::security::MemoryGuardEngine>,
     sensitive_limiter: crate::security::RateLimiter,
     vault_sessions: Arc<crate::security::vault_session::VaultSessions>,
     dispatch: std::sync::Mutex<()>,
@@ -151,6 +152,7 @@ impl IpcRouter {
             piv_engine: Arc::new(crate::security::PivEngine::new()),
             tray_daemon: Arc::new(crate::tray::TrayDaemonEngine::new()),
             native_transport: Arc::new(crate::ipc::native_transport::NativeTransportEngine::new()),
+            memory_guard: Arc::new(crate::security::MemoryGuardEngine::new()),
             sensitive_limiter: crate::security::RateLimiter::new(20, 60, 60),
         }
     }
@@ -2946,6 +2948,21 @@ impl IpcRouter {
             "native_ipc_benchmark" => {
                 let iters = req.payload.get("iterations").and_then(|v| v.as_u64()).unwrap_or(100) as usize;
                 IpcResponse::ok(&req.id, json!(self.native_transport.benchmark(iters)))
+            }
+
+            // ── Kernel In-Memory Protection & RAM Anti-Dump Sentinel (DPAPI / VirtualLock) ──
+            "memory_guard_status" => {
+                IpcResponse::ok(&req.id, json!(self.memory_guard.get_status()))
+            }
+
+            "memory_guard_protect" => {
+                let secret = req.payload.get("secret").and_then(|s| s.as_str()).unwrap_or("");
+                IpcResponse::ok(&req.id, json!(self.memory_guard.protect_transient_value(secret)))
+            }
+
+            "memory_guard_anti_dump" => {
+                let enable = req.payload.get("enable").and_then(|e| e.as_bool()).unwrap_or(true);
+                IpcResponse::ok(&req.id, json!({"antiDumpActive": self.memory_guard.toggle_anti_dump(enable)}))
             }
 
             "execute_shell" => {
