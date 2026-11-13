@@ -1,8 +1,10 @@
+pub mod app_container;
 pub mod attestation;
 pub mod capabilities;
 pub mod compliance_report;
 pub mod enclave;
 pub mod fido2_token;
+pub mod fuzz_harness;
 pub mod handshake;
 pub mod hardware_key;
 pub mod hsm_pkcs11;
@@ -17,11 +19,14 @@ pub mod pq_kem;
 pub mod privacy;
 pub mod rasp;
 pub mod ratelimit;
+pub mod smartcard_pcsc;
 pub mod tpm_sealing;
 pub mod validator;
 pub mod vault;
 pub mod zk_proofs;
 
+#[allow(unused_imports)]
+pub use app_container::{AppContainerCapability, AppContainerEngine, AppContainerProfile};
 #[allow(unused_imports)]
 pub use attestation::{AttestationVerification, TpmAttestationEngine, TpmAttestationProof};
 pub use capabilities::{CapabilityManifest, SecurityEngine};
@@ -29,6 +34,8 @@ pub use capabilities::{CapabilityManifest, SecurityEngine};
 pub use compliance_report::{ComplianceReportEngine, ComplianceReportPayload, SignedComplianceCertificate};
 pub use enclave::BiometricEnclave;
 pub use fido2_token::Fido2TokenEngine;
+#[allow(unused_imports)]
+pub use fuzz_harness::{ConstantTimeBenchmarkResult, FuzzHarnessEngine};
 pub use handshake::HandshakeSession;
 pub use hardware_key::HardwareKeyEngine;
 #[allow(unused_imports)]
@@ -49,6 +56,8 @@ pub use pq_kem::{PqDecapsulationResult, PqEncapsulationResult, PqKemEngine, PqKe
 pub use privacy::PrivacyShield;
 pub use rasp::RaspEngine;
 pub use ratelimit::RateLimiter;
+#[allow(unused_imports)]
+pub use smartcard_pcsc::{CommandApdu, ResponseApdu, SmartCardHardwareType, SmartCardPcscEngine, SmartCardReaderInfo};
 #[allow(unused_imports)]
 pub use tpm_sealing::{PcrRegister, SealedDataPackage, TpmEnclaveStatus, TpmSealingEngine};
 pub use validator::OriginValidator;
