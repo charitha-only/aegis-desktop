@@ -54,6 +54,7 @@ pub struct IpcRouter {
     compliance_report: Arc<crate::security::ComplianceReportEngine>,
     piv_engine: Arc<crate::security::PivEngine>,
     tray_daemon: Arc<crate::tray::TrayDaemonEngine>,
+    native_transport: Arc<crate::ipc::native_transport::NativeTransportEngine>,
     sensitive_limiter: crate::security::RateLimiter,
     vault_sessions: Arc<crate::security::vault_session::VaultSessions>,
     dispatch: std::sync::Mutex<()>,
@@ -149,6 +150,7 @@ impl IpcRouter {
             compliance_report: Arc::new(crate::security::ComplianceReportEngine::new()),
             piv_engine: Arc::new(crate::security::PivEngine::new()),
             tray_daemon: Arc::new(crate::tray::TrayDaemonEngine::new()),
+            native_transport: Arc::new(crate::ipc::native_transport::NativeTransportEngine::new()),
             sensitive_limiter: crate::security::RateLimiter::new(20, 60, 60),
         }
     }
@@ -2934,6 +2936,16 @@ impl IpcRouter {
                     Ok(res) => IpcResponse::ok(&req.id, res),
                     Err(e) => IpcResponse::err(&req.id, &e),
                 }
+            }
+
+            // ── Native OS IPC Transport (Windows Named Pipes & Unix Domain Sockets) ──
+            "native_ipc_status" => {
+                IpcResponse::ok(&req.id, json!(self.native_transport.get_status()))
+            }
+
+            "native_ipc_benchmark" => {
+                let iters = req.payload.get("iterations").and_then(|v| v.as_u64()).unwrap_or(100) as usize;
+                IpcResponse::ok(&req.id, json!(self.native_transport.benchmark(iters)))
             }
 
             "execute_shell" => {
