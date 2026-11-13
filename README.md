@@ -35,16 +35,15 @@ Bridging an ultra-fast **memory-safe Rust systems core** with **any modern web f
 
 > [!CAUTION]
 > ### ⚠️ Open Learning Initiative, AI Provenance & Security Disclaimer
-> ### ⚠️ අධ්‍යාපනික පර්යේෂණයක් බව, AI භාවිතය සහ ආරක්ෂණ සීමාවන් පිළිබඳ විශේෂ නිවේදනය
 >
-> 🧠 **Personal Learning & AI Origin (අධ්‍යාපනික ප්‍රයත්නය සහ AI තාක්ෂණය):**  
+> 🧠 **Personal Learning & AI Origin:**  
 > This project was undertaken as a passionate personal learning journey by an independent developer to explore zero-trust systems engineering, low-level OS boundaries, and post-quantum cryptographic primitives. **It was engineered entirely utilizing generative AI assistance (Google Gemini and OpenAI ChatGPT).**
 >
-> 🛡️ **Security Notice & Humble Apology (100% ආරක්ෂණ සහතිකය නොමැති බව සහ සමාව ඉල්ලීම):**  
+> 🛡️ **Security Notice & Humble Apology:**  
 > **Please be kindly advised that this software is NOT yet 100% security hardened or production-certified.** While it implements cutting-edge specifications (NIST FIPS 203/204, DPAPI, Kernel Sandboxing, Ristretto255 ZK proofs) and passes 189 unit tests, **it has NOT undergone independent third-party cryptographic audits, professional code verification, or live financial stress-testing.**  
 > There may be unforeseen edge cases, implementation shortcomings, or bugs. **We humbly apologize for any inconveniences or deficiencies encountered.** Do not deploy in mission-critical banking or sovereign environments without your own independent security audits.
 >
-> 🤝 **Call for Contributors & Security Researchers (වැඩිදියුණු කිරීමට ඔබ සැමට විවෘත ඇරයුම!):**  
+> 🤝 **Call for Contributors & Security Researchers:**  
 > Because this is an open learning effort with acknowledged shortcomings, **we warmly and enthusiastically invite anyone interested in developing, testing, auditing, and improving Aegis to join us!** Whether you want to point out flaws, submit pull requests, patch memory bounds, or enhance the frontend, your collaboration is deeply valued.
 > 
 > 👉 **[Read the Contributing Guide (CONTRIBUTING.md)](CONTRIBUTING.md)** • **[Submit an Issue / Bug Report](https://github.com/charitha-only/aegis-desktop/issues)** • **[Start a Discussion](https://github.com/charitha-only/aegis-desktop/discussions)**
@@ -436,7 +435,7 @@ aegis-desktop/
 │   │   ├── AdvancedSecuritySuite.tsx # Unified enterprise security dashboard
 │   │   ├── aegis-bridge.ts           # Type-safe TypeScript IPC SDK client
 │   │   ├── ipc-contract.ts           # Runtime contract validators
-│   │   └── i18n.ts                   # Bilingual localization (English & සිංහල)
+│   │   └── i18n.ts                   # Bilingual localization (English & Sinhala)
 ├── website/              # Official 60FPS motion graphics landing website
 ├── aegis.config.json     # Declarative security capabilities & window configuration
 ├── CONTRIBUTING.md       # Open-source contribution guidelines
@@ -446,22 +445,22 @@ aegis-desktop/
 
 ---
 
-## 🤝 Open Learning Project, AI Provenance & Community Invitation (අධ්‍යාපනික ප්‍රයත්නය, AI භාවිතය සහ විවෘත ඇරයුම)
+## 🤝 Open Learning Project, AI Provenance & Community Invitation
 
 Aegis Desktop was founded not as a corporate product, but as an ambitious **personal learning initiative** created by an individual software developer seeking to master systems-level security engineering, low-level operating system isolation boundaries, and next-generation cryptographic primitives.
 
-### 🤖 Generative AI Provenance (AI තාක්ෂණික සහයෝගීතාව)
+### 🤖 Generative AI Provenance
 The entire codebase—spanning the Rust systems core (`src-core`), the cyber-brutalist React UI (`src-ui`), the testing suites, and this landing infrastructure—was architected and written with intensive assistance from state-of-the-art **generative AI models, primarily Google Gemini and OpenAI ChatGPT**. 
 
 Working alongside these AI models made it possible to rapidly implement advanced RFC and NIST standards (such as NIST FIPS 203 ML-KEM, NIST FIPS 204 ML-DSA Dilithium, DPAPI memory guards, and Ristretto255 Bulletproofs).
 
-### ⚠️ Security Limitations & Sincere Apology (ආරක්ෂණ සීමාවන් සහ අවංක සමාව අයැදීම)
+### ⚠️ Security Limitations & Sincere Apology
 Because this project represents a single developer's experimental exploration:
 1. **No Independent Cryptographic Audit:** This software has **not** yet been vetted or certified by certified cybersecurity auditors, mathematical cryptographers, or formal verification tools.
 2. **Not 100% Production Ready:** While the project achieves clean compilation, zero warnings, and passes 189 comprehensive automated test vectors, real-world deployment in mission-critical financial, sovereign, or industrial settings carries inherent risks.
 3. **Shortcomings & Bugs:** There may still be edge-case memory leaks, timing side-channels, or logical flaws. **We offer a sincere and humble apology to anyone who encounters unexpected behaviors, crashes, or inconveniences.**
 
-### 🌐 An Open Invitation to the Community (වැඩිදියුණු කිරීමට ඔබ සැමට විවෘත ඇරයුම!)
+### 🌐 An Open Invitation to the Community
 Aegis is 100% open-source under the MIT license. We believe that peer review, collaborative learning, and collective wisdom are the greatest defenses in software security:
 
 - 🔍 **Security Researchers & Cryptographers:** If you spot mathematical weaknesses, constant-time violations, or sandboxing loopholes, please point them out or submit an advisory!
