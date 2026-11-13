@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Volume2, VolumeX, Github, ExternalLink, FileText, Lock, Terminal, Cpu } from 'lucide-react';
+import { Shield, Volume2, VolumeX, Github, ExternalLink, FileText, Lock, Terminal, Cpu, AlertTriangle } from 'lucide-react';
 import { CyberCanvas } from './components/CyberCanvas';
 import { HeroSection } from './components/HeroSection';
 import { AboutSection } from './components/AboutSection';
@@ -8,6 +8,7 @@ import { AntiCaptureDemo } from './components/AntiCaptureDemo';
 import { MakerCheckerDemo } from './components/MakerCheckerDemo';
 import { BenchmarkTelemetry } from './components/BenchmarkTelemetry';
 import { DownloadsSection } from './components/DownloadsSection';
+import { CommunityNotice } from './components/CommunityNotice';
 import { soundEffects } from './components/AudioEffects';
 
 export const App: React.FC = () => {
@@ -50,8 +51,24 @@ export const App: React.FC = () => {
       {/* Persistent Scanlines Overlay */}
       <div className="fixed inset-0 scanlines z-30 pointer-events-none opacity-40" />
 
+      {/* Top Persistent Learning & Security Advisory Bar */}
+      <div className="relative z-50 bg-gradient-to-r from-amber-950/90 via-black to-amber-950/90 border-b border-amber-500/30 py-2 px-4 text-center font-mono text-[11px] text-amber-200 flex items-center justify-center gap-2 flex-wrap">
+        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+        <span>
+          {isSi
+            ? '⚠️ [අධ්‍යාපනික නිවේදනය]: මෙය AI (Gemini/ChatGPT) මඟින් හැදෑරීම සඳහා නිර්මාණය කළ පර්යේෂණාත්මක ව්‍යාපෘතියකි. තවමත් 100% ක් සම්පූර්ණ ආරක්ෂිත නැත. අඩුපාඩු හඳුනාගෙන වැඩිදියුණු කිරීමට ඔබ සැමට විවෘතව ආරාධනා!'
+            : '⚠️ [NOTICE]: Educational AI-assisted project (Gemini/ChatGPT). Not yet 100% production-hardened. Open-source contributors & security researchers warmly welcomed!'}
+        </span>
+        <button
+          onClick={() => scrollToSection('community-notice')}
+          className="underline hover:text-white text-amber-400 font-bold ml-1 cursor-pointer"
+        >
+          {isSi ? '[වැඩිදුර විස්තර]' : '[LEARN MORE & CONTRIBUTE]'}
+        </button>
+      </div>
+
       {/* Top Navigation Bar */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[#050608]/85 backdrop-blur-md border-b border-white/10">
+      <header className="sticky top-0 left-0 right-0 z-40 bg-[#050608]/90 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo & Brand */}
           <div
@@ -117,6 +134,14 @@ export const App: React.FC = () => {
             >
               // {isSi ? 'බාගැනීම්' : 'DOWNLOADS'}
             </button>
+            <button
+              onClick={() => scrollToSection('community-notice')}
+              onMouseEnter={() => soundEffects.hover()}
+              className="text-amber-400 hover:text-amber-300 font-bold transition-colors tracking-wide flex items-center gap-1"
+            >
+              <AlertTriangle className="w-3 h-3 text-amber-400" />
+              // {isSi ? 'විවෘත ඇරයුම' : 'COMMUNITY'}
+            </button>
           </nav>
 
           {/* Right Utility Buttons */}
@@ -167,7 +192,7 @@ export const App: React.FC = () => {
               <Github className="w-4 h-4 text-slate-300" />
               <span>GITHUB</span>
               <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                v1.2.0
+                v1.5.0
               </span>
             </a>
 
@@ -193,6 +218,8 @@ export const App: React.FC = () => {
         />
 
         <AboutSection />
+
+        <CommunityNotice lang={lang} />
 
         <ExplodedArchitecture lang={lang} />
 

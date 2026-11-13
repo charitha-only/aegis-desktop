@@ -2,10 +2,7 @@
 
 #[cfg(unix)]
 use std::os::unix::net as unix_net;
-use std::{
-    net::{Shutdown, SocketAddr, TcpListener, TcpStream, ToSocketAddrs},
-    path::PathBuf,
-};
+use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
 
 /// Unified listener. Either a [`TcpListener`] or [`std::os::unix::net::UnixListener`]
 pub enum Listener {
@@ -83,6 +80,7 @@ impl Connection {
     pub(crate) fn admit(&mut self, count: &std::sync::Arc<std::sync::atomic::AtomicUsize>) -> bool {
         match self {
             Self::Tcp(s) => {
+                #[allow(deprecated)]
                 if count
                     .fetch_update(
                         std::sync::atomic::Ordering::AcqRel,

@@ -161,6 +161,7 @@ impl From<Request> for Message {
 
 // this trait is to make sure that Server implements Share and Send
 #[doc(hidden)]
+#[allow(dead_code)]
 trait MustBeShareDummy: Sync + Send {}
 #[doc(hidden)]
 impl MustBeShareDummy for Server {}

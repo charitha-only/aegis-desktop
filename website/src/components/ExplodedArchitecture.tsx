@@ -233,7 +233,7 @@ ledger.append(AuditBlock::new(block_hash, tx));`,
                 BLUEPRINT // DIE_STACK_0x7E
               </div>
               <div className="absolute bottom-3 right-3 font-mono text-[9px] text-slate-400 bg-black/80 px-2 py-1 rounded border border-white/10">
-                [IN PRODUCTION v1.2.0]
+                [IN PRODUCTION v1.5.0]
               </div>
             </div>
 

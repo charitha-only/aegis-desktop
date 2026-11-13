@@ -75,6 +75,7 @@ impl KernelSandboxEngine {
     }
 
     /// Verify kernel sandbox policy integrity
+    #[allow(dead_code)]
     pub fn verify_confinement(&self) -> bool {
         self.is_active.load(Ordering::Relaxed)
             && self.child_process_blocked.load(Ordering::Relaxed)
@@ -115,3 +116,4 @@ mod tests {
         assert!(engine.verify_confinement());
     }
 }
+

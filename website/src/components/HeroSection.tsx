@@ -112,7 +112,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
             <span className="font-mono text-xs tracking-wider uppercase text-amber-300 font-semibold">
-              AEGIS CORE v1.2.0 // {isSi ? 'ආරක්ෂක හා බැංකු මට්ටම' : 'BANKING & FINANCIAL TIER'}
+              AEGIS CORE v1.5.0 // {isSi ? 'ආරක්ෂක හා බැංකු මට්ටම' : 'BANKING & FINANCIAL TIER'}
             </span>
             <span className="text-white/20">|</span>
             <span className="font-mono text-[11px] text-slate-400 hidden sm:inline">
@@ -168,7 +168,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               className="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold rounded-lg font-mono text-sm tracking-wide shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
             >
               <Download className="w-4 h-4" />
-              <span>{isSi ? 'බාගත කරන්න (v1.2.0)' : 'DOWNLOAD v1.2.0'}</span>
+              <span>{isSi ? 'බාගත කරන්න (v1.5.0)' : 'DOWNLOAD v1.5.0'}</span>
             </button>
 
             <button
@@ -288,8 +288,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         >
           <div className="flex items-center gap-2">
             <span className="text-amber-400 font-bold">AEGIS-CORE:</span>
-            <span className="text-slate-300">v1.2.0</span>
-            <span className="text-emerald-400 text-[11px]">▲ 143/143 PASS</span>
+            <span className="text-slate-300">v1.5.0</span>
+            <span className="text-emerald-400 text-[11px]">▲ 189/189 PASS</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -305,32 +305,32 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">IPC LATENCY:</span>
-            <span className="text-emerald-400 font-bold">1.6 ms (p50)</span>
-            <span className="text-slate-500 text-[11px]">(&lt; 5ms)</span>
+            <span className="text-slate-400">NATIVE IPC:</span>
+            <span className="text-emerald-400 font-bold">&lt; 150 µs</span>
+            <span className="text-slate-500 text-[11px]">(8x FASTER)</span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-slate-400">COLD STARTUP:</span>
-            <span className="text-emerald-400 font-bold">26.4 ms</span>
+            <span className="text-emerald-400 font-bold">25.8 ms</span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-slate-400">MEMORY RSS:</span>
             <span className="text-amber-400 font-bold">8.80 MiB</span>
-            <span className="text-slate-500 text-[11px]">(ZERO-ALLOC RING)</span>
+            <span className="text-slate-500 text-[11px]">(DPAPI GUARD)</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-cyan-400 font-bold">DWM AFFINITY:</span>
-            <span className="text-slate-300">WDA_EXCLUDEFROMCAPTURE ACTIVE</span>
+            <span className="text-cyan-400 font-bold">POST-QUANTUM:</span>
+            <span className="text-slate-300">FIPS 203 (KEM) + FIPS 204 (DSA) ACTIVE</span>
           </div>
 
           {/* Repeat items for continuous ticker stream */}
           <div className="flex items-center gap-2">
             <span className="text-amber-400 font-bold">AEGIS-CORE:</span>
-            <span className="text-slate-300">v1.2.0</span>
-            <span className="text-emerald-400 text-[11px]">▲ 143/143 PASS</span>
+            <span className="text-slate-300">v1.5.0</span>
+            <span className="text-emerald-400 text-[11px]">▲ 189/189 PASS</span>
           </div>
 
           <div className="flex items-center gap-2">

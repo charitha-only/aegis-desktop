@@ -1,6 +1,17 @@
 # 🤝 Contributing to Aegis Desktop
 
-Thank you for your interest in contributing to **Aegis Desktop**! We welcome bug fixes, documentation improvements, security enhancements, and feature contributions from the community.
+Thank you for your interest in contributing to **Aegis Desktop**! We warmly welcome bug reports, security audits, documentation improvements, performance optimizations, and feature contributions from the global community.
+
+---
+
+## 🧠 Project Background & Open Community Invitation
+
+> [!IMPORTANT]
+> **Learning Journey & AI Provenance**: Aegis Desktop was created as a passionate personal learning initiative by an independent developer to explore low-level systems programming, native OS security boundaries, and post-quantum cryptography. **The codebase was developed entirely with the assistance of generative AI models (Google Gemini and OpenAI ChatGPT).**
+>
+> **Security Notice & Humble Apology**: Please note that while Aegis implements advanced defensive specifications (NIST FIPS 203/204, DPAPI, Kernel Sandboxing, ZK Proofs), **it has NOT yet undergone third-party commercial cryptographic audits and is NOT 100% production-hardened.** There may be edge cases, architectural gaps, or bugs. We humbly apologize for any inconveniences or shortcomings you may encounter.
+>
+> **Everyone is Welcome**: As this is an active learning project, **anyone who is interested in developing, testing, auditing, and improving Aegis is warmly invited to join in!** Whether you want to point out a bug, patch a memory leak, add tests, improve documentation, or refine the UI, your collaboration is deeply valued.
 
 ---
 

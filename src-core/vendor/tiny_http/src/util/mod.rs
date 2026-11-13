@@ -4,6 +4,7 @@ pub use self::fused_reader::FusedReader;
 pub use self::messages_queue::MessagesQueue;
 pub use self::refined_tcp_stream::RefinedTcpStream;
 pub use self::sequential::{SequentialReader, SequentialReaderBuilder};
+#[allow(unused_imports)]
 pub use self::sequential::{SequentialWriter, SequentialWriterBuilder};
 pub use self::task_pool::TaskPool;
 

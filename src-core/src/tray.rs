@@ -520,6 +520,7 @@ impl TrayDaemonEngine {
         }))
     }
 
+    #[allow(dead_code)]
     pub fn update_pending_approvals(&self, count: u32) {
         let mut st = self.state.write().unwrap();
         st.pending_maker_checker_approvals = count;

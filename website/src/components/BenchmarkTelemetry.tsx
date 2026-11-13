@@ -61,7 +61,7 @@ export const BenchmarkTelemetry: React.FC = () => {
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 bg-white/[0.01]">
                   <th className="py-3 px-6">METRIC / SPEC</th>
-                  <th className="py-3 px-6 text-amber-400 font-bold">AEGIS DESKTOP v1.2.0</th>
+                  <th className="py-3 px-6 text-amber-400 font-bold">AEGIS DESKTOP v1.5.0</th>
                   <th className="py-3 px-6 text-slate-400">TAURI 2.x</th>
                   <th className="py-3 px-6 text-slate-400">ELECTRON 32</th>
                 </tr>
