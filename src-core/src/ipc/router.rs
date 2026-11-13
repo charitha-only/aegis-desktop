@@ -56,6 +56,7 @@ pub struct IpcRouter {
     tray_daemon: Arc<crate::tray::TrayDaemonEngine>,
     native_transport: Arc<crate::ipc::native_transport::NativeTransportEngine>,
     memory_guard: Arc<crate::security::MemoryGuardEngine>,
+    kernel_sandbox: Arc<crate::security::KernelSandboxEngine>,
     sensitive_limiter: crate::security::RateLimiter,
     vault_sessions: Arc<crate::security::vault_session::VaultSessions>,
     dispatch: std::sync::Mutex<()>,
@@ -153,6 +154,7 @@ impl IpcRouter {
             tray_daemon: Arc::new(crate::tray::TrayDaemonEngine::new()),
             native_transport: Arc::new(crate::ipc::native_transport::NativeTransportEngine::new()),
             memory_guard: Arc::new(crate::security::MemoryGuardEngine::new()),
+            kernel_sandbox: Arc::new(crate::security::KernelSandboxEngine::new()),
             sensitive_limiter: crate::security::RateLimiter::new(20, 60, 60),
         }
     }
@@ -2963,6 +2965,28 @@ impl IpcRouter {
             "memory_guard_anti_dump" => {
                 let enable = req.payload.get("enable").and_then(|e| e.as_bool()).unwrap_or(true);
                 IpcResponse::ok(&req.id, json!({"antiDumpActive": self.memory_guard.toggle_anti_dump(enable)}))
+            }
+
+            // ── OS Kernel Sandboxing (Linux Landlock LSM + Windows Job Objects) ──
+            "kernel_sandbox_status" => {
+                IpcResponse::ok(&req.id, json!(self.kernel_sandbox.get_status()))
+            }
+
+            "kernel_sandbox_enforce" => {
+                let mem_mb = req.payload.get("maxMemoryLimitMb").and_then(|m| m.as_u64()).unwrap_or(512);
+                let block_child = req.payload.get("blockChildProcess").and_then(|b| b.as_bool()).unwrap_or(true);
+                let restrict_ui = req.payload.get("restrictUi").and_then(|u| u.as_bool()).unwrap_or(true);
+                let config = crate::security::KernelSandboxConfig {
+                    max_memory_limit_bytes: mem_mb * 1024 * 1024,
+                    block_child_process_creation: block_child,
+                    restrict_ui_handles: restrict_ui,
+                    drop_ambient_privileges: true,
+                    network_egress_restricted: false,
+                };
+                match self.kernel_sandbox.enforce_config(config) {
+                    Ok(res) => IpcResponse::ok(&req.id, json!(res)),
+                    Err(e) => IpcResponse::err(&req.id, &e),
+                }
             }
 
             "execute_shell" => {
