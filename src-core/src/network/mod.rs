@@ -1,4 +1,7 @@
+pub mod p2p_mesh;
 pub mod traffic_monitor;
+#[allow(unused_imports)]
+pub use p2p_mesh::{CrdtDelta, MeshBeacon, MeshPeerNode, P2pMeshEngine, VectorClock};
 #[allow(unused_imports)]
 pub use traffic_monitor::{PacketFlowRecord, TrafficMonitorEngine, TrafficStats};
 

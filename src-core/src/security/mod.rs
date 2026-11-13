@@ -20,6 +20,7 @@ pub mod pq_kem;
 pub mod privacy;
 pub mod rasp;
 pub mod ratelimit;
+pub mod siem_telemetry;
 pub mod smartcard_pcsc;
 pub mod tpm_sealing;
 pub mod validator;
@@ -59,6 +60,8 @@ pub use pq_kem::{PqDecapsulationResult, PqEncapsulationResult, PqKemEngine, PqKe
 pub use privacy::PrivacyShield;
 pub use rasp::RaspEngine;
 pub use ratelimit::RateLimiter;
+#[allow(unused_imports)]
+pub use siem_telemetry::{SecurityEventCategory, SiemSecurityEvent, SiemSeverity, SiemTelemetryEngine};
 #[allow(unused_imports)]
 pub use smartcard_pcsc::{CommandApdu, ResponseApdu, SmartCardHardwareType, SmartCardPcscEngine, SmartCardReaderInfo};
 #[allow(unused_imports)]
