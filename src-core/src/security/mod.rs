@@ -10,9 +10,11 @@ pub mod handshake;
 pub mod hardware_key;
 pub mod hsm_pkcs11;
 pub mod kernel_sandbox;
+pub mod macos_seatbelt;
 pub mod mem_guard;
 pub mod mtls_pinning;
 pub mod p2p_sync;
+pub mod pentest_suite;
 pub mod piv_slots;
 pub mod plugin_sig;
 pub mod pq_dsa;
@@ -20,6 +22,8 @@ pub mod pq_kem;
 pub mod privacy;
 pub mod rasp;
 pub mod ratelimit;
+pub mod shamir_escrow;
+pub mod sidechannel_auditor;
 pub mod siem_telemetry;
 pub mod smartcard_pcsc;
 pub mod tpm_sealing;
@@ -47,9 +51,13 @@ pub use hsm_pkcs11::{HsmKeyObject, HsmPkcs11Engine, HsmSignatureResult, HsmSlotI
 #[allow(unused_imports)]
 pub use kernel_sandbox::{KernelSandboxConfig, KernelSandboxEngine, KernelSandboxStatus};
 #[allow(unused_imports)]
+pub use macos_seatbelt::{MacosSeatbeltEngine, SeatbeltProfile, SeatbeltRuleType};
+#[allow(unused_imports)]
 pub use mem_guard::{GuardedBuffer, GuardedSecretDescriptor, MemoryGuardEngine, MemoryGuardStatus};
 pub use mtls_pinning::TlsPinningEngine;
 pub use p2p_sync::P2pSyncEngine;
+#[allow(unused_imports)]
+pub use pentest_suite::{AttackVectorResult, PenTestEngine, PenTestVector, PenetrationTestReport};
 #[allow(unused_imports)]
 pub use piv_slots::{PivDeviceState, PivEngine, PivSignResult, PivSlotId, PivSlotInfo};
 pub use plugin_sig::SignatureVerifier;
@@ -60,6 +68,10 @@ pub use pq_kem::{PqDecapsulationResult, PqEncapsulationResult, PqKemEngine, PqKe
 pub use privacy::PrivacyShield;
 pub use rasp::RaspEngine;
 pub use ratelimit::RateLimiter;
+#[allow(unused_imports)]
+pub use shamir_escrow::{ShamirEscrowEngine, ShamirShare};
+#[allow(unused_imports)]
+pub use sidechannel_auditor::{DudectAuditReport, SideChannelAuditor};
 #[allow(unused_imports)]
 pub use siem_telemetry::{SecurityEventCategory, SiemSecurityEvent, SiemSeverity, SiemTelemetryEngine};
 #[allow(unused_imports)]

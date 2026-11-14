@@ -1896,6 +1896,63 @@ export class AegisBridge {
   }>> {
     return this.invoke('devtools_telemetry');
   }
+
+  // ── v1.7.0: macOS Seatbelt, Side-Channel Audits & Shamir Key Escrow ─────────
+  public async getMacosSeatbeltProfile(): Promise<IpcResponse<{
+    profile_name: string;
+    sbpl_script: string;
+    allowed_read_paths: string[];
+    allowed_write_paths: string[];
+    block_process_fork: boolean;
+    is_applied: boolean;
+  }>> {
+    return this.invoke('macos_seatbelt_profile');
+  }
+
+  public async runSideChannelAudit(): Promise<IpcResponse<{
+    routine_name: string;
+    total_samples: number;
+    class_a_mean_nanos: number;
+    class_b_mean_nanos: number;
+    t_statistic: number;
+    max_t_threshold: number;
+    is_constant_time: boolean;
+  }>> {
+    return this.invoke('sidechannel_audit');
+  }
+
+  public async runPenetrationTest(): Promise<IpcResponse<{
+    total_vectors_tested: number;
+    vectors_blocked: number;
+    overall_security_score: number;
+    execution_timestamp: number;
+    vector_results: Array<{
+      vector: string;
+      description: string;
+      simulated_adversary_payload: string;
+      defense_triggered: string;
+      was_blocked: boolean;
+      remediation_score: number;
+    }>;
+  }>> {
+    return this.invoke('pentest_run');
+  }
+
+  public async splitShamirSecret(secret: string, threshold = 3, totalShares = 5): Promise<IpcResponse<Array<{
+    share_index: number;
+    threshold: number;
+    total_shares: number;
+    share_data: number[];
+  }>>> {
+    return this.invoke('shamir_split', { secret, threshold, totalShares });
+  }
+
+  public async reconstructShamirSecret(shares: any[]): Promise<IpcResponse<{
+    recoveredPlaintext: string;
+    bytesHex: string;
+  }>> {
+    return this.invoke('shamir_reconstruct', shares);
+  }
 }
 
 export const aegis = new AegisBridge();

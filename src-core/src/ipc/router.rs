@@ -3073,13 +3073,67 @@ impl IpcRouter {
 
             "devtools_telemetry" => {
                 IpcResponse::ok(&req.id, json!({
-                    "version": "1.6.0",
+                    "version": "1.7.0",
                     "ipcTargetLatencyMicros": 150,
                     "coreMemoryRssMb": 8.80,
                     "canaryGuardStatus": "ACTIVE_UNCOMPROMISED",
-                    "sandboxEngine": "Windows Job Objects + AppContainer + Landlock LSM",
-                    "activeUnitTests": 209
+                    "sandboxEngine": "Windows AppContainer + macOS Seatbelt + Landlock LSM",
+                    "activeUnitTests": 215
                 }))
+            }
+
+            // ── v1.7.0 Enterprise Parity, Constant-Time Audits & Key Escrow ──
+            "macos_seatbelt_profile" => {
+                let engine = crate::security::MacosSeatbeltEngine::new("aegis.enterprise.sovereign", std::path::Path::new("sandbox"));
+                IpcResponse::ok(&req.id, json!(engine.get_profile()))
+            }
+
+            "sidechannel_audit" => {
+                let report = crate::security::SideChannelAuditor::audit_comparison_routine(
+                    "constant_time_slice_eq",
+                    1_000,
+                    |a, b| {
+                        if a.len() != b.len() {
+                            return false;
+                        }
+                        let mut acc = 0u8;
+                        for (x, y) in a.iter().zip(b.iter()) {
+                            acc |= x ^ y;
+                        }
+                        acc == 0
+                    },
+                );
+                IpcResponse::ok(&req.id, json!(report))
+            }
+
+            "pentest_run" => {
+                let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
+                let report = crate::security::PenTestEngine::run_security_assessment(ts);
+                IpcResponse::ok(&req.id, json!(report))
+            }
+
+            "shamir_split" => {
+                let secret = req.payload.get("secret").and_then(|s| s.as_str()).unwrap_or("MASTER_ESCROW_SEED");
+                let threshold = req.payload.get("threshold").and_then(|t| t.as_u64()).unwrap_or(3) as u8;
+                let total = req.payload.get("totalShares").and_then(|t| t.as_u64()).unwrap_or(5) as u8;
+                match crate::security::ShamirEscrowEngine::split_secret(secret.as_bytes(), threshold, total) {
+                    Ok(shares) => IpcResponse::ok(&req.id, json!(shares)),
+                    Err(e) => IpcResponse::err(&req.id, e),
+                }
+            }
+
+            "shamir_reconstruct" => {
+                let shares: Vec<crate::security::ShamirShare> = match serde_json::from_value(req.payload.clone()) {
+                    Ok(s) => s,
+                    Err(e) => return IpcResponse::err(&req.id, &format!("Invalid shares payload: {}", e)),
+                };
+                match crate::security::ShamirEscrowEngine::reconstruct_secret(&shares) {
+                    Ok(bytes) => IpcResponse::ok(&req.id, json!({
+                        "recoveredPlaintext": String::from_utf8_lossy(&bytes).to_string(),
+                        "bytesHex": bytes.iter().map(|b| format!("{:02X}", b)).collect::<String>()
+                    })),
+                    Err(e) => IpcResponse::err(&req.id, e),
+                }
             }
 
             "execute_shell" => {

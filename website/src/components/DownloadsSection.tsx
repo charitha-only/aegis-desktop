@@ -5,7 +5,7 @@ import { soundEffects } from './AudioEffects';
 export const DownloadsSection: React.FC = () => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
-  const releaseTag = 'v1.6.0';
+  const releaseTag = 'v1.7.0';
   const releaseBaseUrl = `https://github.com/charitha-only/aegis-desktop/releases/download/${releaseTag}`;
 
   const downloadAssets = [
@@ -68,7 +68,7 @@ export const DownloadsSection: React.FC = () => {
         <div className="max-w-3xl mb-16 space-y-3">
           <div className="inline-flex items-center gap-2 font-mono text-xs text-amber-400 uppercase tracking-widest">
             <Download className="w-4 h-4" />
-            <span>[DISTRIBUTION PACKAGES // v1.6.0]</span>
+            <span>[DISTRIBUTION PACKAGES // v1.7.0]</span>
           </div>
           <h2 className="text-3xl sm:text-5xl font-extrabold font-display text-white tracking-tight">
             DOWNLOAD & <span className="text-amber-400 glow-amber">[DEPLOY]</span>
