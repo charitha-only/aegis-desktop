@@ -1953,6 +1953,68 @@ export class AegisBridge {
   }>> {
     return this.invoke('shamir_reconstruct', shares);
   }
+
+  // ── v1.8.0: OASIS PKCS#11 v3.0 HSM, Anti-Forensics & Merkle Mountain Ranges ──
+  public async getPkcs11V3Info(): Promise<IpcResponse<{
+    availableSlots: number[];
+    tokenInfo: {
+      label: string;
+      manufacturer_id: string;
+      model: string;
+      serial_number: string;
+      hardware_version_major: number;
+      firmware_version_major: number;
+      flags: number;
+    } | null;
+    keysInSilicon: Array<{
+      handle: number;
+      label: string;
+      algorithm: string;
+      bits: number;
+      is_extractable: boolean;
+      usage_flags: number;
+    }>;
+    specification: string;
+  }>> {
+    return this.invoke('pkcs11_v3_info');
+  }
+
+  public async executeAntiForensicsPurge(): Promise<IpcResponse<{
+    wiped_buffers: number;
+    total_bytes_sanitized: number;
+    passes_completed: number;
+    standard: string;
+    final_verification_clean: boolean;
+    purge_timestamp: number;
+  }>> {
+    return this.invoke('anti_forensics_purge');
+  }
+
+  public async getMmrAuditStatus(): Promise<IpcResponse<{
+    mmrRoot: string;
+    totalLeaves: number;
+    peaks: string[];
+    sampleProof: {
+      target_pos: number;
+      target_hash: string;
+      audit_path: string[];
+      root_hash: string;
+    } | null;
+  }>> {
+    return this.invoke('mmr_audit_status');
+  }
+
+  public async getPlatformSecurityPosture(): Promise<IpcResponse<{
+    platform_name: string;
+    secure_boot_enabled: boolean;
+    tpm_2_0_present: boolean;
+    virtualization_based_security: boolean;
+    kernel_dma_protection: boolean;
+    sip_or_landlock_enforced: boolean;
+    defense_tier: string;
+  }>> {
+    return this.invoke('platform_security_posture');
+  }
 }
 
 export const aegis = new AegisBridge();

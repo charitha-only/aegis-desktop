@@ -1,3 +1,4 @@
+pub mod anti_forensics;
 pub mod app_container;
 pub mod attestation;
 pub mod canary_guard;
@@ -12,10 +13,13 @@ pub mod hsm_pkcs11;
 pub mod kernel_sandbox;
 pub mod macos_seatbelt;
 pub mod mem_guard;
+pub mod merkle_mountain_range;
 pub mod mtls_pinning;
 pub mod p2p_sync;
 pub mod pentest_suite;
 pub mod piv_slots;
+pub mod pkcs11_v3;
+pub mod platform_security_audit;
 pub mod plugin_sig;
 pub mod pq_dsa;
 pub mod pq_kem;
@@ -31,6 +35,8 @@ pub mod validator;
 pub mod vault;
 pub mod zk_proofs;
 
+#[allow(unused_imports)]
+pub use anti_forensics::{AntiForensicsEngine, AntiForensicsReceipt, SanitizationStandard};
 #[allow(unused_imports)]
 pub use app_container::{AppContainerCapability, AppContainerEngine, AppContainerProfile};
 #[allow(unused_imports)]
@@ -54,12 +60,18 @@ pub use kernel_sandbox::{KernelSandboxConfig, KernelSandboxEngine, KernelSandbox
 pub use macos_seatbelt::{MacosSeatbeltEngine, SeatbeltProfile, SeatbeltRuleType};
 #[allow(unused_imports)]
 pub use mem_guard::{GuardedBuffer, GuardedSecretDescriptor, MemoryGuardEngine, MemoryGuardStatus};
+#[allow(unused_imports)]
+pub use merkle_mountain_range::{MerkleMountainRange, MmrHash, MmrInclusionProof};
 pub use mtls_pinning::TlsPinningEngine;
 pub use p2p_sync::P2pSyncEngine;
 #[allow(unused_imports)]
 pub use pentest_suite::{AttackVectorResult, PenTestEngine, PenTestVector, PenetrationTestReport};
 #[allow(unused_imports)]
 pub use piv_slots::{PivDeviceState, PivEngine, PivSignResult, PivSlotId, PivSlotInfo};
+#[allow(unused_imports)]
+pub use pkcs11_v3::{HsmSiliconKey, Pkcs11Mechanism, Pkcs11Session, Pkcs11TokenInfo, Pkcs11V3Engine};
+#[allow(unused_imports)]
+pub use platform_security_audit::{HostOsFamily, HostSecurityPosture, PlatformSecurityAuditor};
 pub use plugin_sig::SignatureVerifier;
 #[allow(unused_imports)]
 pub use pq_dsa::{MlDsaEngine, MlDsaKeypairOutput, MlDsaMetadata, MlDsaSignOutput, MlDsaVerifyOutput};
