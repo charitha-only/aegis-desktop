@@ -2373,6 +2373,27 @@ export class AegisBridge {
     maxResidualRisk: string;
     complianceStandard: string;
   }>> { return this.invoke('stride_threat_model_status'); }
+  // ── v2.5.0: Confidential MPC-KDF, Blind Signatures, Attestation Graph & Binary Hash Chain ──
+  public async deriveMpcKdfKey(context = 'aegis://session/key-derivation/v2.5', threshold = 3): Promise<IpcResponse<{
+    derivedKey: { is_success: boolean; derived_key_hex: string; context_info: string; participants_used: number[]; key_length_bytes: number; error?: string; };
+    threshold: number; totalParticipants: number; protocol: string;
+  }>> { return this.invoke('mpc_kdf_derive', { context, threshold }); }
+
+  public async issueAndVerifyBlindSignature(message = 'AEGIS_ANONYMOUS_TOKEN_v2.5'): Promise<IpcResponse<{
+    token: { message: string; challenge_c_prime_hex: string; response_s_prime_hex: string; signer_public_key_hex: string; };
+    verification: { is_valid: boolean; message: string; signer_public_key_hex: string; protocol: string; error?: string; };
+    privacyGuarantee: string;
+  }>> { return this.invoke('blind_signature_issue_verify', { message }); }
+
+  public async evaluateAttestationGraph(nonce = 20261115): Promise<IpcResponse<{
+    graphReport: { total_nodes: number; verified_nodes: number; platform_trust_score: number; is_fully_trusted: boolean; evidence_nodes: any[]; evaluation_timestamp: number; failure_reasons: string[]; };
+    hardwareSecurityScore: number; standard: string;
+  }>> { return this.invoke('attestation_graph_evaluate', { nonce }); }
+
+  public async auditBinaryHashChain(): Promise<IpcResponse<{
+    auditReport: { total_pages_scanned: number; chain_root_hash_hex: string; is_clean: boolean; tampered_page_indices: number[]; memory_span_bytes: number; };
+    blocksScanned: number; tamperDetection: string;
+  }>> { return this.invoke('binary_hash_chain_audit'); }
 }
 
 export const aegis = new AegisBridge();

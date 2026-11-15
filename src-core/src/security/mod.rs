@@ -59,6 +59,10 @@ pub mod pq_x509;
 pub mod zk_range_proof;
 pub mod proximity_bounding;
 pub mod stride_threat_model;
+pub mod mpc_kdf;
+pub mod blind_signatures;
+pub mod attestation_graph;
+pub mod binary_hash_chain;
 
 #[allow(unused_imports)]
 pub use anti_forensics::{AntiForensicsEngine, AntiForensicsReceipt, SanitizationStandard};
@@ -169,6 +173,14 @@ pub use zk_range_proof::{PedersenCommitment, RangeProofVerificationResult, Range
 pub use proximity_bounding::{DistanceBoundingEngine, DistanceBoundingResult, DistanceBoundingSession, RoundExchangeRecord, DEFAULT_MAX_ROUNDTRIP_NANOS, EXCHANGE_ROUND_COUNT};
 #[allow(unused_imports)]
 pub use stride_threat_model::{RiskSeverity, StrideAssessmentReport, StrideCategory, StrideThreatEvaluator, ThreatEntry};
+#[allow(unused_imports)]
+pub use mpc_kdf::{DerivedKeyResult, MpcKdfEngine, MpcKdfShare, PartialKdfEvaluation};
+#[allow(unused_imports)]
+pub use blind_signatures::{BlindSignatureAuthority, BlindSignatureClient, BlindSignatureVerificationResult, BlindedTokenRequest, UnblindedToken};
+#[allow(unused_imports)]
+pub use attestation_graph::{AttestationEvidenceNode, AttestationGraphEngine, AttestationGraphReport, AttestationRootType};
+#[allow(unused_imports)]
+pub use binary_hash_chain::{BinaryHashChain, BinaryHashChainReport, MemoryPageBlock};
 
 pub mod lifecycle;
 #[cfg(all(target_os = "linux", feature = "linux-lifecycle"))]

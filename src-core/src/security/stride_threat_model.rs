@@ -1,4 +1,4 @@
-﻿//! Automated STRIDE Threat Modeling & Attack Surface Evaluation Engine.
+//! Automated STRIDE Threat Modeling & Attack Surface Evaluation Engine.
 //!
 //! Provides algorithmic STRIDE (Spoofing, Tampering, Repudiation, Information
 //! Disclosure, Denial of Service, Elevation of Privilege) threat modeling across

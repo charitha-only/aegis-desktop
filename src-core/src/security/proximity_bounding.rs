@@ -1,4 +1,4 @@
-﻿//! Cryptographic Distance Bounding Protocol (Hancke-Kuhn / Brands-Chaum).
+//! Cryptographic Distance Bounding Protocol (Hancke-Kuhn / Brands-Chaum).
 //!
 //! Provides ultra-low latency challenge-response distance bounding for NFC, BLE,
 //! and UWB physical hardware tokens to mathematically prevent radio-frequency

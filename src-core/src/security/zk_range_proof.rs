@@ -1,4 +1,4 @@
-﻿//! Zero-Knowledge Bulletproof-Style Range Proofs over Curve25519.
+//! Zero-Knowledge Bulletproof-Style Range Proofs over Curve25519.
 //!
 //! Provides zero-knowledge range proofs asserting that a confidential financial
 //! amount or asset balance $v$ lies within $[0, 2^{64}-1]$ without disclosing the

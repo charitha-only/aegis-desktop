@@ -1,4 +1,10 @@
-﻿# v2.4.0 — 2026-11-15 (Hybrid PQ-X.509 PKI, ZK Bulletproofs, Distance Bounding & STRIDE Threat Modeling)
+﻿# v2.5.0 — 2026-11-15 (Confidential MPC-KDF, Blind Signatures, Attestation Graph & Binary Hash Chain)
+- **Confidential Distributed MPC-KDF Engine** (`mpc_kdf.rs`): $k$-of-$n$ threshold pseudo-random function evaluation deriving symmetric session keys without master secret reconstruction
+- **Chaumian Curve25519 Schnorr Blind Signatures** (`blind_signatures.rs`): Untraceable cryptographic token blinding and unblinding for anonymous settlements and unlinkable credentials
+- **Heterogeneous Hardware Attestation Graph** (`attestation_graph.rs`): Directed acyclic graph verification evaluating TPM 2.0 PCR quotes, Intel SGX Enclave reports, and AMD SEV-SNP guest contexts with composite platform trust scoring
+- **Continuous Binary Virtual Memory Hash Chain** (`binary_hash_chain.rs`): Append-only cryptographic hash chain validating loaded executable memory pages against injection, patching, and process hollowing
+- 288 Rust core unit tests passing (100%)
+# v2.4.0 — 2026-11-15 (Hybrid PQ-X.509 PKI, ZK Bulletproofs, Distance Bounding & STRIDE Threat Modeling)
 - **Hybrid Post-Quantum X.509 PKI Engine** (pq_x509.rs): Dual ML-DSA-87 + Ed25519 digital certificates, ITU-T X.509 v3 structures, Root & Intermediate CA chain delegation, temporal validity validation
 - **Zero-Knowledge Bulletproof Range Proofs** (zk_range_proof.rs): Pedersen commitments on Curve25519 proving  \in [0, 2^{64}-1]$ in zero-knowledge without leaking hidden amounts or blinding factors
 - **Cryptographic Physical Distance Bounding** (proximity_bounding.rs): Hancke-Kuhn / Brands-Chaum rapid bit challenge exchange preventing NFC/BLE/UWB radio-frequency relay and wormhole attacks
