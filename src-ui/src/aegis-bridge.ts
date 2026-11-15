@@ -2229,6 +2229,99 @@ export class AegisBridge {
   }>> {
     return this.invoke('silicon_puf_fingerprint');
   }
+
+  // ── v2.2.0: NIST FIPS 204 ML-DSA-87, ZK Dynamic Accumulator, Secure Element Bus & PQ-TLS ──
+  public async signAndVerifyPqDsa87(message = 'SOVEREIGN_TRANSACTION_PAYLOAD_v2.2'): Promise<IpcResponse<{
+    metadata: {
+      standard: string;
+      classical_algorithm: string;
+      quantum_algorithm: string;
+      security_category: string;
+      hybrid_public_key_bytes: number;
+      hybrid_secret_key_bytes: number;
+      hybrid_signature_bytes: number;
+      dual_verification_required: boolean;
+    };
+    signature: {
+      hybrid_signature_hex: string;
+      classical_signature_hex: string;
+      quantum_signature_hex: string;
+      payload_sha256: string;
+      algorithm: string;
+    };
+    verification: {
+      verified: boolean;
+      classical_verified: boolean;
+      quantum_verified: boolean;
+      algorithm: string;
+      message_digest_sha256: string;
+    };
+    publicKeyHex: string;
+  }>> {
+    return this.invoke('pq_dsa87_sign_verify', { message });
+  }
+
+  public async getZkAccumulatorStatus(): Promise<IpcResponse<{
+    state: {
+      total_elements: number;
+      accumulator_root_hex: string;
+      update_epoch: number;
+    };
+    membershipWitness?: {
+      element_id: string;
+      witness_value_hex: string;
+      accumulator_value_hex: string;
+      is_valid: boolean;
+    };
+    revocationProof: {
+      credential_hash: string;
+      non_membership_witness_hex: string;
+      bezout_coefficient_hex: string;
+      is_revoked: boolean;
+    };
+    complexity: string;
+  }>> {
+    return this.invoke('zk_accumulator_status');
+  }
+
+  public async getSecureElementBusStatus(): Promise<IpcResponse<{
+    deviceStatus: {
+      bus_protocol: 'I2C' | 'SPI';
+      chip_model: string;
+      is_awake: boolean;
+      hardware_locked: boolean;
+      trng_ready: boolean;
+      bus_address: number;
+    };
+    trngSampleHex: string;
+    busSpecification: string;
+  }>> {
+    return this.invoke('secure_element_bus_status');
+  }
+
+  public async getPqTlsHandshakeStatus(): Promise<IpcResponse<{
+    clientHello: {
+      session_id_hex: string;
+      cipher_suite: number;
+      key_shares: Array<{
+        group_id: number;
+        group_name: string;
+        key_exchange_hex: string;
+      }>;
+      supported_groups: number[];
+      timestamp: number;
+    };
+    sessionKeys: {
+      master_secret_hex: string;
+      client_write_key_hex: string;
+      server_write_key_hex: string;
+      handshake_verified: boolean;
+      cipher_suite_name: string;
+    };
+    draftSpecification: string;
+  }>> {
+    return this.invoke('pq_tls_handshake_status');
+  }
 }
 
 export const aegis = new AegisBridge();

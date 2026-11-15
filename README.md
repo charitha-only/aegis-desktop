@@ -3,11 +3,11 @@
 <div align="center">
 
 [![Official Website](https://img.shields.io/badge/Official_Website-charitha--only.github.io%2Faegis--desktop-f59e0b.svg?style=flat-square&logo=google-chrome)](https://charitha-only.github.io/aegis-desktop/)
-[![Version](https://img.shields.io/badge/version-v2.1.0-blue.svg?style=flat-square&logo=git)](https://github.com/charitha-only/aegis-desktop/releases/tag/v2.1.0)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v2.1.0-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v2.2.0-blue.svg?style=flat-square&logo=git)](https://github.com/charitha-only/aegis-desktop/releases/tag/v2.2.0)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v2.2.0-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/Tests-252%20Passing%20(100%25)-success?logo=github-actions)](https://github.com/charitha-only/aegis-desktop)
+[![Tests](https://img.shields.io/badge/Tests-262%20Passing%20(100%25)-success?logo=github-actions)](https://github.com/charitha-only/aegis-desktop)
 [![Compliance](https://img.shields.io/badge/Compliance-OWASP%20ASVS%205.0%20L3-00ffcc?logo=shield)](docs/ENTERPRISE_SECURITY_WHITEPAPER.md)
 [![PQ Signatures](https://img.shields.io/badge/Signatures-NIST%20FIPS%20204%20ML--DSA--65-38bdf8)](src-core/src/security/pq_dsa.rs)
 [![Native IPC](https://img.shields.io/badge/IPC-Sub--Millisecond%20Native%20Pipes-10b981)](src-core/src/ipc/native_transport.rs)
@@ -25,12 +25,12 @@ Bridging an ultra-fast **memory-safe Rust systems core** with **any modern web f
 > 🌐 **Official Interactive Motion Graphics Website:**  
 > Experience the 60FPS cybernetic particle mesh, live Win32 DWM anti-screen capture simulator, 3D exploded micro-architecture, and real-time Four-Eyes consensus ledger at **[https://charitha-only.github.io/aegis-desktop/](https://charitha-only.github.io/aegis-desktop/)**.
 >
-> 🚀 **v2.1.0 — Enterprise Hardware HKDF, Threshold MPC, Flight Recorder & Silicon PUF:**  
-> - **Hardware-Enforced HKDF Key Derivation (NIST SP 800-108 & RFC 5869):** Hierarchical domain separation guaranteeing cryptographic isolation between storage, native IPC, and P2P mesh sub-systems.
-> - **Distributed Threshold Multi-Party Computation (FROST / Ed25519 MPC):** Flexible round-optimized Schnorr threshold signatures ($t$-of-$n$) where the group private key is never assembled on a single node.
-> - **Cryptographic Black Box Flight Recorder:** In-memory, SHA-256 hash-chained immutable security event journal with periodic cryptographic notarization seals.
-> - **Physical Unclonable Function (PUF) Silicon Anti-Cloning:** Models micro-architectural CPU performance jitter and hardware clock skew, binding cryptographic master keys directly to physical hardware silicon.
-> - **100% Verified Quality Guarantee:** **252 Rust core unit tests passing**, live sensitive operations and session lifecycle smoke tests passing, and zero compiler warnings on `aegis-core`.
+> 🚀 **v2.2.0 — Post-Quantum Identity, ZK Revocation, Secure Element Bus & PQ-TLS:**  
+> - **NIST FIPS 204 Category 5 ML-DSA-87 Digital Signatures:** Top-tier lattice-based dual signature scheme (4,691-byte signature envelope) providing maximum 256-bit quantum attack resistance.
+> - **Zero-Knowledge Cryptographic Dynamic Accumulator:** Constant-size $O(1)$ dynamic accumulator generating zero-knowledge membership witnesses and non-membership revocation proofs.
+> - **Hardware Secure Element Direct Bus Driver (SPI / I2C):** Native bus framing, CRC-16 hardware checksum verification, wake pulse sequence, and on-chip TRNG entropy queries for ATECC608A / SE050 crypto-chips.
+> - **Hybrid Post-Quantum TLS 1.3 Handshake Synthesizer (X25519MLKEM1024):** Conforms to `draft-ietf-tls-hybrid-design` KeyShare extensions and HKDF master secret derivation against quantum harvest attacks.
+> - **100% Verified Quality Guarantee:** **262 Rust core unit tests passing**, live sensitive operations and session lifecycle smoke tests passing, and zero compiler warnings on `aegis-core`.
 
 > [!CAUTION]
 > ### ⚠️ Open Learning Initiative, AI Provenance & Security Disclaimer
@@ -39,7 +39,7 @@ Bridging an ultra-fast **memory-safe Rust systems core** with **any modern web f
 > This project was undertaken as a passionate personal learning journey by an independent developer to explore zero-trust systems engineering, low-level OS boundaries, and post-quantum cryptographic primitives. **It was engineered entirely utilizing generative AI assistance (Google Gemini and OpenAI ChatGPT).**
 >
 > 🛡️ **Security Notice & Humble Apology:**  
-> **Please be kindly advised that this software is NOT yet 100% security hardened or production-certified.** While it implements cutting-edge specifications (NIST FIPS 203/204, DPAPI, Kernel Sandboxing, Ristretto255 ZK proofs) and passes 252 unit tests, **it has NOT undergone independent third-party cryptographic audits, professional code verification, or live financial stress-testing.**  
+> **Please be kindly advised that this software is NOT yet 100% security hardened or production-certified.** While it implements cutting-edge specifications (NIST FIPS 203/204, DPAPI, Kernel Sandboxing, Ristretto255 ZK proofs) and passes 262 unit tests, **it has NOT undergone independent third-party cryptographic audits, professional code verification, or live financial stress-testing.**  
 > There may be unforeseen edge cases, implementation shortcomings, or bugs. **We humbly apologize for any inconveniences or deficiencies encountered.** Do not deploy in mission-critical banking or sovereign environments without your own independent security audits.
 >
 > 🤝 **Call for Contributors & Security Researchers:**  
@@ -76,7 +76,7 @@ Bridging an ultra-fast **memory-safe Rust systems core** with **any modern web f
 
 ## 📊 Enterprise Framework Comparison
 
-| Capability / Metric | 🛡️ Aegis Desktop v2.1.0 | ⚡ Tauri v2 | 🌐 Electron v33 |
+| Capability / Metric | 🛡️ Aegis Desktop v2.2.0 | ⚡ Tauri v2 | 🌐 Electron v33 |
 | :--- | :---: | :---: | :---: |
 | **System Engine** | **Rust (Memory-Safe, Zero-Cost)** | Rust | C++ / Node.js Runtime |
 | **Idle Memory Footprint (RSS)** | **~8.8 MiB** (Physical Verified) | ~35 - 50 MiB | ~120 - 200 MiB |
@@ -390,7 +390,8 @@ All capabilities, origin boundaries, and sandbox rules are declaratively defined
 
 | Version | Status | Architectural Highlights | Verified Tests |
 | :---: | :---: | :--- | :---: |
-| **`v2.1.0`** | 🟢 **Current Release** | Hardware HKDF Key Derivation (NIST SP 800-108 / RFC 5869), Distributed Threshold MPC (FROST / Ed25519), SHA-256 Tamper-Resistant Black Box Flight Recorder, Physical Silicon PUF Anti-Cloning Binding. | **252 Core Tests** |
+| **`v2.2.0`** | 🟢 **Current Release** | Top-Tier NIST FIPS 204 ML-DSA-87 Digital Signatures (Category 5, 256-bit PQ), Zero-Knowledge Cryptographic Dynamic Accumulator (O(1) Revocation), Hardware Secure Element Bus Driver (ATECC608A/SE050 SPI/I2C), Hybrid Post-Quantum TLS 1.3 Handshake (X25519MLKEM1024). | **262 Core Tests** |
+| **`v2.1.0`** | ⚪ *Enterprise Release* | Hardware HKDF Key Derivation (NIST SP 800-108 / RFC 5869), Distributed Threshold MPC (FROST / Ed25519), SHA-256 Tamper-Resistant Black Box Flight Recorder, Physical Silicon PUF Anti-Cloning Binding. | **252 Core Tests** |
 | **`v2.0.0`** | ⚪ *Enterprise Release* | Production Hardening Milestone: Hardware Confidential Computing (Intel SGX / AMD SEV-SNP Remote Attestation), Google Project Wycheproof & NIST CAVP Test Suite, FIDO2/CTAP 2.1 Resident Credentials, Kernel eBPF Micro-Segmentation, and Fail-Closed Panic Sentinel. | **244 Core Tests** |
 | **`v1.9.0`** | ⚪ *Enterprise Release* | Linux Seccomp BPF Syscall Filter Synthesizer, NIST FIPS 203 Category 5 ML-KEM-1024 Post-Quantum KEM, Local Differential Privacy (ε, δ-DP) Perturbation Engine, and Verifiable Delay Functions (VDF) with Sequential Time-Locks. | **234 Core Tests** |
 | **`v1.8.0`** | ⚪ *Enterprise Release* | OASIS PKCS#11 v3.0 Cryptoki HSM Driver, DoD 5220.22-M 3-Pass Anti-Forensics Memory Sanitization, Merkle Mountain Range (MMR) $O(\log N)$ Audit Ledger, Multi-Platform Host Security Posture Diagnostics (Secure Boot, TPM 2.0, VBS, DMA). | **222 Core Tests** |
@@ -412,7 +413,7 @@ All capabilities, origin boundaries, and sandbox rules are declaratively defined
 Aegis enforces a strict zero-warning policy across all compiler targets and verification test suites:
 
 ```bash
-# 1. Run full Rust Core Unit Test Suite (252 passing tests)
+# 1. Run full Rust Core Unit Test Suite (262 passing tests)
 cargo test --manifest-path src-core/Cargo.toml
 
 # 2. Run Live Core Smoke Suite (Sensitive operations, session lifecycles, and IPC contracts)

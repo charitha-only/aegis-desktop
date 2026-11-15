@@ -29,12 +29,15 @@ pub mod pkcs11_v3;
 pub mod platform_security_audit;
 pub mod plugin_sig;
 pub mod pq_dsa;
+pub mod pq_dsa87;
 pub mod pq_kem;
 pub mod pq_kem1024;
+pub mod pq_tls_handshake;
 pub mod privacy;
 pub mod rasp;
 pub mod ratelimit;
 pub mod seccomp_bpf;
+pub mod secure_element_bus;
 pub mod shamir_escrow;
 pub mod sidechannel_auditor;
 pub mod siem_telemetry;
@@ -46,6 +49,7 @@ pub mod tpm_sealing;
 pub mod validator;
 pub mod vault;
 pub mod wycheproof_vectors;
+pub mod zk_accumulator;
 pub mod zk_proofs;
 
 #[allow(unused_imports)]
@@ -103,14 +107,20 @@ pub use plugin_sig::SignatureVerifier;
 #[allow(unused_imports)]
 pub use pq_dsa::{MlDsaEngine, MlDsaKeypairOutput, MlDsaMetadata, MlDsaSignOutput, MlDsaVerifyOutput};
 #[allow(unused_imports)]
+pub use pq_dsa87::{MlDsa87Engine, MlDsa87KeypairOutput, MlDsa87Metadata, MlDsa87SignOutput, MlDsa87VerifyOutput};
+#[allow(unused_imports)]
 pub use pq_kem::{PqDecapsulationResult, PqEncapsulationResult, PqKemEngine, PqKemKeypair};
 #[allow(unused_imports)]
 pub use pq_kem1024::{Hybrid1024Ciphertext, Hybrid1024Kem, Hybrid1024PublicKey, Hybrid1024SecretKey, MlKem1024Engine};
+#[allow(unused_imports)]
+pub use pq_tls_handshake::{HybridClientHello, HybridServerHello, HybridTlsSessionKeys, PqTlsHandshakeSynthesizer, Tls13KeyShareEntry};
 pub use privacy::PrivacyShield;
 pub use rasp::RaspEngine;
 pub use ratelimit::RateLimiter;
 #[allow(unused_imports)]
 pub use seccomp_bpf::{SeccompBpfSynthesizer, SeccompPolicyReport, SockFilter};
+#[allow(unused_imports)]
+pub use secure_element_bus::{BusProtocol, SecureElementBusDriver, SecureElementFrame, SecureElementStatus, SECURE_ELEMENT_I2C_ADDR};
 #[allow(unused_imports)]
 pub use shamir_escrow::{ShamirEscrowEngine, ShamirShare};
 #[allow(unused_imports)]
@@ -131,6 +141,8 @@ pub use validator::OriginValidator;
 pub use vault::VaultEngine;
 #[allow(unused_imports)]
 pub use wycheproof_vectors::{AttackVectorCheckResult, WycheproofAuditReport, WycheproofHarness};
+#[allow(unused_imports)]
+pub use zk_accumulator::{AccumulatorRevocationProof, AccumulatorWitness, DynamicAccumulatorState, ZkDynamicAccumulator};
 #[allow(unused_imports)]
 pub use zk_proofs::{ZkProofEngine, ZkProofMetadata, ZkProofVerificationResult, ZkRangeProof};
 
