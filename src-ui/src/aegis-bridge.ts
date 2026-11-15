@@ -2344,6 +2344,35 @@ export class AegisBridge {
     ringSignature: { ring_public_keys_hex: string[]; key_image_hex: string; challenge_c0_hex: string; responses_s_hex: string[]; message_digest_hex: string; };
     isVerified: boolean; ringSize: number; signerIdentity: string; protocol: string;
   }>> { return this.invoke('zk_ring_signature_verify', { message }); }
+  // ── v2.4.0: Hybrid PQ-X.509 PKI, ZK Bulletproofs, Distance Bounding & STRIDE ──
+  public async issueAndVerifyPqX509(subjectCn = 'CN=node01.aegis.bank.internal'): Promise<IpcResponse<{
+    leafCertificate: any;
+    rootCertificate: any;
+    validation: { is_valid: boolean; is_expired: boolean; classical_valid: boolean; quantum_valid: boolean; chain_depth: number; error?: string; };
+    standard: string;
+  }>> { return this.invoke('pq_x509_issue_verify', { subject_cn: subjectCn }); }
+
+  public async verifyZkBulletproofRangeProof(amount = 5000000, context = 'AEGIS_SETTLEMENT_TRANSACTION_CONFIDENTIAL'): Promise<IpcResponse<{
+    proof: any;
+    verification: { is_valid: boolean; bit_length: number; max_value: number; commitment_hex: string; error?: string; };
+    isConfidential: boolean;
+    protocol: string;
+  }>> { return this.invoke('zk_range_proof_verify', { amount, context }); }
+
+  public async verifyProximityDistanceBounding(): Promise<IpcResponse<{
+    boundingResult: { is_verified: boolean; is_relay_attack_detected: boolean; avg_rtt_nanos: number; max_rtt_nanos: number; estimated_distance_meters: number; error_count: number; total_rounds: number; failure_reason?: string; };
+    exchangeSample: any[];
+    hardwarePhysicalLayer: string;
+  }>> { return this.invoke('proximity_distance_bounding_verify'); }
+
+  public async getStrideThreatModelStatus(): Promise<IpcResponse<{
+    report: any;
+    totalThreats: number;
+    mitigatedThreats: number;
+    mitigationPercentage: number;
+    maxResidualRisk: string;
+    complianceStandard: string;
+  }>> { return this.invoke('stride_threat_model_status'); }
 }
 
 export const aegis = new AegisBridge();

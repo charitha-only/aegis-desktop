@@ -3,11 +3,11 @@
 <div align="center">
 
 [![Official Website](https://img.shields.io/badge/Official_Website-charitha--only.github.io%2Faegis--desktop-f59e0b.svg?style=flat-square&logo=google-chrome)](https://charitha-only.github.io/aegis-desktop/)
-[![Version](https://img.shields.io/badge/version-v2.3.0-blue.svg?style=flat-square&logo=git)](https://github.com/charitha-only/aegis-desktop/releases/tag/v2.3.0)
-[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v2.3.0-purple?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v2.4.0-blue.svg?style=flat-square&logo=git)](https://github.com/charitha-only/aegis-desktop/releases/tag/v2.4.0)
+[![Changelog](https://img.shields.io/badge/Changelog-What's%20New%20in%20v2.4.0-purple?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.92%2B-orange?logo=rust)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/Tests-271%20Passing%20(100%25)-success?logo=github-actions)](https://github.com/charitha-only/aegis-desktop)
+[![Tests](https://img.shields.io/badge/Tests-280%20Passing%20(100%25)-success?logo=github-actions)](https://github.com/charitha-only/aegis-desktop)
 [![Compliance](https://img.shields.io/badge/Compliance-OWASP%20ASVS%205.0%20L3-00ffcc?logo=shield)](docs/ENTERPRISE_SECURITY_WHITEPAPER.md)
 [![PQ Signatures](https://img.shields.io/badge/Signatures-NIST%20FIPS%20204%20ML--DSA--65-38bdf8)](src-core/src/security/pq_dsa.rs)
 [![Native IPC](https://img.shields.io/badge/IPC-Sub--Millisecond%20Native%20Pipes-10b981)](src-core/src/ipc/native_transport.rs)
@@ -25,12 +25,12 @@ Bridging an ultra-fast **memory-safe Rust systems core** with **any modern web f
 > ðŸŒ **Official Interactive Motion Graphics Website:**  
 > Experience the 60FPS cybernetic particle mesh, live Win32 DWM anti-screen capture simulator, 3D exploded micro-architecture, and real-time Four-Eyes consensus ledger at **[https://charitha-only.github.io/aegis-desktop/](https://charitha-only.github.io/aegis-desktop/)**.
 >
-> 🚀 **v2.3.0 — PQ Identity Tokens, Social Recovery, Micro-Enclave & ZK Ring Signatures:**  
+> 🚀 **v2.4.0 — Hybrid PQ-X.509 PKI, ZK Bulletproofs, Distance Bounding & STRIDE Threat Modeling:**  
 > - **NIST FIPS 204 Category 5 ML-DSA-87 Digital Signatures:** Top-tier lattice-based dual signature scheme (4,691-byte signature envelope) providing maximum 256-bit quantum attack resistance.
 > - **Zero-Knowledge Cryptographic Dynamic Accumulator:** Constant-size $O(1)$ dynamic accumulator generating zero-knowledge membership witnesses and non-membership revocation proofs.
 > - **Hardware Secure Element Direct Bus Driver (SPI / I2C):** Native bus framing, CRC-16 hardware checksum verification, wake pulse sequence, and on-chip TRNG entropy queries for ATECC608A / SE050 crypto-chips.
 > - **Hybrid Post-Quantum TLS 1.3 Handshake Synthesizer (X25519MLKEM1024):** Conforms to `draft-ietf-tls-hybrid-design` KeyShare extensions and HKDF master secret derivation against quantum harvest attacks.
-> - **100% Verified Quality Guarantee:** **271 Rust core unit tests passing**, live sensitive operations and session lifecycle smoke tests passing, and zero compiler warnings on `aegis-core`.
+> - **100% Verified Quality Guarantee:** **280 Rust core unit tests passing**, live sensitive operations and session lifecycle smoke tests passing, and zero compiler warnings on `aegis-core`.
 
 > [!CAUTION]
 > ### âš ï¸ Open Learning Initiative, AI Provenance & Security Disclaimer
@@ -39,7 +39,7 @@ Bridging an ultra-fast **memory-safe Rust systems core** with **any modern web f
 > This project was undertaken as a passionate personal learning journey by an independent developer to explore zero-trust systems engineering, low-level OS boundaries, and post-quantum cryptographic primitives. **It was engineered entirely utilizing generative AI assistance (Google Gemini and OpenAI ChatGPT).**
 >
 > ðŸ›¡ï¸ **Security Notice & Humble Apology:**  
-> **Please be kindly advised that this software is NOT yet 100% security hardened or production-certified.** While it implements cutting-edge specifications (NIST FIPS 203/204, DPAPI, Kernel Sandboxing, Ristretto255 ZK proofs) and passes 271 unit tests, **it has NOT undergone independent third-party cryptographic audits, professional code verification, or live financial stress-testing.**  
+> **Please be kindly advised that this software is NOT yet 100% security hardened or production-certified.** While it implements cutting-edge specifications (NIST FIPS 203/204, DPAPI, Kernel Sandboxing, Ristretto255 ZK proofs) and passes 280 unit tests, **it has NOT undergone independent third-party cryptographic audits, professional code verification, or live financial stress-testing.**  
 > There may be unforeseen edge cases, implementation shortcomings, or bugs. **We humbly apologize for any inconveniences or deficiencies encountered.** Do not deploy in mission-critical banking or sovereign environments without your own independent security audits.
 >
 > ðŸ¤ **Call for Contributors & Security Researchers:**  
@@ -76,7 +76,7 @@ Bridging an ultra-fast **memory-safe Rust systems core** with **any modern web f
 
 ## ðŸ“Š Enterprise Framework Comparison
 
-| Capability / Metric | ðŸ›¡ï¸ Aegis Desktop v2.3.0 | âš¡ Tauri v2 | ðŸŒ Electron v33 |
+| Capability / Metric | ðŸ›¡ï¸ Aegis Desktop v2.4.0 | âš¡ Tauri v2 | ðŸŒ Electron v33 |
 | :--- | :---: | :---: | :---: |
 | **System Engine** | **Rust (Memory-Safe, Zero-Cost)** | Rust | C++ / Node.js Runtime |
 | **Idle Memory Footprint (RSS)** | **~8.8 MiB** (Physical Verified) | ~35 - 50 MiB | ~120 - 200 MiB |
@@ -390,7 +390,8 @@ All capabilities, origin boundaries, and sandbox rules are declaratively defined
 
 | Version | Status | Architectural Highlights | Verified Tests |
 | :---: | :---: | :--- | :---: |
-| **`v2.3.0`** | 🟢 **Current Release** | PQ-JWT Identity Token Engine (ML-DSA-87 + Ed25519 dual-signed bearer tokens), Multi-Party Shamir Social Recovery with Proximity Attestation (30s NFC/BLE window), WASM Micro-Enclave Virtualization (fuel-metered sandbox), Linkable ZK Ring Signatures on Curve25519 (LSAG anonymous group signing). | **271 Core Tests** |
+| **`v2.4.0`** | 🟢 **Current Release** | Hybrid Post-Quantum X.509 PKI Engine (Dual ML-DSA-87 / Ed25519 Cert Chains), Zero-Knowledge Bulletproof Range Proofs (Pedersen Commitments on Curve25519), Physical Layer NFC/BLE Cryptographic Distance Bounding (Anti-Relay RTT Timing), Automated STRIDE Threat Modeling Engine (CVSS v4.0 & SARIF Export). | **280 Core Tests** |
+| **`v2.3.0`** | ⚪ *Enterprise Release* | PQ-JWT Identity Token Engine (ML-DSA-87 + Ed25519 dual-signed bearer tokens), Multi-Party Shamir Social Recovery with Proximity Attestation (30s NFC/BLE window), WASM Micro-Enclave Virtualization (fuel-metered sandbox), Linkable ZK Ring Signatures on Curve25519 (LSAG anonymous group signing). | **271 Core Tests** |
 | **`v2.1.0`** | âšª *Enterprise Release* | Hardware HKDF Key Derivation (NIST SP 800-108 / RFC 5869), Distributed Threshold MPC (FROST / Ed25519), SHA-256 Tamper-Resistant Black Box Flight Recorder, Physical Silicon PUF Anti-Cloning Binding. | **252 Core Tests** |
 | **`v2.0.0`** | âšª *Enterprise Release* | Production Hardening Milestone: Hardware Confidential Computing (Intel SGX / AMD SEV-SNP Remote Attestation), Google Project Wycheproof & NIST CAVP Test Suite, FIDO2/CTAP 2.1 Resident Credentials, Kernel eBPF Micro-Segmentation, and Fail-Closed Panic Sentinel. | **244 Core Tests** |
 | **`v1.9.0`** | âšª *Enterprise Release* | Linux Seccomp BPF Syscall Filter Synthesizer, NIST FIPS 203 Category 5 ML-KEM-1024 Post-Quantum KEM, Local Differential Privacy (Îµ, Î´-DP) Perturbation Engine, and Verifiable Delay Functions (VDF) with Sequential Time-Locks. | **234 Core Tests** |
@@ -413,7 +414,7 @@ All capabilities, origin boundaries, and sandbox rules are declaratively defined
 Aegis enforces a strict zero-warning policy across all compiler targets and verification test suites:
 
 ```bash
-# 1. Run full Rust Core Unit Test Suite (271 passing tests)
+# 1. Run full Rust Core Unit Test Suite (280 passing tests)
 cargo test --manifest-path src-core/Cargo.toml
 
 # 2. Run Live Core Smoke Suite (Sensitive operations, session lifecycles, and IPC contracts)

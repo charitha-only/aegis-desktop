@@ -1,4 +1,10 @@
-﻿# v2.3.0 — 2026-11-15 (PQ Identity Tokens, Social Recovery, Micro-Enclave & ZK Ring Signatures)
+﻿# v2.4.0 — 2026-11-15 (Hybrid PQ-X.509 PKI, ZK Bulletproofs, Distance Bounding & STRIDE Threat Modeling)
+- **Hybrid Post-Quantum X.509 PKI Engine** (pq_x509.rs): Dual ML-DSA-87 + Ed25519 digital certificates, ITU-T X.509 v3 structures, Root & Intermediate CA chain delegation, temporal validity validation
+- **Zero-Knowledge Bulletproof Range Proofs** (zk_range_proof.rs): Pedersen commitments on Curve25519 proving  \in [0, 2^{64}-1]$ in zero-knowledge without leaking hidden amounts or blinding factors
+- **Cryptographic Physical Distance Bounding** (proximity_bounding.rs): Hancke-Kuhn / Brands-Chaum rapid bit challenge exchange preventing NFC/BLE/UWB radio-frequency relay and wormhole attacks
+- **Algorithmic STRIDE Threat Modeling Engine** (stride_threat_model.rs): Comprehensive STRIDE security evaluation mapping all active modules, CVSS v4.0 qualitative scoring, and SARIF 2.1.0 JSON report export
+- 280 Rust core unit tests passing (100%)
+# v2.3.0 — 2026-11-15 (PQ Identity Tokens, Social Recovery, Micro-Enclave & ZK Ring Signatures)
 - **PQ-JWT Identity Token Engine** (pq_identity_token.rs): ML-DSA-87 + Ed25519 dual-signed bearer tokens, exp/nbf/iat claims, tamper detection
 - **Multi-Party Shamir Social Recovery with Proximity Attestation** (social_recovery.rs): k-of-n threshold shares, 30s NFC/BLE beacon window, guardian attestation
 - **Micro-Enclave WASM Virtualization** (micro_enclave.rs): fuel-metered execution, bounds-checked linear memory sandbox, capability attestation

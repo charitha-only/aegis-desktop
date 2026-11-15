@@ -1,4 +1,4 @@
-pub mod anti_forensics;
+﻿pub mod anti_forensics;
 pub mod app_container;
 pub mod attestation;
 pub mod blackbox_recorder;
@@ -55,6 +55,10 @@ pub mod wycheproof_vectors;
 pub mod zk_accumulator;
 pub mod zk_proofs;
 pub mod zk_ring_signature;
+pub mod pq_x509;
+pub mod zk_range_proof;
+pub mod proximity_bounding;
+pub mod stride_threat_model;
 
 #[allow(unused_imports)]
 pub use anti_forensics::{AntiForensicsEngine, AntiForensicsReceipt, SanitizationStandard};
@@ -157,6 +161,14 @@ pub use zk_accumulator::{AccumulatorRevocationProof, AccumulatorWitness, Dynamic
 pub use zk_proofs::{ZkProofEngine, ZkProofMetadata, ZkProofVerificationResult, ZkRangeProof};
 #[allow(unused_imports)]
 pub use zk_ring_signature::{RingSignature, ZkRingSignatureEngine};
+#[allow(unused_imports)]
+pub use pq_x509::{verify_pq_cert_chain, CertValidationResult, PqX509Certificate, KEY_USAGE_CERT_SIGN, KEY_USAGE_CRL_SIGN, KEY_USAGE_DIGITAL_SIGNATURE, KEY_USAGE_KEY_ENCIPHERMENT, X509_VERSION_3};
+#[allow(unused_imports)]
+pub use zk_range_proof::{PedersenCommitment, RangeProofVerificationResult, RangeProver, ZkBulletproofRangeProof};
+#[allow(unused_imports)]
+pub use proximity_bounding::{DistanceBoundingEngine, DistanceBoundingResult, DistanceBoundingSession, RoundExchangeRecord, DEFAULT_MAX_ROUNDTRIP_NANOS, EXCHANGE_ROUND_COUNT};
+#[allow(unused_imports)]
+pub use stride_threat_model::{RiskSeverity, StrideAssessmentReport, StrideCategory, StrideThreatEvaluator, ThreatEntry};
 
 pub mod lifecycle;
 #[cfg(all(target_os = "linux", feature = "linux-lifecycle"))]
