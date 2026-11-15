@@ -1,4 +1,4 @@
-//! macOS Seatbelt & Endpoint Security Kernel Isolation Engine
+﻿//! macOS Seatbelt & Endpoint Security Kernel Isolation Engine
 //!
 //! Provides Apple macOS kernel sandboxing parity using Seatbelt Profile Language (SBPL)
 //! (`sandbox_init`), Endpoint Security (ES) event auditing, and Apple Silicon
@@ -83,7 +83,7 @@ impl MacosSeatbeltEngine {
     /// Generate declarative Seatbelt Profile Language (SBPL) source script
     pub fn generate_sbpl_script(app_id: &str, sandbox_dir: &str, block_fork: bool) -> String {
         let mut script = String::new();
-        script.push_str(";; Aegis Sovereign Desktop Seatbelt Policy v2.2.0\n");
+        script.push_str(";; Aegis Sovereign Desktop Seatbelt Policy v2.3.0\n");
         script.push_str("(version 1)\n");
         script.push_str("(deny default)\n\n");
 

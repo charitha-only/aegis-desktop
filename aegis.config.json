@@ -1,10 +1,10 @@
-{
+﻿{
   "name": "Aegis Desktop Application",
   "appId": "AegisDesktopApplication",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Experimental local desktop application foundation",
   "window": {
-    "title": "Aegis Core • Enterprise Desktop",
+    "title": "Aegis Core â€¢ Enterprise Desktop",
     "width": 1280,
     "height": 840,
     "resizable": true,

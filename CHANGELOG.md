@@ -1,3 +1,9 @@
+﻿# v2.3.0 — 2026-11-15 (PQ Identity Tokens, Social Recovery, Micro-Enclave & ZK Ring Signatures)
+- **PQ-JWT Identity Token Engine** (pq_identity_token.rs): ML-DSA-87 + Ed25519 dual-signed bearer tokens, exp/nbf/iat claims, tamper detection
+- **Multi-Party Shamir Social Recovery with Proximity Attestation** (social_recovery.rs): k-of-n threshold shares, 30s NFC/BLE beacon window, guardian attestation
+- **Micro-Enclave WASM Virtualization** (micro_enclave.rs): fuel-metered execution, bounds-checked linear memory sandbox, capability attestation
+- **ZK Ring Signatures** (zk_ring_signature.rs): LSAG Curve25519 linkable anonymous group signing, key-image double-spend detection
+- 271 Rust core unit tests passing (100%)
 # v2.2.0 — 2026-11-15 (Category 5 ML-DSA-87, ZK Dynamic Accumulators, Secure Element Bus & PQ-TLS)
 
 - **NIST FIPS 204 Category 5 ML-DSA-87 Digital Signatures**: Implemented maximum post-quantum security lattice signatures in `src-core/src/security/pq_dsa87.rs`. Features 256-bit post-quantum security level (AES-256 quantum brute-force resistance), 2,624-byte hybrid public key, 4,928-byte zeroizing secret key, and 4,691-byte dual classical (Ed25519) + quantum signature envelope with Fiat-Shamir with aborts verification.

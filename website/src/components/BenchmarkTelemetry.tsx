@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Gauge, Zap, Database, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export const BenchmarkTelemetry: React.FC = () => {
@@ -61,7 +61,7 @@ export const BenchmarkTelemetry: React.FC = () => {
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 bg-white/[0.01]">
                   <th className="py-3 px-6">METRIC / SPEC</th>
-                  <th className="py-3 px-6 text-amber-400 font-bold">AEGIS DESKTOP v2.2.0</th>
+                  <th className="py-3 px-6 text-amber-400 font-bold">AEGIS DESKTOP v2.3.0</th>
                   <th className="py-3 px-6 text-slate-400">TAURI 2.x</th>
                   <th className="py-3 px-6 text-slate-400">ELECTRON 32</th>
                 </tr>

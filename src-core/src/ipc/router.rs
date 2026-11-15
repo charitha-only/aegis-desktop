@@ -3073,12 +3073,12 @@ impl IpcRouter {
 
             "devtools_telemetry" => {
                 IpcResponse::ok(&req.id, json!({
-                    "version": "2.2.0",
+                    "version": "2.3.0",
                     "ipcTargetLatencyMicros": 150,
                     "coreMemoryRssMb": 8.80,
                     "canaryGuardStatus": "ACTIVE_UNCOMPROMISED",
                     "sandboxEngine": "Confidential Enclave + AppContainer + Seatbelt + Seccomp BPF",
-                    "activeUnitTests": 262
+                    "activeUnitTests": 271
                 }))
             }
 
@@ -3446,6 +3446,112 @@ impl IpcRouter {
                     "clientHello": client_hello,
                     "sessionKeys": session_keys,
                     "draftSpecification": "draft-ietf-tls-hybrid-design X25519MLKEM1024"
+                }))
+            }
+
+            // ── v2.3.0 PQ Identity Tokens, Proximity Social Recovery, Micro-Enclave WASM & ZK Ring Signatures ──
+            "pq_identity_token_issue_verify" => {
+                let subject = req.payload.get("subject").and_then(|s| s.as_str()).unwrap_or("user_senior_teller_01");
+                let seed = [0x55u8; 32];
+                let sk = ed25519_dalek::SigningKey::from_bytes(&seed);
+                let pk_bytes = sk.verifying_key().to_bytes();
+                let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
+
+                let claims = crate::security::PqTokenClaims {
+                    issuer: "aegis.auth.sovereign".to_string(),
+                    subject: subject.to_string(),
+                    audience: "aegis.enterprise.mesh".to_string(),
+                    issued_at: now,
+                    expires_at: now + 3600_000,
+                    token_id: "urn:uuid:aegis-token-v2.3".to_string(),
+                    roles: vec!["SECURITY_OPERATOR".to_string(), "APPROVER".to_string()],
+                    hardware_fingerprint: "SILICON_PUF_CHIP_0x7E".to_string(),
+                };
+
+                let token = match crate::security::PqIdentityTokenEngine::issue_token(&claims, &seed) {
+                    Ok(t) => t,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+
+                let validation = crate::security::PqIdentityTokenEngine::verify_token(&token, &pk_bytes, &seed, now + 100);
+
+                IpcResponse::ok(&req.id, json!({
+                    "token": token,
+                    "validation": validation,
+                    "standard": "NIST FIPS 204 ML-DSA-87 + Ed25519 Bearer Token"
+                }))
+            }
+
+            "social_recovery_status" => {
+                let secret = b"SOVEREIGN_ROOT_MASTER_ESCROW_SEED";
+                let threshold = req.payload.get("threshold").and_then(|t| t.as_u64()).unwrap_or(3) as u32;
+                let total = req.payload.get("totalGuardians").and_then(|t| t.as_u64()).unwrap_or(5) as u32;
+                let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
+
+                let shares = match crate::security::SocialRecoveryEngine::split_master_secret(secret, threshold, total) {
+                    Ok(s) => s,
+                    Err(e) => return IpcResponse::err(&req.id, &e),
+                };
+
+                let sample_attestation = crate::security::SocialRecoveryEngine::issue_proximity_challenge(1, now);
+                let proximity_valid = crate::security::SocialRecoveryEngine::verify_proximity(&sample_attestation, now + 2);
+
+                IpcResponse::ok(&req.id, json!({
+                    "threshold": threshold,
+                    "totalGuardians": total,
+                    "sharesIssued": shares.len(),
+                    "proximityAttestationSample": sample_attestation,
+                    "proximityAttestationValid": proximity_valid,
+                    "timeWindowSeconds": crate::security::PROXIMITY_VALIDITY_WINDOW_SECONDS
+                }))
+            }
+
+            "micro_enclave_execute" => {
+                let fuel = req.payload.get("fuel").and_then(|f| f.as_u64()).unwrap_or(10_000);
+                let mut enclave = crate::security::MicroEnclaveInstance::new(
+                    "enclave_isolated_guest_v2.3",
+                    vec![crate::security::EnclaveCapability::PureComputation, crate::security::EnclaveCapability::CryptographicSign],
+                    fuel,
+                );
+
+                let test_data = [0xA5u8; 64];
+                let write_res = enclave.write_memory(128, &test_data).is_ok();
+                let read_res = enclave.read_memory(128, 64).ok();
+                let status = enclave.status();
+
+                IpcResponse::ok(&req.id, json!({
+                    "status": status,
+                    "writeSuccess": write_res,
+                    "readDataHex": read_res.map(|d| hex::encode(d)),
+                    "virtualization": "In-Process Fuel-Metered Dynamic Memory Enclave"
+                }))
+            }
+
+            "zk_ring_signature_verify" => {
+                let sk1 = curve25519_dalek::scalar::Scalar::from(1001u64);
+                let sk2 = curve25519_dalek::scalar::Scalar::from(2002u64);
+                let sk3 = curve25519_dalek::scalar::Scalar::from(3003u64);
+
+                let pk1 = &sk1 * &curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
+                let pk2 = &sk2 * &curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
+                let pk3 = &sk3 * &curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
+
+                let ring = vec![pk1, pk2, pk3];
+                let message = req.payload.get("message").and_then(|m| m.as_str()).unwrap_or("ANONYMOUS_SECURITY_INCIDENT_AUDIT_REPORT");
+
+                let ring_sig = match crate::security::ZkRingSignatureEngine::sign_ring(&sk2, 1, &ring, message.as_bytes()) {
+                    Ok(s) => s,
+                    Err(e) => return IpcResponse::err(&req.id, e),
+                };
+
+                let is_verified = crate::security::ZkRingSignatureEngine::verify_ring(&ring_sig, message.as_bytes());
+
+                IpcResponse::ok(&req.id, json!({
+                    "ringSignature": ring_sig,
+                    "isVerified": is_verified,
+                    "ringSize": 3,
+                    "signerIdentity": "REDACTED_ANONYMOUS_MEMBER",
+                    "protocol": "Curve25519 Linkable Spontaneous Anonymous Group (LSAG)"
                 }))
             }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Shield, Terminal, ArrowRight, Download, Cpu, Lock, CheckCircle2, AlertTriangle, Activity, Wifi } from 'lucide-react';
 import { soundEffects } from './AudioEffects';
 
@@ -112,7 +112,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
             <span className="font-mono text-xs tracking-wider uppercase text-amber-300 font-semibold">
-              AEGIS CORE v2.2.0 // {isSi ? 'ආරක්ෂක හා බැංකු මට්ටම' : 'BANKING & FINANCIAL TIER'}
+              AEGIS CORE v2.3.0 // {isSi ? 'à¶†à¶»à¶šà·Šà·‚à¶š à·„à· à¶¶à·à¶‚à¶šà·” à¶¸à¶§à·Šà¶§à¶¸' : 'BANKING & FINANCIAL TIER'}
             </span>
             <span className="text-white/20">|</span>
             <span className="font-mono text-[11px] text-slate-400 hidden sm:inline">
@@ -123,15 +123,15 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           {/* Hero Main Headline (Neo-Brutalist Technical Typography matching Image 1 & 2) */}
           <div className="space-y-3">
             <h1 className="text-4xl sm:text-6xl xl:text-7xl font-extrabold tracking-tight font-display text-white leading-none">
-              {isSi ? 'වෙළඳපොළ රැවටිය හැක.' : 'THE MARKET LIES.'}
+              {isSi ? 'à·€à·™à·…à¶³à¶´à·œà·… à¶»à·à·€à¶§à·’à¶º à·„à·à¶š.' : 'THE MARKET LIES.'}
               <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500 glow-amber">
-                {isSi ? '[අප එසේ නොවේ.]' : '[WE DON\'T.]'}
+                {isSi ? '[à¶…à¶´ à¶‘à·ƒà·š à¶±à·œà·€à·š.]' : '[WE DON\'T.]'}
               </span>
             </h1>
             <p className="max-w-2xl text-base sm:text-lg text-slate-300 font-light leading-relaxed">
               {isSi
-                ? 'ශුන්‍ය විශ්වාස (Zero-Trust) ඩෙස්ක්ටොප් රාමුව. මතක ආරක්ෂිත Rust සහ වැටකෙයියා කළ React මඟින් දෘඩාංග මට්ටමේ තිර ග්‍රහණ වැළැක්වීම (Win32 DWM), RASP ස්වයං-ආරක්ෂණය, Four-Eyes මූල්‍ය අනුමැතිය සහ Wasm fuel වැලිපිල්ල සපයයි.'
+                ? 'à·à·”à¶±à·Šâ€à¶º à·€à·’à·à·Šà·€à·à·ƒ (Zero-Trust) à¶©à·™à·ƒà·Šà¶šà·Šà¶§à·œà¶´à·Š à¶»à·à¶¸à·”à·€. à¶¸à¶­à¶š à¶†à¶»à¶šà·Šà·‚à·’à¶­ Rust à·ƒà·„ à·€à·à¶§à¶šà·™à¶ºà·’à¶ºà· à¶šà·… React à¶¸à¶Ÿà·’à¶±à·Š à¶¯à·˜à¶©à·à¶‚à¶œ à¶¸à¶§à·Šà¶§à¶¸à·š à¶­à·’à¶» à¶œà·Šâ€à¶»à·„à¶« à·€à·à·…à·à¶šà·Šà·€à·“à¶¸ (Win32 DWM), RASP à·ƒà·Šà·€à¶ºà¶‚-à¶†à¶»à¶šà·Šà·‚à¶«à¶º, Four-Eyes à¶¸à·–à¶½à·Šâ€à¶º à¶…à¶±à·”à¶¸à·à¶­à·’à¶º à·ƒà·„ Wasm fuel à·€à·à¶½à·’à¶´à·’à¶½à·Šà¶½ à·ƒà¶´à¶ºà¶ºà·’.'
                 : 'The zero-trust cross-platform desktop application framework. Built in memory-safe Rust and sandboxed React with hardware anti-screen capture, RASP anti-tampering, Four-Eyes cryptographic consensus, and Wasm instruction fuel isolation.'}
             </p>
           </div>
@@ -139,10 +139,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           {/* Key Feature Badge Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
             {[
-              { title: isSi ? 'DWM තිර ආවරණය' : 'Win32 DWM Mask', desc: isSi ? 'OBS වැළැක්වීම' : 'OBS Anti-Capture', icon: Shield },
-              { title: isSi ? 'Four-Eyes අනුමැතිය' : 'Four-Eyes Consensus', desc: isSi ? 'Maker-Checker SOD' : 'Maker-Checker SOD', icon: Lock },
-              { title: isSi ? 'RASP ආරක්ෂාව' : 'Ring-0 RASP Guard', desc: isSi ? 'මතක කොකු වැළැක්වීම' : 'Anti-Tampering', icon: Cpu },
-              { title: isSi ? 'FIDO2 / YubiKey' : 'FIDO2 Hardware Key', desc: isSi ? 'ස්පර්ශක අත්සන්' : 'Touch Authenticator', icon: CheckCircle2 },
+              { title: isSi ? 'DWM à¶­à·’à¶» à¶†à·€à¶»à¶«à¶º' : 'Win32 DWM Mask', desc: isSi ? 'OBS à·€à·à·…à·à¶šà·Šà·€à·“à¶¸' : 'OBS Anti-Capture', icon: Shield },
+              { title: isSi ? 'Four-Eyes à¶…à¶±à·”à¶¸à·à¶­à·’à¶º' : 'Four-Eyes Consensus', desc: isSi ? 'Maker-Checker SOD' : 'Maker-Checker SOD', icon: Lock },
+              { title: isSi ? 'RASP à¶†à¶»à¶šà·Šà·‚à·à·€' : 'Ring-0 RASP Guard', desc: isSi ? 'à¶¸à¶­à¶š à¶šà·œà¶šà·” à·€à·à·…à·à¶šà·Šà·€à·“à¶¸' : 'Anti-Tampering', icon: Cpu },
+              { title: isSi ? 'FIDO2 / YubiKey' : 'FIDO2 Hardware Key', desc: isSi ? 'à·ƒà·Šà¶´à¶»à·Šà·à¶š à¶…à¶­à·Šà·ƒà¶±à·Š' : 'Touch Authenticator', icon: CheckCircle2 },
             ].map((item, idx) => (
               <div
                 key={idx}
@@ -168,7 +168,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               className="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold rounded-lg font-mono text-sm tracking-wide shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
             >
               <Download className="w-4 h-4" />
-              <span>{isSi ? 'බාගත කරන්න (v2.2.0)' : 'DOWNLOAD v2.2.0'}</span>
+              <span>{isSi ? 'à¶¶à·à¶œà¶­ à¶šà¶»à¶±à·Šà¶± (v2.3.0)' : 'DOWNLOAD v2.3.0'}</span>
             </button>
 
             <button
@@ -179,7 +179,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               className="px-6 py-3.5 bg-[#121622]/90 hover:bg-[#1a2030] text-amber-300 border border-amber-500/30 hover:border-amber-400 font-mono text-sm tracking-wide rounded-lg flex items-center gap-2 transition-all"
             >
               <Terminal className="w-4 h-4 text-amber-400" />
-              <span>{isSi ? 'සජීවී සිමියුලේටරය' : 'LIVE SIMULATOR'}</span>
+              <span>{isSi ? 'à·ƒà¶¢à·“à·€à·“ à·ƒà·’à¶¸à·’à¶ºà·”à¶½à·šà¶§à¶»à¶º' : 'LIVE SIMULATOR'}</span>
             </button>
 
             <button
@@ -189,7 +189,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               }}
               className="px-5 py-3.5 text-slate-400 hover:text-white font-mono text-sm tracking-wide flex items-center gap-1.5 transition-colors group"
             >
-              <span>{isSi ? '3D Blueprint සැලැස්ම' : '3D Exploded Blueprint'}</span>
+              <span>{isSi ? '3D Blueprint à·ƒà·à¶½à·à·ƒà·Šà¶¸' : '3D Exploded Blueprint'}</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-amber-400" />
             </button>
           </div>
@@ -288,25 +288,25 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         >
           <div className="flex items-center gap-2">
             <span className="text-amber-400 font-bold">AEGIS-CORE:</span>
-            <span className="text-slate-300">v2.2.0</span>
-            <span className="text-emerald-400 text-[11px]">▲ 262/262 PASS</span>
+            <span className="text-slate-300">v2.3.0</span>
+            <span className="text-emerald-400 text-[11px]">â–² 271/271 PASS</span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-slate-400">BTC/USD:</span>
             <span className="text-slate-200 font-semibold">$98,240</span>
-            <span className="text-emerald-400 text-[11px]">▲ +2.18%</span>
+            <span className="text-emerald-400 text-[11px]">â–² +2.18%</span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-slate-400">ETH/USD:</span>
             <span className="text-slate-200 font-semibold">$3,412</span>
-            <span className="text-emerald-400 text-[11px]">▲ +1.73%</span>
+            <span className="text-emerald-400 text-[11px]">â–² +1.73%</span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-slate-400">NATIVE IPC:</span>
-            <span className="text-emerald-400 font-bold">&lt; 150 µs</span>
+            <span className="text-emerald-400 font-bold">&lt; 150 Âµs</span>
             <span className="text-slate-500 text-[11px]">(8x FASTER)</span>
           </div>
 
@@ -329,14 +329,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           {/* Repeat items for continuous ticker stream */}
           <div className="flex items-center gap-2">
             <span className="text-amber-400 font-bold">AEGIS-CORE:</span>
-            <span className="text-slate-300">v2.2.0</span>
-            <span className="text-emerald-400 text-[11px]">▲ 262/262 PASS</span>
+            <span className="text-slate-300">v2.3.0</span>
+            <span className="text-emerald-400 text-[11px]">â–² 271/271 PASS</span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-slate-400">SOL/USD:</span>
             <span className="text-slate-200 font-semibold">$187.4</span>
-            <span className="text-emerald-400 text-[11px]">▲ +4.21%</span>
+            <span className="text-emerald-400 text-[11px]">â–² +4.21%</span>
           </div>
         </div>
       </div>

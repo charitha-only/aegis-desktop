@@ -20,6 +20,7 @@ pub mod kernel_sandbox;
 pub mod macos_seatbelt;
 pub mod mem_guard;
 pub mod merkle_mountain_range;
+pub mod micro_enclave;
 pub mod mtls_pinning;
 pub mod p2p_sync;
 pub mod panic_sentinel;
@@ -30,6 +31,7 @@ pub mod platform_security_audit;
 pub mod plugin_sig;
 pub mod pq_dsa;
 pub mod pq_dsa87;
+pub mod pq_identity_token;
 pub mod pq_kem;
 pub mod pq_kem1024;
 pub mod pq_tls_handshake;
@@ -43,6 +45,7 @@ pub mod sidechannel_auditor;
 pub mod siem_telemetry;
 pub mod silicon_puf;
 pub mod smartcard_pcsc;
+pub mod social_recovery;
 pub mod threshold_mpc;
 pub mod time_lock_vdf;
 pub mod tpm_sealing;
@@ -51,6 +54,7 @@ pub mod vault;
 pub mod wycheproof_vectors;
 pub mod zk_accumulator;
 pub mod zk_proofs;
+pub mod zk_ring_signature;
 
 #[allow(unused_imports)]
 pub use anti_forensics::{AntiForensicsEngine, AntiForensicsReceipt, SanitizationStandard};
@@ -91,6 +95,8 @@ pub use macos_seatbelt::{MacosSeatbeltEngine, SeatbeltProfile, SeatbeltRuleType}
 pub use mem_guard::{GuardedBuffer, GuardedSecretDescriptor, MemoryGuardEngine, MemoryGuardStatus};
 #[allow(unused_imports)]
 pub use merkle_mountain_range::{MerkleMountainRange, MmrHash, MmrInclusionProof};
+#[allow(unused_imports)]
+pub use micro_enclave::{EnclaveCapability, EnclaveStatus, MicroEnclaveInstance, DEFAULT_ENCLAVE_FUEL_LIMIT, MAX_ENCLAVE_MEMORY_PAGES};
 pub use mtls_pinning::TlsPinningEngine;
 pub use p2p_sync::P2pSyncEngine;
 #[allow(unused_imports)]
@@ -108,6 +114,8 @@ pub use plugin_sig::SignatureVerifier;
 pub use pq_dsa::{MlDsaEngine, MlDsaKeypairOutput, MlDsaMetadata, MlDsaSignOutput, MlDsaVerifyOutput};
 #[allow(unused_imports)]
 pub use pq_dsa87::{MlDsa87Engine, MlDsa87KeypairOutput, MlDsa87Metadata, MlDsa87SignOutput, MlDsa87VerifyOutput};
+#[allow(unused_imports)]
+pub use pq_identity_token::{PqIdentityToken, PqIdentityTokenEngine, PqTokenClaims, PqTokenValidationResult};
 #[allow(unused_imports)]
 pub use pq_kem::{PqDecapsulationResult, PqEncapsulationResult, PqKemEngine, PqKemKeypair};
 #[allow(unused_imports)]
@@ -132,6 +140,8 @@ pub use silicon_puf::{ChipSiliconId, SiliconPufEngine};
 #[allow(unused_imports)]
 pub use smartcard_pcsc::{CommandApdu, ResponseApdu, SmartCardHardwareType, SmartCardPcscEngine, SmartCardReaderInfo};
 #[allow(unused_imports)]
+pub use social_recovery::{GuardianShare, ProximityAttestation, SocialRecoveryEngine, SocialRecoveryStatus, VerifiedGuardianSubmission, PROXIMITY_VALIDITY_WINDOW_SECONDS};
+#[allow(unused_imports)]
 pub use threshold_mpc::{AggregatedThresholdSignature, MpcParticipantKeyShare, NonceCommitment, PartialSignatureShare, ThresholdMpcEngine};
 #[allow(unused_imports)]
 pub use time_lock_vdf::{TimeLockVdfEngine, TimeLockedEnvelope, VdfProof};
@@ -145,6 +155,8 @@ pub use wycheproof_vectors::{AttackVectorCheckResult, WycheproofAuditReport, Wyc
 pub use zk_accumulator::{AccumulatorRevocationProof, AccumulatorWitness, DynamicAccumulatorState, ZkDynamicAccumulator};
 #[allow(unused_imports)]
 pub use zk_proofs::{ZkProofEngine, ZkProofMetadata, ZkProofVerificationResult, ZkRangeProof};
+#[allow(unused_imports)]
+pub use zk_ring_signature::{RingSignature, ZkRingSignatureEngine};
 
 pub mod lifecycle;
 #[cfg(all(target_os = "linux", feature = "linux-lifecycle"))]

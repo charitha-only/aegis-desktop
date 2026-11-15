@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Shield, Volume2, VolumeX, Github, ExternalLink, FileText, Lock, Terminal, Cpu, AlertTriangle } from 'lucide-react';
 import { CyberCanvas } from './components/CyberCanvas';
 import { HeroSection } from './components/HeroSection';
@@ -56,14 +56,14 @@ export const App: React.FC = () => {
         <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
         <span>
           {isSi
-            ? '⚠️ [අධ්‍යාපනික නිවේදනය]: මෙය AI (Gemini/ChatGPT) මඟින් හැදෑරීම සඳහා නිර්මාණය කළ පර්යේෂණාත්මක ව්‍යාපෘතියකි. තවමත් 100% ක් සම්පූර්ණ ආරක්ෂිත නැත. අඩුපාඩු හඳුනාගෙන වැඩිදියුණු කිරීමට ඔබ සැමට විවෘතව ආරාධනා!'
-            : '⚠️ [NOTICE]: Educational AI-assisted project (Gemini/ChatGPT). Not yet 100% production-hardened. Open-source contributors & security researchers warmly welcomed!'}
+            ? 'âš ï¸ [à¶…à¶°à·Šâ€à¶ºà·à¶´à¶±à·’à¶š à¶±à·’à·€à·šà¶¯à¶±à¶º]: à¶¸à·™à¶º AI (Gemini/ChatGPT) à¶¸à¶Ÿà·’à¶±à·Š à·„à·à¶¯à·‘à¶»à·“à¶¸ à·ƒà¶³à·„à· à¶±à·’à¶»à·Šà¶¸à·à¶«à¶º à¶šà·… à¶´à¶»à·Šà¶ºà·šà·‚à¶«à·à¶­à·Šà¶¸à¶š à·€à·Šâ€à¶ºà·à¶´à·˜à¶­à·’à¶ºà¶šà·’. à¶­à·€à¶¸à¶­à·Š 100% à¶šà·Š à·ƒà¶¸à·Šà¶´à·–à¶»à·Šà¶« à¶†à¶»à¶šà·Šà·‚à·’à¶­ à¶±à·à¶­. à¶…à¶©à·”à¶´à·à¶©à·” à·„à¶³à·”à¶±à·à¶œà·™à¶± à·€à·à¶©à·’à¶¯à·’à¶ºà·”à¶«à·” à¶šà·’à¶»à·“à¶¸à¶§ à¶”à¶¶ à·ƒà·à¶¸à¶§ à·€à·’à·€à·˜à¶­à·€ à¶†à¶»à·à¶°à¶±à·!'
+            : 'âš ï¸ [NOTICE]: Educational AI-assisted project (Gemini/ChatGPT). Not yet 100% production-hardened. Open-source contributors & security researchers warmly welcomed!'}
         </span>
         <button
           onClick={() => scrollToSection('community-notice')}
           className="underline hover:text-white text-amber-400 font-bold ml-1 cursor-pointer"
         >
-          {isSi ? '[වැඩිදුර විස්තර]' : '[LEARN MORE & CONTRIBUTE]'}
+          {isSi ? '[à·€à·à¶©à·’à¶¯à·”à¶» à·€à·’à·ƒà·Šà¶­à¶»]' : '[LEARN MORE & CONTRIBUTE]'}
         </button>
       </div>
 
@@ -85,7 +85,7 @@ export const App: React.FC = () => {
                 <span className="text-amber-400 font-mono text-xs font-normal">[CORE]</span>
               </div>
               <div className="font-mono text-[9px] text-slate-400 tracking-widest uppercase">
-                {isSi ? 'ශුන්‍ය විශ්වාස ඩෙස්ක්ටොප්' : 'ZERO-TRUST DESKTOP'}
+                {isSi ? 'à·à·”à¶±à·Šâ€à¶º à·€à·’à·à·Šà·€à·à·ƒ à¶©à·™à·ƒà·Šà¶šà·Šà¶§à·œà¶´à·Š' : 'ZERO-TRUST DESKTOP'}
               </div>
             </div>
           </div>
@@ -97,21 +97,21 @@ export const App: React.FC = () => {
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // {isSi ? 'හැඳින්වීම' : 'ABOUT'}
+              // {isSi ? 'à·„à·à¶³à·’à¶±à·Šà·€à·“à¶¸' : 'ABOUT'}
             </button>
             <button
               onClick={() => scrollToSection('architecture')}
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // {isSi ? 'ගෘහ නිර්මාණය' : 'ARCHITECTURE'}
+              // {isSi ? 'à¶œà·˜à·„ à¶±à·’à¶»à·Šà¶¸à·à¶«à¶º' : 'ARCHITECTURE'}
             </button>
             <button
               onClick={() => scrollToSection('anti-capture')}
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // {isSi ? 'තිර ආරක්ෂාව' : 'ANTI-CAPTURE'}
+              // {isSi ? 'à¶­à·’à¶» à¶†à¶»à¶šà·Šà·‚à·à·€' : 'ANTI-CAPTURE'}
             </button>
             <button
               onClick={() => scrollToSection('maker-checker')}
@@ -125,14 +125,14 @@ export const App: React.FC = () => {
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // {isSi ? 'වේග මිනුම්' : 'BENCHMARKS'}
+              // {isSi ? 'à·€à·šà¶œ à¶¸à·’à¶±à·”à¶¸à·Š' : 'BENCHMARKS'}
             </button>
             <button
               onClick={() => scrollToSection('downloads')}
               onMouseEnter={() => soundEffects.hover()}
               className="text-slate-400 hover:text-amber-300 transition-colors tracking-wide"
             >
-              // {isSi ? 'බාගැනීම්' : 'DOWNLOADS'}
+              // {isSi ? 'à¶¶à·à¶œà·à¶±à·“à¶¸à·Š' : 'DOWNLOADS'}
             </button>
             <button
               onClick={() => scrollToSection('community-notice')}
@@ -140,7 +140,7 @@ export const App: React.FC = () => {
               className="text-amber-400 hover:text-amber-300 font-bold transition-colors tracking-wide flex items-center gap-1"
             >
               <AlertTriangle className="w-3 h-3 text-amber-400" />
-              // {isSi ? 'විවෘත ඇරයුම' : 'COMMUNITY'}
+              // {isSi ? 'à·€à·’à·€à·˜à¶­ à¶‡à¶»à¶ºà·”à¶¸' : 'COMMUNITY'}
             </button>
           </nav>
 
@@ -168,7 +168,7 @@ export const App: React.FC = () => {
                   lang === 'si' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                සිංහල
+                à·ƒà·’à¶‚à·„à¶½
               </button>
             </div>
 
@@ -192,7 +192,7 @@ export const App: React.FC = () => {
               <Github className="w-4 h-4 text-slate-300" />
               <span>GITHUB</span>
               <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                v2.2.0
+                v2.3.0
               </span>
             </a>
 
@@ -202,7 +202,7 @@ export const App: React.FC = () => {
               onMouseEnter={() => soundEffects.hover()}
               className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-mono text-xs font-bold tracking-wider shadow-md shadow-amber-500/20 transition-all"
             >
-              {isSi ? 'බාගන්න' : 'DOWNLOAD'}
+              {isSi ? 'à¶¶à·à¶œà¶±à·Šà¶±' : 'DOWNLOAD'}
             </button>
           </div>
         </div>
@@ -278,7 +278,7 @@ export const App: React.FC = () => {
           </div>
 
           <div className="text-slate-500 text-[11px] text-center md:text-right">
-            <div>© 2026 Aegis Project. MIT Open Source License.</div>
+            <div>Â© 2026 Aegis Project. MIT Open Source License.</div>
             <div className="text-slate-600 mt-0.5">Dual-Engine Authenticode Signed // Zero Vulnerabilities</div>
           </div>
         </div>

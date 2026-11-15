@@ -1,4 +1,4 @@
-/** Typed local IPC client. Runtime capability checks remain authoritative.
+﻿/** Typed local IPC client. Runtime capability checks remain authoritative.
  * Legacy helpers for unavailable providers return backend errors, not implementations.
  */
 
@@ -2322,6 +2322,28 @@ export class AegisBridge {
   }>> {
     return this.invoke('pq_tls_handshake_status');
   }
+  // ── v2.3.0: PQ Identity Tokens, Proximity Social Recovery, Micro-Enclave WASM & ZK Ring Signatures ──
+  public async issueAndVerifyPqToken(subject = 'user_senior_teller_01'): Promise<IpcResponse<{
+    token: { header: string; claims_json: string; classical_sig_hex: string; quantum_sig_hex: string; encoded_token: string; };
+    validation: { is_valid: boolean; classical_valid: boolean; quantum_valid: boolean; is_expired: boolean; claims?: any; error?: string; };
+    standard: string;
+  }>> { return this.invoke('pq_identity_token_issue_verify', { subject }); }
+
+  public async getSocialRecoveryStatus(threshold = 3, totalGuardians = 5): Promise<IpcResponse<{
+    threshold: number; totalGuardians: number; sharesIssued: number;
+    proximityAttestationSample: { guardian_id: number; beacon_nonce_hex: string; signed_challenge_hex: string; timestamp: number; };
+    proximityAttestationValid: boolean; timeWindowSeconds: number;
+  }>> { return this.invoke('social_recovery_status', { threshold, totalGuardians }); }
+
+  public async executeMicroEnclave(fuel = 10000): Promise<IpcResponse<{
+    status: { enclave_id: string; allocated_pages: number; memory_used_bytes: number; fuel_remaining: number; is_halted: boolean; capabilities: string[]; };
+    writeSuccess: boolean; readDataHex?: string; virtualization: string;
+  }>> { return this.invoke('micro_enclave_execute', { fuel }); }
+
+  public async verifyZkRingSignature(message = 'ANONYMOUS_SECURITY_INCIDENT_AUDIT_REPORT'): Promise<IpcResponse<{
+    ringSignature: { ring_public_keys_hex: string[]; key_image_hex: string; challenge_c0_hex: string; responses_s_hex: string[]; message_digest_hex: string; };
+    isVerified: boolean; ringSize: number; signerIdentity: string; protocol: string;
+  }>> { return this.invoke('zk_ring_signature_verify', { message }); }
 }
 
 export const aegis = new AegisBridge();

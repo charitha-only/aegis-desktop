@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Layers, ShieldCheck, Cpu, Database, EyeOff, Key, Code2, Sparkles, Binary, Wifi, ShieldAlert } from 'lucide-react';
 import { soundEffects } from './AudioEffects';
 
@@ -29,12 +29,12 @@ export const ExplodedArchitecture: React.FC<ExplodedArchitectureProps> = ({ lang
     {
       id: 'layer-dwm',
       number: '01',
-      title: isSi ? 'DWM තිර ග්‍රහණ වැළැක්වීමේ ආවරණය' : 'PROTECTIVE DWM ANTI-CAPTURE LID',
+      title: isSi ? 'DWM à¶­à·’à¶» à¶œà·Šâ€à¶»à·„à¶« à·€à·à·…à·à¶šà·Šà·€à·“à¶¸à·š à¶†à·€à¶»à¶«à¶º' : 'PROTECTIVE DWM ANTI-CAPTURE LID',
       badge: 'WIN32 DWM / OBS BLACKOUT',
-      category: isSi ? 'දෘඩාංග මට්ටම' : 'HARDWARE INTERFACE LAYER',
+      category: isSi ? 'à¶¯à·˜à¶©à·à¶‚à¶œ à¶¸à¶§à·Šà¶§à¶¸' : 'HARDWARE INTERFACE LAYER',
       schematicTag: 'WDA_EXCLUDEFROMCAPTURE // 0x00000011',
       description: isSi
-        ? 'Windows Desktop Window Manager (DWM) සංයුක්ත ස්ථරය සමඟ සෘජුව සම්බන්ධ වී OBS Studio, Zoom හෝ malware මඟින් screen capture කිරීම කළු තිරයකින් වළක්වයි.'
+        ? 'Windows Desktop Window Manager (DWM) à·ƒà¶‚à¶ºà·”à¶šà·Šà¶­ à·ƒà·Šà¶®à¶»à¶º à·ƒà¶¸à¶Ÿ à·ƒà·˜à¶¢à·”à·€ à·ƒà¶¸à·Šà¶¶à¶±à·Šà¶° à·€à·“ OBS Studio, Zoom à·„à· malware à¶¸à¶Ÿà·’à¶±à·Š screen capture à¶šà·’à¶»à·“à¶¸ à¶šà·…à·” à¶­à·’à¶»à¶ºà¶šà·’à¶±à·Š à·€à·…à¶šà·Šà·€à¶ºà·’.'
         : 'Interfaces directly with the Windows Desktop Window Manager compositor to enforce hardware-level frame blackouts against OBS Studio, Zoom, and remote screen scrapers.',
       specs: [
         'SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)',
@@ -54,12 +54,12 @@ if result == 0 {
     {
       id: 'layer-rasp',
       number: '02',
-      title: isSi ? 'RING-0 RASP ස්වයං-ආරක්ෂණ ඒකකය' : 'RING-0 RASP & ANTI-TAMPER DIE',
+      title: isSi ? 'RING-0 RASP à·ƒà·Šà·€à¶ºà¶‚-à¶†à¶»à¶šà·Šà·‚à¶« à¶’à¶šà¶šà¶º' : 'RING-0 RASP & ANTI-TAMPER DIE',
       badge: 'ANTI-DEBUG / MEMORY HOOKS',
-      category: isSi ? 'මූලික ධාවන ස්ථරය' : 'KERNEL RUNTIME GUARD',
+      category: isSi ? 'à¶¸à·–à¶½à·’à¶š à¶°à·à·€à¶± à·ƒà·Šà¶®à¶»à¶º' : 'KERNEL RUNTIME GUARD',
       schematicTag: 'SYS_HOOK_SCAN // FAIL-CLOSED CONTAINMENT',
       description: isSi
-        ? 'IsDebuggerPresent, CheckRemoteDebuggerPresent සහ VirtualProtect මතක කොකු ක්ෂණිකව පරිලෝකනය කර ක්‍රියාවලිය tamper වුවහොත් fail-closed ලෙස අගුලු දමයි.'
+        ? 'IsDebuggerPresent, CheckRemoteDebuggerPresent à·ƒà·„ VirtualProtect à¶¸à¶­à¶š à¶šà·œà¶šà·” à¶šà·Šà·‚à¶«à·’à¶šà·€ à¶´à¶»à·’à¶½à·à¶šà¶±à¶º à¶šà¶» à¶šà·Šâ€à¶»à·’à¶ºà·à·€à¶½à·’à¶º tamper à·€à·”à·€à·„à·œà¶­à·Š fail-closed à¶½à·™à·ƒ à¶…à¶œà·”à¶½à·” à¶¯à¶¸à¶ºà·’.'
         : 'Continuous kernel-level scanning for attached debuggers, hardware breakpoints, and VirtualProtect opcode modifications, enforcing instant fail-closed containment.',
       specs: [
         'Win32 IsDebuggerPresent & CheckRemoteDebuggerPresent probe',
@@ -81,12 +81,12 @@ if peb_debugger || remote_debugger != 0 {
     {
       id: 'layer-kernel',
       number: '03',
-      title: isSi ? 'CHACHA20-POLY1305 ගුප්තකේතන දත්ත සමුදාය' : 'CHACHA20-POLY1305 AEAD DATABASE & CORE',
+      title: isSi ? 'CHACHA20-POLY1305 à¶œà·”à¶´à·Šà¶­à¶šà·šà¶­à¶± à¶¯à¶­à·Šà¶­ à·ƒà¶¸à·”à¶¯à·à¶º' : 'CHACHA20-POLY1305 AEAD DATABASE & CORE',
       badge: 'AEAD CIPHER / ACID ENGINE',
-      category: isSi ? 'දත්ත සමුදාය සහ කර්නලය' : 'CORE CRYPTOGRAPHIC ENGINE',
+      category: isSi ? 'à¶¯à¶­à·Šà¶­ à·ƒà¶¸à·”à¶¯à·à¶º à·ƒà·„ à¶šà¶»à·Šà¶±à¶½à¶º' : 'CORE CRYPTOGRAPHIC ENGINE',
       schematicTag: 'CHACHA20_POLY1305 // ATOMIC_ACID_COMMIT',
       description: isSi
-        ? 'සත්‍යාපිත ChaCha20-Poly1305 AEAD ගුප්තකේතනය සහ ACID ගනුදෙනු සහිත අභ්‍යන්තර දත්ත සමුදාය. ශුන්‍ය-alloc මතක ආරක්ෂණය සහ ස්ලයිඩින්-වින්ඩෝ anti-DoS සීමාකාරක.'
+        ? 'à·ƒà¶­à·Šâ€à¶ºà·à¶´à·’à¶­ ChaCha20-Poly1305 AEAD à¶œà·”à¶´à·Šà¶­à¶šà·šà¶­à¶±à¶º à·ƒà·„ ACID à¶œà¶±à·”à¶¯à·™à¶±à·” à·ƒà·„à·’à¶­ à¶…à¶·à·Šâ€à¶ºà¶±à·Šà¶­à¶» à¶¯à¶­à·Šà¶­ à·ƒà¶¸à·”à¶¯à·à¶º. à·à·”à¶±à·Šâ€à¶º-alloc à¶¸à¶­à¶š à¶†à¶»à¶šà·Šà·‚à¶«à¶º à·ƒà·„ à·ƒà·Šà¶½à¶ºà·’à¶©à·’à¶±à·Š-à·€à·’à¶±à·Šà¶©à· anti-DoS à·ƒà·“à¶¸à·à¶šà·à¶»à¶š.'
         : 'High-concurrency authenticated database with ChaCha20-Poly1305 AEAD, ACID snapshot transactions, constant-time comparisons, and automatic memory zeroization.',
       specs: [
         'ChaCha20-Poly1305 AEAD 256-bit encrypted table storage',
@@ -105,12 +105,12 @@ self.transaction_snapshot.lock().unwrap().take();`,
     {
       id: 'layer-wasm',
       number: '04',
-      title: isSi ? 'WASM උපදෙස් ඉන්ධන වැලිපිල්ල' : 'WASM INSTRUCTION-METERED SANDBOX',
+      title: isSi ? 'WASM à¶‹à¶´à¶¯à·™à·ƒà·Š à¶‰à¶±à·Šà¶°à¶± à·€à·à¶½à·’à¶´à·’à¶½à·Šà¶½' : 'WASM INSTRUCTION-METERED SANDBOX',
       badge: 'WASMTIME / DETERMINISTIC FUEL',
-      category: isSi ? 'ප්ලගීන පරිසරය' : 'UNTRUSTED EXTENSION ENGINE',
+      category: isSi ? 'à¶´à·Šà¶½à¶œà·“à¶± à¶´à¶»à·’à·ƒà¶»à¶º' : 'UNTRUSTED EXTENSION ENGINE',
       schematicTag: 'METERED_FUEL_BOUND // 5M_FUEL_CAP',
       description: isSi
-        ? 'තෙවන පාර්ශ්වීය ප්ලගීන සඳහා දැඩි ඉන්ධන කෝටා (fuel limits) සහ 64MB උපරිම මතක සීමාවන් සහිතව සකස් කළ ආරක්ෂිත ධාවන පරිසරය.'
+        ? 'à¶­à·™à·€à¶± à¶´à·à¶»à·Šà·à·Šà·€à·“à¶º à¶´à·Šà¶½à¶œà·“à¶± à·ƒà¶³à·„à· à¶¯à·à¶©à·’ à¶‰à¶±à·Šà¶°à¶± à¶šà·à¶§à· (fuel limits) à·ƒà·„ 64MB à¶‹à¶´à¶»à·’à¶¸ à¶¸à¶­à¶š à·ƒà·“à¶¸à·à·€à¶±à·Š à·ƒà·„à·’à¶­à·€ à·ƒà¶šà·ƒà·Š à¶šà·… à¶†à¶»à¶šà·Šà·‚à·’à¶­ à¶°à·à·€à¶± à¶´à¶»à·’à·ƒà¶»à¶º.'
         : 'Strictly bounded execution environment for third-party plugins with deterministic fuel counters, instruction limits, and fail-closed trap containment.',
       specs: [
         'Deterministic instruction fuel metering (anti-infinite loop)',
@@ -131,12 +131,12 @@ match result {
     {
       id: 'layer-pinning',
       number: '05',
-      title: isSi ? 'mTLS සහතික PINNING සහ P2P MESH' : 'mTLS SPKI PINNING & P2P NOISE MESH',
+      title: isSi ? 'mTLS à·ƒà·„à¶­à·’à¶š PINNING à·ƒà·„ P2P MESH' : 'mTLS SPKI PINNING & P2P NOISE MESH',
       badge: 'SPKI PINNING / NOISE PROTOCOL',
-      category: isSi ? 'ජාල ආරක්ෂණය' : 'ZERO-TRUST NETWORK SENTINEL',
+      category: isSi ? 'à¶¢à·à¶½ à¶†à¶»à¶šà·Šà·‚à¶«à¶º' : 'ZERO-TRUST NETWORK SENTINEL',
       schematicTag: 'SHA256_SPKI_HASH // P2P_DIFF_SYNC',
       description: isSi
-        ? 'Burp Suite හෝ rogue CA මඟින් කෙරෙන MITM proxy මැදිහත්වීම් වළක්වන SPKI hash pinning සහ විමධ්‍යගත P2P Noise differential sync.'
+        ? 'Burp Suite à·„à· rogue CA à¶¸à¶Ÿà·’à¶±à·Š à¶šà·™à¶»à·™à¶± MITM proxy à¶¸à·à¶¯à·’à·„à¶­à·Šà·€à·“à¶¸à·Š à·€à·…à¶šà·Šà·€à¶± SPKI hash pinning à·ƒà·„ à·€à·’à¶¸à¶°à·Šâ€à¶ºà¶œà¶­ P2P Noise differential sync.'
         : 'Defeats proxy interception (Burp Suite, Charles) via cryptographic SPKI hash pinning and enables peer-to-peer differential vault sync via Noise protocol.',
       specs: [
         'Cryptographic SPKI public key hash pinning',
@@ -155,12 +155,12 @@ if !endpoint.expected_spki_pins.contains(&observed_pin) {
     {
       id: 'layer-fido2',
       number: '06',
-      title: isSi ? 'භෞතික FIDO2 / YUBIKEY සහ FOUR-EYES' : 'FIDO2 HARDWARE KEY & FOUR-EYES MATRIX',
+      title: isSi ? 'à¶·à·žà¶­à·’à¶š FIDO2 / YUBIKEY à·ƒà·„ FOUR-EYES' : 'FIDO2 HARDWARE KEY & FOUR-EYES MATRIX',
       badge: 'CTAP2 / BASEL SOD / PCI-DSS',
-      category: isSi ? 'මූල්‍ය පාලනය' : 'PHYSICAL HARDWARE & GOVERNANCE',
+      category: isSi ? 'à¶¸à·–à¶½à·Šâ€à¶º à¶´à·à¶½à¶±à¶º' : 'PHYSICAL HARDWARE & GOVERNANCE',
       schematicTag: 'USER_PRESENCE_TOUCH // SOD_IMMUTABLE_CHAIN',
       description: isSi
-        ? 'භෞතික ස්පර්ශය අනිවාර්ය කරන YubiKey / FIDO2 දෘඩාංග අත්සන් සහ තනි පුද්ගලයෙකුට අනුමත කළ නොහැකි Maker-Checker Four-Eyes සම්මුතිය.'
+        ? 'à¶·à·žà¶­à·’à¶š à·ƒà·Šà¶´à¶»à·Šà·à¶º à¶…à¶±à·’à·€à·à¶»à·Šà¶º à¶šà¶»à¶± YubiKey / FIDO2 à¶¯à·˜à¶©à·à¶‚à¶œ à¶…à¶­à·Šà·ƒà¶±à·Š à·ƒà·„ à¶­à¶±à·’ à¶´à·”à¶¯à·Šà¶œà¶½à¶ºà·™à¶šà·”à¶§ à¶…à¶±à·”à¶¸à¶­ à¶šà·… à¶±à·œà·„à·à¶šà·’ Maker-Checker Four-Eyes à·ƒà¶¸à·Šà¶¸à·”à¶­à·’à¶º.'
         : 'Enforces mandatory physical hardware presence (YubiKey CTAP2) and corporate banking Segregation of Duties (SOD) with chained SHA-256 ledger integrity.',
       specs: [
         'CTAP2 user touch presence enforcement for key release',
@@ -193,14 +193,14 @@ ledger.append(AuditBlock::new(block_hash, tx));`,
               <span>[SCHEMATIC SPECIFICATION] // 6-LAYER ZERO-TRUST STACK</span>
             </div>
             <h2 className="text-3xl sm:text-5xl font-extrabold font-display text-white tracking-tight">
-              {isSi ? 'නිර්මාණය වූයේ' : 'ENGINEERED AT THE'}{' '}
+              {isSi ? 'à¶±à·’à¶»à·Šà¶¸à·à¶«à¶º à·€à·–à¶ºà·š' : 'ENGINEERED AT THE'}{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500 glow-amber">
-                {isSi ? '[BARE METAL මට්ටමෙනි.]' : '[BARE METAL].'}
+                {isSi ? '[BARE METAL à¶¸à¶§à·Šà¶§à¶¸à·™à¶±à·’.]' : '[BARE METAL].'}
               </span>
             </h2>
             <p className="text-slate-400 max-w-2xl text-sm sm:text-base font-light">
               {isSi
-                ? 'මතක සීමාවන් සහ දෘඩාංග හුදකලාව මත ගොඩනැඟූ ශුන්‍ය විශ්වාස කර්නලය. සෑම register එකක්ම තහවුරුයි, සෑම උපදෙසක්ම මනින ලදයි, කිසිවක් අනාරක්ෂිත නැත.'
+                ? 'à¶¸à¶­à¶š à·ƒà·“à¶¸à·à·€à¶±à·Š à·ƒà·„ à¶¯à·˜à¶©à·à¶‚à¶œ à·„à·”à¶¯à¶šà¶½à·à·€ à¶¸à¶­ à¶œà·œà¶©à¶±à·à¶Ÿà·– à·à·”à¶±à·Šâ€à¶º à·€à·’à·à·Šà·€à·à·ƒ à¶šà¶»à·Šà¶±à¶½à¶º. à·ƒà·‘à¶¸ register à¶‘à¶šà¶šà·Šà¶¸ à¶­à·„à·€à·”à¶»à·”à¶ºà·’, à·ƒà·‘à¶¸ à¶‹à¶´à¶¯à·™à·ƒà¶šà·Šà¶¸ à¶¸à¶±à·’à¶± à¶½à¶¯à¶ºà·’, à¶šà·’à·ƒà·’à·€à¶šà·Š à¶…à¶±à·à¶»à¶šà·Šà·‚à·’à¶­ à¶±à·à¶­.'
                 : 'A zero-trust kernel designed around memory bounds and hardware enclaves. Every register verified, every instruction metered, every hook fail-closed.'}
             </p>
           </div>
@@ -214,7 +214,7 @@ ledger.append(AuditBlock::new(block_hash, tx));`,
               className="px-4 py-2.5 rounded-lg bg-[#0d111a] border border-amber-500/30 hover:border-amber-400 text-amber-300 font-mono text-xs tracking-wider flex items-center gap-2 transition-all shadow-lg"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>{isExploded ? (isSi ? 'ස්ථර එකතු කරන්න' : 'COLLAPSE 3D STACK') : (isSi ? '3D ස්ථර විහිදුවන්න' : 'EXPLODE 3D STACK')}</span>
+              <span>{isExploded ? (isSi ? 'à·ƒà·Šà¶®à¶» à¶‘à¶šà¶­à·” à¶šà¶»à¶±à·Šà¶±' : 'COLLAPSE 3D STACK') : (isSi ? '3D à·ƒà·Šà¶®à¶» à·€à·’à·„à·’à¶¯à·”à·€à¶±à·Šà¶±' : 'EXPLODE 3D STACK')}</span>
             </button>
           </div>
         </div>
@@ -233,7 +233,7 @@ ledger.append(AuditBlock::new(block_hash, tx));`,
                 BLUEPRINT // DIE_STACK_0x7E
               </div>
               <div className="absolute bottom-3 right-3 font-mono text-[9px] text-slate-400 bg-black/80 px-2 py-1 rounded border border-white/10">
-                [IN PRODUCTION v2.2.0]
+                [IN PRODUCTION v2.3.0]
               </div>
             </div>
 
@@ -305,7 +305,7 @@ ledger.append(AuditBlock::new(block_hash, tx));`,
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs text-amber-400 font-bold">L{layer.number}</span>
-                          <span className="text-white/20">•</span>
+                          <span className="text-white/20">â€¢</span>
                           <span className="font-mono text-[10px] text-slate-400 tracking-wider uppercase">{layer.category}</span>
                         </div>
                         <h3 className="font-display font-bold text-base text-white mt-0.5 tracking-tight">
