@@ -2069,6 +2069,99 @@ export class AegisBridge {
   }>> {
     return this.invoke('timelock_vdf_evaluate', { seed, iterations });
   }
+
+  // ── v2.0.0: Production Hardening, Confidential Computing & Pro Security ──
+  public async getPanicSentinelStatus(): Promise<IpcResponse<{
+    is_installed: boolean;
+    total_panics_intercepted: number;
+    core_dumps_disabled: boolean;
+    zeroization_strategy: string;
+  }>> {
+    return this.invoke('panic_sentinel_status');
+  }
+
+  public async getWycheproofAuditReport(): Promise<IpcResponse<{
+    total_vectors_evaluated: number;
+    vulnerabilities_detected: number;
+    compliance_score: number;
+    certification_status: string;
+    results: Array<{
+      vector_id: string;
+      description: string;
+      attack_type: string;
+      is_immune: boolean;
+      defense_action: string;
+    }>;
+  }>> {
+    return this.invoke('wycheproof_audit_report');
+  }
+
+  public async getConfidentialComputingQuote(sessionPayload = 'AEGIS_ROOT_KEY_ROTATION_2026'): Promise<IpcResponse<{
+    quote: {
+      enclave_type: string;
+      mrenclave: string;
+      mrsigner: string;
+      isv_prod_id: number;
+      isv_svn: number;
+      report_data: string;
+      quote_signature_hex: string;
+      hardware_vendor: string;
+      tme_active: boolean;
+      attestation_timestamp: number;
+    };
+    verification: {
+      is_valid: boolean;
+      hardware_enclave_authenticated: boolean;
+      measurement_matched: boolean;
+      report_data_bound: boolean;
+      trust_tier: string;
+      issuer: string;
+    };
+  }>> {
+    return this.invoke('confidential_computing_quote', { sessionPayload });
+  }
+
+  public async getCtap2ResidentStatus(): Promise<IpcResponse<{
+    deviceStatus: {
+      supports_resident_keys: boolean;
+      supports_pin_uv_auth: boolean;
+      min_pin_length: number;
+      pin_retries_remaining: number;
+      total_resident_keys_stored: number;
+      max_resident_key_capacity: number;
+      firmware_standard: string;
+    };
+    residentCredentials: Array<{
+      credential_id: string;
+      rp_id: string;
+      user_handle: string;
+      user_name: string;
+      sign_count: number;
+      created_timestamp: number;
+    }>;
+  }>> {
+    return this.invoke('ctap2_resident_status');
+  }
+
+  public async getEbpfMicrosegmentationReport(): Promise<IpcResponse<{
+    ebpf_filter_active: boolean;
+    hook_type: string;
+    cgroup_attachment: string;
+    approved_loopback_port: number;
+    zero_outbound_policy_enforced: boolean;
+    total_evaluated_sockets: number;
+    total_blocked_egress_attempts: number;
+    audit_log: Array<{
+      process_id: number;
+      destination_ip: string;
+      destination_port: number;
+      protocol: string;
+      is_allowed: boolean;
+      firewall_verdict: string;
+    }>;
+  }>> {
+    return this.invoke('ebpf_microsegmentation_report');
+  }
 }
 
 export const aegis = new AegisBridge();

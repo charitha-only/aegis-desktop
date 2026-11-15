@@ -4,7 +4,10 @@ pub mod attestation;
 pub mod canary_guard;
 pub mod capabilities;
 pub mod compliance_report;
+pub mod confidential_computing;
+pub mod ctap2_resident;
 pub mod differential_privacy;
+pub mod ebpf_microsegmentation;
 pub mod enclave;
 pub mod fido2_token;
 pub mod fuzz_harness;
@@ -17,6 +20,7 @@ pub mod mem_guard;
 pub mod merkle_mountain_range;
 pub mod mtls_pinning;
 pub mod p2p_sync;
+pub mod panic_sentinel;
 pub mod pentest_suite;
 pub mod piv_slots;
 pub mod pkcs11_v3;
@@ -37,6 +41,7 @@ pub mod time_lock_vdf;
 pub mod tpm_sealing;
 pub mod validator;
 pub mod vault;
+pub mod wycheproof_vectors;
 pub mod zk_proofs;
 
 #[allow(unused_imports)]
@@ -51,7 +56,13 @@ pub use capabilities::{CapabilityManifest, SecurityEngine};
 #[allow(unused_imports)]
 pub use compliance_report::{ComplianceReportEngine, ComplianceReportPayload, SignedComplianceCertificate};
 #[allow(unused_imports)]
+pub use confidential_computing::{AttestationVerificationResult, ConfidentialComputingEngine, EnclaveMeasurementQuote};
+#[allow(unused_imports)]
+pub use ctap2_resident::{Ctap2DeviceStatus, Ctap2PinUvAuthToken, Ctap2ResidentEngine, ResidentCredential};
+#[allow(unused_imports)]
 pub use differential_privacy::{DifferentialPrivacyEngine, PerturbedMetricReport, PrivacyBudgetStatus};
+#[allow(unused_imports)]
+pub use ebpf_microsegmentation::{EbpfMicrosegmentationEngine, EbpfMicrosegmentationReport, SocketConnectionAttempt};
 pub use enclave::BiometricEnclave;
 pub use fido2_token::Fido2TokenEngine;
 #[allow(unused_imports)]
@@ -70,6 +81,8 @@ pub use mem_guard::{GuardedBuffer, GuardedSecretDescriptor, MemoryGuardEngine, M
 pub use merkle_mountain_range::{MerkleMountainRange, MmrHash, MmrInclusionProof};
 pub use mtls_pinning::TlsPinningEngine;
 pub use p2p_sync::P2pSyncEngine;
+#[allow(unused_imports)]
+pub use panic_sentinel::{PanicSentinel, PanicSentinelStatus};
 #[allow(unused_imports)]
 pub use pentest_suite::{AttackVectorResult, PenTestEngine, PenTestVector, PenetrationTestReport};
 #[allow(unused_imports)]
@@ -104,6 +117,8 @@ pub use time_lock_vdf::{TimeLockVdfEngine, TimeLockedEnvelope, VdfProof};
 pub use tpm_sealing::{PcrRegister, SealedDataPackage, TpmEnclaveStatus, TpmSealingEngine};
 pub use validator::OriginValidator;
 pub use vault::VaultEngine;
+#[allow(unused_imports)]
+pub use wycheproof_vectors::{AttackVectorCheckResult, WycheproofAuditReport, WycheproofHarness};
 #[allow(unused_imports)]
 pub use zk_proofs::{ZkProofEngine, ZkProofMetadata, ZkProofVerificationResult, ZkRangeProof};
 
