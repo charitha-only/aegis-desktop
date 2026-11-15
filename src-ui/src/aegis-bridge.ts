@@ -2394,6 +2394,31 @@ export class AegisBridge {
     auditReport: { total_pages_scanned: number; chain_root_hash_hex: string; is_clean: boolean; tampered_page_indices: number[]; memory_span_bytes: number; };
     blocksScanned: number; tamperDetection: string;
   }>> { return this.invoke('binary_hash_chain_audit'); }
+  // ── v2.6.0: Stateful LMS Signatures, RAM Honeytokens, Noise Pipe & Time-Lock Puzzles ──
+  public async issueAndVerifyLmsSignature(message = 'CRITICAL_OS_KERNEL_PATCH_v2.6'): Promise<IpcResponse<{
+    publicKey: { tree_height: number; root_hash_hex: string; lms_type: string; };
+    signature: { leaf_index: number; ots_signature_hex: string; authentication_path_hex: string[]; };
+    verification: { is_valid: boolean; leaf_index: number; tree_height: number; standard: string; error?: string; };
+    statefulSecurity: string;
+  }>> { return this.invoke('lms_signature_issue_verify', { message }); }
+
+  public async getHoneytokenDefenseStatus(): Promise<IpcResponse<{
+    auditReport: { total_tripwires: number; intact_tripwires: number; breached_tripwires: number; defense_status: string; breach_ids: string[]; };
+    activeTripwires: number;
+    activeDefense: string;
+  }>> { return this.invoke('honeytoken_defense_status'); }
+
+  public async getNoisePipeChannelStatus(): Promise<IpcResponse<{
+    sessionStatus: { session_id: string; tx_sequence: number; rx_sequence: number; is_active: boolean; protocol: string; };
+    sampleFrame: { sequence_number: number; ciphertext_hex: string; auth_tag_hex: string; };
+    multiplexing: string;
+  }>> { return this.invoke('noise_pipe_channel_status'); }
+
+  public async solveTimeLockPuzzle(secret = 'AEGIS_TIME_LOCKED_ESCROW_RELEASE', iterations = 256): Promise<IpcResponse<{
+    puzzle: { modulus_n_hex: string; generator_a: number; squaring_iterations_t: number; encrypted_payload_hex: string; payload_hash_hex: string; };
+    solution: { is_solved: boolean; decrypted_payload: string; final_residue_hex: string; iterations_performed: number; error?: string; };
+    cryptography: string;
+  }>> { return this.invoke('timelock_puzzle_solve', { secret, iterations }); }
 }
 
 export const aegis = new AegisBridge();

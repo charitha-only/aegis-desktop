@@ -1,4 +1,4 @@
-﻿//! Chaumian / Schnorr Blind Signatures on Curve25519.
+//! Chaumian / Schnorr Blind Signatures on Curve25519.
 //!
 //! Provides cryptographic blinding allowing clients to obtain valid digital signatures
 //! from an authority without revealing the token payload, serial number, or payee details.

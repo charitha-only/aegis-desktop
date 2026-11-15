@@ -63,6 +63,10 @@ pub mod mpc_kdf;
 pub mod blind_signatures;
 pub mod attestation_graph;
 pub mod binary_hash_chain;
+pub mod stateful_hss;
+pub mod ram_honeytokens;
+pub mod noise_pipe;
+pub mod timelock_puzzle;
 
 #[allow(unused_imports)]
 pub use anti_forensics::{AntiForensicsEngine, AntiForensicsReceipt, SanitizationStandard};
@@ -181,6 +185,14 @@ pub use blind_signatures::{BlindSignatureAuthority, BlindSignatureClient, BlindS
 pub use attestation_graph::{AttestationEvidenceNode, AttestationGraphEngine, AttestationGraphReport, AttestationRootType};
 #[allow(unused_imports)]
 pub use binary_hash_chain::{BinaryHashChain, BinaryHashChainReport, MemoryPageBlock};
+#[allow(unused_imports)]
+pub use stateful_hss::{LmsPrivateKey, LmsPublicKey, LmsSignature, LmsVerificationResult, LmsVerifier};
+#[allow(unused_imports)]
+pub use ram_honeytokens::{HoneytokenAuditReport, HoneytokenDefenseEngine, HoneytokenTripwire, HoneytokenType};
+#[allow(unused_imports)]
+pub use noise_pipe::{NoiseEncryptedFrame, NoisePipeChannel, NoisePipeSessionStatus};
+#[allow(unused_imports)]
+pub use timelock_puzzle::{PuzzleSolutionResult, TimeLockEngine, TimeLockPuzzle};
 
 pub mod lifecycle;
 #[cfg(all(target_os = "linux", feature = "linux-lifecycle"))]

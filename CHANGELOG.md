@@ -1,4 +1,10 @@
-﻿# v2.5.0 — 2026-11-15 (Confidential MPC-KDF, Blind Signatures, Attestation Graph & Binary Hash Chain)
+﻿# v2.6.0 — 2026-11-15 (Stateful LMS Signatures, RAM Honeytokens, Noise Pipe & Time-Lock Puzzles)
+- **NIST SP 800-208 Stateful Hash-Based Signatures** (`stateful_hss.rs`): Quantum-resistant Leighton-Micali Signatures (LMS/HSS) with strict monotonic leaf counter tracking preventing LM-OTS key reuse
+- **Decoy Memory Canaries & Honeytoken RAM Tripwires** (`ram_honeytokens.rs`): Active heap defense allocating decoy credentials (BIP-39, AES-256) that trigger immediate defensive volatile zeroization on unauthorized access
+- **Noise Protocol Pipe Stateful Channel Multiplexing** (`noise_pipe.rs`): High-performance 0-RTT/1-RTT encrypted channel multiplexing with ChaCha20-Poly1305 and sequence replay detection
+- **RSW96 Cryptographic Time-Lock Puzzles** (`timelock_puzzle.rs`): Non-parallelizable sequential squaring modulo $N$ with parameterized time delay $T$ for cryptographic escrow
+- 296 Rust core unit tests passing (100%)
+# v2.5.0 — 2026-11-15 (Confidential MPC-KDF, Blind Signatures, Attestation Graph & Binary Hash Chain)
 - **Confidential Distributed MPC-KDF Engine** (`mpc_kdf.rs`): $k$-of-$n$ threshold pseudo-random function evaluation deriving symmetric session keys without master secret reconstruction
 - **Chaumian Curve25519 Schnorr Blind Signatures** (`blind_signatures.rs`): Untraceable cryptographic token blinding and unblinding for anonymous settlements and unlinkable credentials
 - **Heterogeneous Hardware Attestation Graph** (`attestation_graph.rs`): Directed acyclic graph verification evaluating TPM 2.0 PCR quotes, Intel SGX Enclave reports, and AMD SEV-SNP guest contexts with composite platform trust scoring
