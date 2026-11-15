@@ -4,6 +4,7 @@ pub mod attestation;
 pub mod canary_guard;
 pub mod capabilities;
 pub mod compliance_report;
+pub mod differential_privacy;
 pub mod enclave;
 pub mod fido2_token;
 pub mod fuzz_harness;
@@ -23,13 +24,16 @@ pub mod platform_security_audit;
 pub mod plugin_sig;
 pub mod pq_dsa;
 pub mod pq_kem;
+pub mod pq_kem1024;
 pub mod privacy;
 pub mod rasp;
 pub mod ratelimit;
+pub mod seccomp_bpf;
 pub mod shamir_escrow;
 pub mod sidechannel_auditor;
 pub mod siem_telemetry;
 pub mod smartcard_pcsc;
+pub mod time_lock_vdf;
 pub mod tpm_sealing;
 pub mod validator;
 pub mod vault;
@@ -46,6 +50,8 @@ pub use canary_guard::CanaryProtectedBuffer;
 pub use capabilities::{CapabilityManifest, SecurityEngine};
 #[allow(unused_imports)]
 pub use compliance_report::{ComplianceReportEngine, ComplianceReportPayload, SignedComplianceCertificate};
+#[allow(unused_imports)]
+pub use differential_privacy::{DifferentialPrivacyEngine, PerturbedMetricReport, PrivacyBudgetStatus};
 pub use enclave::BiometricEnclave;
 pub use fido2_token::Fido2TokenEngine;
 #[allow(unused_imports)]
@@ -77,9 +83,13 @@ pub use plugin_sig::SignatureVerifier;
 pub use pq_dsa::{MlDsaEngine, MlDsaKeypairOutput, MlDsaMetadata, MlDsaSignOutput, MlDsaVerifyOutput};
 #[allow(unused_imports)]
 pub use pq_kem::{PqDecapsulationResult, PqEncapsulationResult, PqKemEngine, PqKemKeypair};
+#[allow(unused_imports)]
+pub use pq_kem1024::{Hybrid1024Ciphertext, Hybrid1024Kem, Hybrid1024PublicKey, Hybrid1024SecretKey, MlKem1024Engine};
 pub use privacy::PrivacyShield;
 pub use rasp::RaspEngine;
 pub use ratelimit::RateLimiter;
+#[allow(unused_imports)]
+pub use seccomp_bpf::{SeccompBpfSynthesizer, SeccompPolicyReport, SockFilter};
 #[allow(unused_imports)]
 pub use shamir_escrow::{ShamirEscrowEngine, ShamirShare};
 #[allow(unused_imports)]
@@ -88,6 +98,8 @@ pub use sidechannel_auditor::{DudectAuditReport, SideChannelAuditor};
 pub use siem_telemetry::{SecurityEventCategory, SiemSecurityEvent, SiemSeverity, SiemTelemetryEngine};
 #[allow(unused_imports)]
 pub use smartcard_pcsc::{CommandApdu, ResponseApdu, SmartCardHardwareType, SmartCardPcscEngine, SmartCardReaderInfo};
+#[allow(unused_imports)]
+pub use time_lock_vdf::{TimeLockVdfEngine, TimeLockedEnvelope, VdfProof};
 #[allow(unused_imports)]
 pub use tpm_sealing::{PcrRegister, SealedDataPackage, TpmEnclaveStatus, TpmSealingEngine};
 pub use validator::OriginValidator;

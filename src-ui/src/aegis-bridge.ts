@@ -2015,6 +2015,60 @@ export class AegisBridge {
   }>> {
     return this.invoke('platform_security_posture');
   }
+
+  // ── v1.9.0: Seccomp BPF, Category 5 Kyber-1024, Differential Privacy & Time-Lock VDF ──
+  public async getSeccompBpfPolicy(): Promise<IpcResponse<{
+    architecture: string;
+    total_filter_instructions: number;
+    allowed_syscalls: number[];
+    blocked_syscalls: number[];
+    default_action: string;
+    filter_hash: string;
+  }>> {
+    return this.invoke('seccomp_bpf_policy');
+  }
+
+  public async getPqKem1024Status(): Promise<IpcResponse<{
+    standard: string;
+    publicKeyBytes: number;
+    ciphertextBytes: number;
+    sharedSecretSampleHex: string;
+    status: string;
+  }>> {
+    return this.invoke('pq_kem1024_status');
+  }
+
+  public async getDifferentialPrivacyStatus(): Promise<IpcResponse<{
+    budget: {
+      max_epsilon: number;
+      spent_epsilon: number;
+      remaining_epsilon: number;
+      queries_processed: number;
+      is_exhausted: boolean;
+    };
+    samplePerturbedReport: {
+      original_metric_name: string;
+      perturbed_value: number;
+      epsilon_consumed: number;
+      sensitivity: number;
+      mechanism: string;
+      timestamp: number;
+    } | null;
+    guarantee: string;
+  }>> {
+    return this.invoke('differential_privacy_status');
+  }
+
+  public async evaluateTimeLockVdf(seed = 0xDEADBEEF, iterations = 1000): Promise<IpcResponse<{
+    seed: number;
+    difficulty_iterations: number;
+    output_y: number;
+    proof_pi: number;
+    elapsed_nanos: number;
+    is_verified: boolean;
+  }>> {
+    return this.invoke('timelock_vdf_evaluate', { seed, iterations });
+  }
 }
 
 export const aegis = new AegisBridge();
