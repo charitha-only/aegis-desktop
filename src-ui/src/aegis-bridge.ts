@@ -2162,6 +2162,73 @@ export class AegisBridge {
   }>> {
     return this.invoke('ebpf_microsegmentation_report');
   }
+
+  // ── v2.1.0: Hardware HKDF, Distributed Threshold MPC, Flight Recorder & Silicon PUF ──
+  public async deriveHardwareHkdf(domain = 'StorageVault', nonceContext = 'aegis_session_default'): Promise<IpcResponse<{
+    keyId: string;
+    domain: string;
+    derivedBytesHex: string;
+    standard: string;
+  }>> {
+    return this.invoke('hardware_hkdf_derive', { domain, nonceContext });
+  }
+
+  public async getThresholdMpcStatus(message = 'SOVEREIGN_THRESHOLD_TRANSACTION_APPROVAL'): Promise<IpcResponse<{
+    protocol: string;
+    threshold: number;
+    totalSigners: number;
+    groupPublicKeyHex: string;
+    aggregatedSignature: {
+      group_public_key_hex: string;
+      commitment_r_hex: string;
+      response_z_hex: string;
+      is_valid: boolean;
+    };
+  }>> {
+    return this.invoke('threshold_mpc_status', { message });
+  }
+
+  public async getBlackBoxRecorderStatus(): Promise<IpcResponse<{
+    seal: {
+      seal_sequence: number;
+      total_records: number;
+      root_hash: string;
+      timestamp: number;
+      is_chain_valid: boolean;
+    };
+    latestRecord: {
+      sequence: number;
+      timestamp: number;
+      event_category: string;
+      detail: string;
+      previous_hash: string;
+      entry_hash: string;
+    };
+    recentRecords: Array<{
+      sequence: number;
+      timestamp: number;
+      event_category: string;
+      detail: string;
+      previous_hash: string;
+      entry_hash: string;
+    }>;
+  }>> {
+    return this.invoke('blackbox_recorder_status');
+  }
+
+  public async getSiliconPufFingerprint(): Promise<IpcResponse<{
+    siliconId: {
+      silicon_fingerprint_hex: string;
+      architecture_str: string;
+      physical_core_count: number;
+      is_virtualized_environment: boolean;
+      hardware_binding_tier: string;
+    };
+    sampleBoundKeyHex: string;
+    protection: string;
+  }>> {
+    return this.invoke('silicon_puf_fingerprint');
+  }
 }
 
 export const aegis = new AegisBridge();

@@ -1,6 +1,7 @@
 pub mod anti_forensics;
 pub mod app_container;
 pub mod attestation;
+pub mod blackbox_recorder;
 pub mod canary_guard;
 pub mod capabilities;
 pub mod compliance_report;
@@ -12,6 +13,7 @@ pub mod enclave;
 pub mod fido2_token;
 pub mod fuzz_harness;
 pub mod handshake;
+pub mod hardware_hkdf;
 pub mod hardware_key;
 pub mod hsm_pkcs11;
 pub mod kernel_sandbox;
@@ -36,7 +38,9 @@ pub mod seccomp_bpf;
 pub mod shamir_escrow;
 pub mod sidechannel_auditor;
 pub mod siem_telemetry;
+pub mod silicon_puf;
 pub mod smartcard_pcsc;
+pub mod threshold_mpc;
 pub mod time_lock_vdf;
 pub mod tpm_sealing;
 pub mod validator;
@@ -50,6 +54,8 @@ pub use anti_forensics::{AntiForensicsEngine, AntiForensicsReceipt, Sanitization
 pub use app_container::{AppContainerCapability, AppContainerEngine, AppContainerProfile};
 #[allow(unused_imports)]
 pub use attestation::{AttestationVerification, TpmAttestationEngine, TpmAttestationProof};
+#[allow(unused_imports)]
+pub use blackbox_recorder::{BlackBoxNotarizationSeal, BlackBoxRecorderEngine, FlightRecord};
 #[allow(unused_imports)]
 pub use canary_guard::CanaryProtectedBuffer;
 pub use capabilities::{CapabilityManifest, SecurityEngine};
@@ -68,6 +74,8 @@ pub use fido2_token::Fido2TokenEngine;
 #[allow(unused_imports)]
 pub use fuzz_harness::{ConstantTimeBenchmarkResult, FuzzHarnessEngine};
 pub use handshake::HandshakeSession;
+#[allow(unused_imports)]
+pub use hardware_hkdf::{HardwareDerivedKey, HardwareHkdfEngine, KeyDomain};
 pub use hardware_key::HardwareKeyEngine;
 #[allow(unused_imports)]
 pub use hsm_pkcs11::{HsmKeyObject, HsmPkcs11Engine, HsmSignatureResult, HsmSlotInfo};
@@ -110,7 +118,11 @@ pub use sidechannel_auditor::{DudectAuditReport, SideChannelAuditor};
 #[allow(unused_imports)]
 pub use siem_telemetry::{SecurityEventCategory, SiemSecurityEvent, SiemSeverity, SiemTelemetryEngine};
 #[allow(unused_imports)]
+pub use silicon_puf::{ChipSiliconId, SiliconPufEngine};
+#[allow(unused_imports)]
 pub use smartcard_pcsc::{CommandApdu, ResponseApdu, SmartCardHardwareType, SmartCardPcscEngine, SmartCardReaderInfo};
+#[allow(unused_imports)]
+pub use threshold_mpc::{AggregatedThresholdSignature, MpcParticipantKeyShare, NonceCommitment, PartialSignatureShare, ThresholdMpcEngine};
 #[allow(unused_imports)]
 pub use time_lock_vdf::{TimeLockVdfEngine, TimeLockedEnvelope, VdfProof};
 #[allow(unused_imports)]
