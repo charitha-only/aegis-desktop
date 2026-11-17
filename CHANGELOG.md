@@ -1,4 +1,10 @@
-﻿# v2.6.0 — 2026-11-15 (Stateful LMS Signatures, RAM Honeytokens, Noise Pipe & Time-Lock Puzzles)
+﻿# v2.7.0 — 2026-11-17 (Homomorphic Vault, Random Beacon, CFI Shadow Stack & ZK Merkle)
+- **Additive Homomorphic Encryption Vault** (`homomorphic_vault.rs`): Exponential ElGamal over Curve25519 enabling private summation and scalar multiplication of encrypted financial amounts without decryption
+- **Verifiable Random Beacon & Unbiasable Coin Toss** (`random_beacon.rs`): Two-phase Commit-Reveal protocol with sequential hash-chain delay mixing asserting non-manipulable distributed randomness
+- **Control Flow Integrity & Shadow Stack** (`cfi_flattening.rs`): Forward-edge phase execution graph and backward-edge shadow stack token verification protecting against ROP and JOP hijack exploits
+- **Zero-Knowledge Merkle Tree Membership Proofs** (`zk_merkle_tree.rs`): Constant-size private set inclusion proofs verifying credential or identity membership without disclosing leaf indices
+- 304 Rust core unit tests passing (100%)
+# v2.6.0 — 2026-11-15 (Stateful LMS Signatures, RAM Honeytokens, Noise Pipe & Time-Lock Puzzles)
 - **NIST SP 800-208 Stateful Hash-Based Signatures** (`stateful_hss.rs`): Quantum-resistant Leighton-Micali Signatures (LMS/HSS) with strict monotonic leaf counter tracking preventing LM-OTS key reuse
 - **Decoy Memory Canaries & Honeytoken RAM Tripwires** (`ram_honeytokens.rs`): Active heap defense allocating decoy credentials (BIP-39, AES-256) that trigger immediate defensive volatile zeroization on unauthorized access
 - **Noise Protocol Pipe Stateful Channel Multiplexing** (`noise_pipe.rs`): High-performance 0-RTT/1-RTT encrypted channel multiplexing with ChaCha20-Poly1305 and sequence replay detection

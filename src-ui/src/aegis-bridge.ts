@@ -2419,6 +2419,31 @@ export class AegisBridge {
     solution: { is_solved: boolean; decrypted_payload: string; final_residue_hex: string; iterations_performed: number; error?: string; };
     cryptography: string;
   }>> { return this.invoke('timelock_puzzle_solve', { secret, iterations }); }
+  // ── v2.7.0: Homomorphic Vault, Random Beacon, CFI Shadow Stack & ZK Merkle ──
+  public async aggregateHomomorphicVault(amountA = 2500, amountB = 7500): Promise<IpcResponse<{
+    ciphertextA: { c1_hex: string; c2_hex: string; };
+    ciphertextB: { c1_hex: string; c2_hex: string; };
+    aggregatedCiphertext: { c1_hex: string; c2_hex: string; };
+    decryptedVerification: number;
+    protocol: string;
+  }>> { return this.invoke('homomorphic_vault_aggregate', { amount_a: amountA, amount_b: amountB }); }
+
+  public async evalRandomBeaconRound(round = 5001): Promise<IpcResponse<{
+    roundResult: { round_number: number; beacon_entropy_hex: string; participants_count: number; is_verified: boolean; error?: string; };
+    isUnbiasable: boolean;
+    consensus: string;
+  }>> { return this.invoke('random_beacon_round_eval', { round }); }
+
+  public async getCfiSupervisorStatus(): Promise<IpcResponse<{
+    cfiStatus: { current_phase: string; stack_depth: number; is_intact: boolean; violations_detected: number; status_message: string; };
+    protectionModel: string;
+  }>> { return this.invoke('cfi_supervisor_status'); }
+
+  public async verifyZkMerkleMembership(): Promise<IpcResponse<{
+    proof: { leaf_hash_hex: string; root_hash_hex: string; path: any[]; };
+    verification: { is_member: boolean; root_hash_hex: string; tree_depth: number; protocol: string; error?: string; };
+    privacy: string;
+  }>> { return this.invoke('zk_merkle_membership_verify'); }
 }
 
 export const aegis = new AegisBridge();

@@ -67,6 +67,10 @@ pub mod stateful_hss;
 pub mod ram_honeytokens;
 pub mod noise_pipe;
 pub mod timelock_puzzle;
+pub mod homomorphic_vault;
+pub mod random_beacon;
+pub mod cfi_flattening;
+pub mod zk_merkle_tree;
 
 #[allow(unused_imports)]
 pub use anti_forensics::{AntiForensicsEngine, AntiForensicsReceipt, SanitizationStandard};
@@ -193,6 +197,14 @@ pub use ram_honeytokens::{HoneytokenAuditReport, HoneytokenDefenseEngine, Honeyt
 pub use noise_pipe::{NoiseEncryptedFrame, NoisePipeChannel, NoisePipeSessionStatus};
 #[allow(unused_imports)]
 pub use timelock_puzzle::{PuzzleSolutionResult, TimeLockEngine, TimeLockPuzzle};
+#[allow(unused_imports)]
+pub use homomorphic_vault::{HomomorphicAdditionResult, HomomorphicCiphertext, HomomorphicVaultEngine};
+#[allow(unused_imports)]
+pub use random_beacon::{BeaconCommitment, BeaconReveal, RandomBeaconEngine, RandomBeaconRoundResult};
+#[allow(unused_imports)]
+pub use cfi_flattening::{CfiStatusReport, CfiSupervisor, ExecutionPhase, ShadowStackFrame};
+#[allow(unused_imports)]
+pub use zk_merkle_tree::{MerkleProofStep, ZkMerkleMembershipProof, ZkMerkleTree, ZkMerkleVerificationResult};
 
 pub mod lifecycle;
 #[cfg(all(target_os = "linux", feature = "linux-lifecycle"))]
