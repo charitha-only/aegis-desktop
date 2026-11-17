@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Layers, ShieldCheck, Cpu, Database, EyeOff, Key, Code2, Sparkles, Binary, Wifi, ShieldAlert } from 'lucide-react';
 import { soundEffects } from './AudioEffects';
 
@@ -177,6 +177,29 @@ ledger.append(AuditBlock::new(block_hash, tx));`,
       icon: Key,
       accentColor: 'from-amber-400 to-orange-600',
     },
+    {
+      id: 'layer-pq-kms',
+      number: '07',
+      title: isSi ? 'පශ්චාත්-ක්වොන්ටම් ඩබල් රැචට් සහ දෘඩාංග KMS' : 'POST-QUANTUM RATCHET & HARDWARE KMS',
+      badge: 'ML-KEM / PUF KEK / PCR BOOT',
+      category: isSi ? 'පශ්චාත්-ක්වොන්ටම් ආරක්ෂණය' : 'POST-QUANTUM & HARDWARE ROOT',
+      schematicTag: 'PQ_RATCHET // PUF_KEK_ENVELOPE',
+      description: isSi
+        ? 'ML-KEM සහ සමමිතික KDF රැචට් හරහා අඛණ්ඩ ඉදිරි රහස්‍යතාව සහ CPU PUF මගින් මුද්‍රා තැබූ Hardware KMS ලියුම් කවර ගුප්තකේතනය.'
+        : 'Continuous post-quantum forward secrecy and break-in recovery with ML-KEM epoch ratchet, coupled with hardware-rooted PUF KEK envelope encryption.',
+      specs: [
+        'Post-Quantum Double Ratchet (ML-KEM + symmetric KDF)',
+        'Threshold BLS O(1) multi-party signature aggregation',
+        'Hardware PUF-derived KEK & TPM 2.0 PCR measured boot binding',
+        'Ephemeral DEK zeroization with fail-closed tamper detection',
+      ],
+      code: `// Hardware KMS envelope encryption with PCR policy enforcement
+let kms = HardwareKmsEngine::new(key_id, &puf_seed, pcr_policy);
+let envelope = kms.envelope_encrypt(secret, pcr_policy, &entropy, timestamp)?;
+let decrypted = kms.envelope_decrypt(&envelope, pcr_policy)?;`,
+      icon: ShieldCheck,
+      accentColor: 'from-emerald-400 to-teal-600',
+    },
   ];
 
   return (
@@ -190,7 +213,7 @@ ledger.append(AuditBlock::new(block_hash, tx));`,
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 font-mono text-xs text-amber-400 uppercase tracking-widest">
               <Layers className="w-4 h-4" />
-              <span>[SCHEMATIC SPECIFICATION] // 6-LAYER ZERO-TRUST STACK</span>
+              <span>[SCHEMATIC SPECIFICATION] // 7-LAYER ZERO-TRUST STACK</span>
             </div>
             <h2 className="text-3xl sm:text-5xl font-extrabold font-display text-white tracking-tight">
               {isSi ? 'à¶±à·’à¶»à·Šà¶¸à·à¶«à¶º à·€à·–à¶ºà·š' : 'ENGINEERED AT THE'}{' '}

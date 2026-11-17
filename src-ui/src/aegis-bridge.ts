@@ -1,4 +1,4 @@
-﻿/** Typed local IPC client. Runtime capability checks remain authoritative.
+/** Typed local IPC client. Runtime capability checks remain authoritative.
  * Legacy helpers for unavailable providers return backend errors, not implementations.
  */
 

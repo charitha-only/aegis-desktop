@@ -1,4 +1,4 @@
-﻿//! macOS Seatbelt & Endpoint Security Kernel Isolation Engine
+//! macOS Seatbelt & Endpoint Security Kernel Isolation Engine
 //!
 //! Provides Apple macOS kernel sandboxing parity using Seatbelt Profile Language (SBPL)
 //! (`sandbox_init`), Endpoint Security (ES) event auditing, and Apple Silicon

@@ -1,4 +1,4 @@
-﻿pub mod anti_forensics;
+pub mod anti_forensics;
 pub mod app_container;
 pub mod attestation;
 pub mod blackbox_recorder;

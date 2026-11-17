@@ -1,4 +1,4 @@
-﻿use super::encrypted_stream::EncryptedStream;
+use super::encrypted_stream::EncryptedStream;
 use super::protocol::{IpcRequest, IpcResponse};
 use crate::crash::CrashReporter;
 use crate::network::NetworkPolicyEngine;

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, Volume2, VolumeX, Github, ExternalLink, FileText, Lock, Terminal, Cpu, AlertTriangle } from 'lucide-react';
 import { CyberCanvas } from './components/CyberCanvas';
 import { HeroSection } from './components/HeroSection';

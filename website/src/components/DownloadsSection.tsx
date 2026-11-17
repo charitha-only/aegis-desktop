@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Download, Terminal, Check, Copy, ExternalLink, ShieldCheck, Box, Package } from 'lucide-react';
 import { soundEffects } from './AudioEffects';
 
@@ -12,7 +12,7 @@ export const DownloadsSection: React.FC = () => {
     {
       title: 'Windows x64 Standalone Zip',
       filename: `AegisDesktopApplication-${releaseTag}-windows-x64.zip`,
-      size: '2.70 MB',
+      size: '2.80 MB',
       os: 'Windows 10 / 11 (x64)',
       badge: 'Authenticode Signed',
       url: `${releaseBaseUrl}/AegisDesktopApplication-${releaseTag}-windows-x64.zip`,
@@ -21,7 +21,7 @@ export const DownloadsSection: React.FC = () => {
     {
       title: 'Windows Inno Setup Installer',
       filename: `AegisDesktopApplication-Setup-${releaseTag}.exe`,
-      size: '3.20 MB',
+      size: '3.30 MB',
       os: 'Windows 10 / 11 (x64)',
       badge: 'Silent VBS + Start Menu',
       url: `https://github.com/charitha-only/aegis-desktop/releases/tag/${releaseTag}`,

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Gauge, Zap, Database, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export const BenchmarkTelemetry: React.FC = () => {
@@ -35,7 +35,7 @@ export const BenchmarkTelemetry: React.FC = () => {
               <span>RESIDENT MEMORY (RSS)</span>
               <Database className="w-4 h-4 text-amber-400" />
             </div>
-            <div className="text-4xl font-extrabold font-display text-amber-400 mb-1">8.80 MiB</div>
+            <div className="text-4xl font-extrabold font-display text-amber-400 mb-1">8.85 MiB</div>
             <div className="font-mono text-xs text-slate-400">Total Tree: 20.4 MiB (Budget &lt; 50 MB)</div>
           </div>
 
@@ -75,13 +75,13 @@ export const BenchmarkTelemetry: React.FC = () => {
                 </tr>
                 <tr>
                   <td className="py-3.5 px-6 font-semibold">Idle Process Memory (RSS)</td>
-                  <td className="py-3.5 px-6 text-emerald-400 font-bold">8.80 MiB</td>
+                  <td className="py-3.5 px-6 text-emerald-400 font-bold">8.85 MiB</td>
                   <td className="py-3.5 px-6 text-slate-400">~35.0 MiB</td>
                   <td className="py-3.5 px-6 text-red-400">~145.0 MiB</td>
                 </tr>
                 <tr>
                   <td className="py-3.5 px-6 font-semibold">Standalone Bundle Size</td>
-                  <td className="py-3.5 px-6 text-emerald-400 font-bold">2.70 MB</td>
+                  <td className="py-3.5 px-6 text-emerald-400 font-bold">2.80 MB</td>
                   <td className="py-3.5 px-6 text-slate-400">~12.0 MB</td>
                   <td className="py-3.5 px-6 text-red-400">~85.0 MB</td>
                 </tr>

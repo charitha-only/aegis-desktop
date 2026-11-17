@@ -1,4 +1,4 @@
-﻿# v2.8.0 — 2026-11-18 (Threshold BLS, PQ Ratchet, Token Fuzzer & Hardware KMS)
+# v2.8.0 — 2026-11-18 (Threshold BLS, PQ Ratchet, Token Fuzzer & Hardware KMS)
 - **Multi-Party Threshold BLS Aggregated Signatures** (`threshold_bls.rs`): Non-interactive threshold signature aggregation over Curve25519 with Lagrange polynomial interpolation enabling $O(1)$ constant-time verification against the group public key
 - **Post-Quantum Double Ratchet Protocol** (`pq_ratchet.rs`): Continuous bi-directional post-quantum forward secrecy and break-in recovery combining KEM ratchet epochs with symmetric ChaCha20-Poly1305 chains
 - **Hardware Token APDU & CTAP2 Mutation Fuzzer** (`token_fuzzer.rs`): Automated robustness testing and anomaly detector executing bit-flip, boundary length, and overflow mutations against ISO 7816-4 and FIDO2 authenticators
