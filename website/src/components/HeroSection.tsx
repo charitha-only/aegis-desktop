@@ -112,7 +112,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
             <span className="font-mono text-xs tracking-wider uppercase text-amber-300 font-semibold">
-              AEGIS CORE v2.7.0 // {isSi ? 'à¶†à¶»à¶šà·Šà·‚à¶š à·„à· à¶¶à·à¶‚à¶šà·” à¶¸à¶§à·Šà¶§à¶¸' : 'BANKING & FINANCIAL TIER'}
+              AEGIS CORE v2.8.0 // {isSi ? 'à¶†à¶»à¶šà·Šà·‚à¶š à·„à· à¶¶à·à¶‚à¶šà·” à¶¸à¶§à·Šà¶§à¶¸' : 'BANKING & FINANCIAL TIER'}
             </span>
             <span className="text-white/20">|</span>
             <span className="font-mono text-[11px] text-slate-400 hidden sm:inline">
@@ -168,7 +168,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               className="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold rounded-lg font-mono text-sm tracking-wide shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
             >
               <Download className="w-4 h-4" />
-              <span>{isSi ? 'à¶¶à·à¶œà¶­ à¶šà¶»à¶±à·Šà¶± (v2.7.0)' : 'DOWNLOAD v2.7.0'}</span>
+              <span>{isSi ? 'à¶¶à·à¶œà¶­ à¶šà¶»à¶±à·Šà¶± (v2.8.0)' : 'DOWNLOAD v2.8.0'}</span>
             </button>
 
             <button
@@ -288,8 +288,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         >
           <div className="flex items-center gap-2">
             <span className="text-amber-400 font-bold">AEGIS-CORE:</span>
-            <span className="text-slate-300">v2.7.0</span>
-            <span className="text-emerald-400 text-[11px]">â–² 304/304 PASS</span>
+            <span className="text-slate-300">v2.8.0</span>
+            <span className="text-emerald-400 text-[11px]">â–² 312/312 PASS</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -317,7 +317,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
           <div className="flex items-center gap-2">
             <span className="text-slate-400">MEMORY RSS:</span>
-            <span className="text-amber-400 font-bold">8.80 MiB</span>
+            <span className="text-amber-400 font-bold">8.85 MiB</span>
             <span className="text-slate-500 text-[11px]">(DPAPI GUARD)</span>
           </div>
 
@@ -329,8 +329,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           {/* Repeat items for continuous ticker stream */}
           <div className="flex items-center gap-2">
             <span className="text-amber-400 font-bold">AEGIS-CORE:</span>
-            <span className="text-slate-300">v2.7.0</span>
-            <span className="text-emerald-400 text-[11px]">â–² 304/304 PASS</span>
+            <span className="text-slate-300">v2.8.0</span>
+            <span className="text-emerald-400 text-[11px]">â–² 312/312 PASS</span>
           </div>
 
           <div className="flex items-center gap-2">

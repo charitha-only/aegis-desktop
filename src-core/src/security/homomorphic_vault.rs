@@ -1,4 +1,4 @@
-﻿//! Additive Homomorphic Encryption Engine over Curve25519.
+//! Additive Homomorphic Encryption Engine over Curve25519.
 //!
 //! Provides exponential ElGamal additive homomorphic encryption allowing secure
 //! summation and scalar multiplication of encrypted financial balances without

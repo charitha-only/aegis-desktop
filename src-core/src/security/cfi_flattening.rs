@@ -1,4 +1,4 @@
-﻿//! Control Flow Integrity (CFI) & Shadow Stack Protection Engine.
+//! Control Flow Integrity (CFI) & Shadow Stack Protection Engine.
 //!
 //! Enforces forward-edge and backward-edge control flow integrity across security-critical
 //! operations. Uses a hardware-style shadow stack and state-transition graph to

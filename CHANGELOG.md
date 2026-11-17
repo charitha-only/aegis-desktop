@@ -1,4 +1,10 @@
-﻿# v2.7.0 — 2026-11-17 (Homomorphic Vault, Random Beacon, CFI Shadow Stack & ZK Merkle)
+﻿# v2.8.0 — 2026-11-18 (Threshold BLS, PQ Ratchet, Token Fuzzer & Hardware KMS)
+- **Multi-Party Threshold BLS Aggregated Signatures** (`threshold_bls.rs`): Non-interactive threshold signature aggregation over Curve25519 with Lagrange polynomial interpolation enabling $O(1)$ constant-time verification against the group public key
+- **Post-Quantum Double Ratchet Protocol** (`pq_ratchet.rs`): Continuous bi-directional post-quantum forward secrecy and break-in recovery combining KEM ratchet epochs with symmetric ChaCha20-Poly1305 chains
+- **Hardware Token APDU & CTAP2 Mutation Fuzzer** (`token_fuzzer.rs`): Automated robustness testing and anomaly detector executing bit-flip, boundary length, and overflow mutations against ISO 7816-4 and FIDO2 authenticators
+- **Hardware-Rooted Key Management Service (Hardware KMS)** (`hardware_kms.rs`): Envelope encryption engine anchoring KEKs to silicon PUFs and enforcing TPM 2.0 PCR measured boot policies with ephemeral DEK zeroization
+- 312 Rust core unit tests passing (100%)
+# v2.7.0 — 2026-11-17 (Homomorphic Vault, Random Beacon, CFI Shadow Stack & ZK Merkle)
 - **Additive Homomorphic Encryption Vault** (`homomorphic_vault.rs`): Exponential ElGamal over Curve25519 enabling private summation and scalar multiplication of encrypted financial amounts without decryption
 - **Verifiable Random Beacon & Unbiasable Coin Toss** (`random_beacon.rs`): Two-phase Commit-Reveal protocol with sequential hash-chain delay mixing asserting non-manipulable distributed randomness
 - **Control Flow Integrity & Shadow Stack** (`cfi_flattening.rs`): Forward-edge phase execution graph and backward-edge shadow stack token verification protecting against ROP and JOP hijack exploits

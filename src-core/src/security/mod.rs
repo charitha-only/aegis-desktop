@@ -71,6 +71,10 @@ pub mod homomorphic_vault;
 pub mod random_beacon;
 pub mod cfi_flattening;
 pub mod zk_merkle_tree;
+pub mod threshold_bls;
+pub mod pq_ratchet;
+pub mod token_fuzzer;
+pub mod hardware_kms;
 
 #[allow(unused_imports)]
 pub use anti_forensics::{AntiForensicsEngine, AntiForensicsReceipt, SanitizationStandard};
@@ -205,6 +209,14 @@ pub use random_beacon::{BeaconCommitment, BeaconReveal, RandomBeaconEngine, Rand
 pub use cfi_flattening::{CfiStatusReport, CfiSupervisor, ExecutionPhase, ShadowStackFrame};
 #[allow(unused_imports)]
 pub use zk_merkle_tree::{MerkleProofStep, ZkMerkleMembershipProof, ZkMerkleTree, ZkMerkleVerificationResult};
+#[allow(unused_imports)]
+pub use threshold_bls::{BlsAggregatedSignature, BlsKeyShare, BlsPartialSignature, ThresholdBlsEngine};
+#[allow(unused_imports)]
+pub use pq_ratchet::{PqRatchetEncryptedMessage, PqRatchetSession};
+#[allow(unused_imports)]
+pub use token_fuzzer::{ApduCommand, FuzzAnomaly, FuzzCampaignReport, FuzzMutationStrategy, TokenFuzzerEngine};
+#[allow(unused_imports)]
+pub use hardware_kms::{HardwareKmsEngine, KmsEnvelope};
 
 pub mod lifecycle;
 #[cfg(all(target_os = "linux", feature = "linux-lifecycle"))]

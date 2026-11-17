@@ -83,7 +83,7 @@ impl MacosSeatbeltEngine {
     /// Generate declarative Seatbelt Profile Language (SBPL) source script
     pub fn generate_sbpl_script(app_id: &str, sandbox_dir: &str, block_fork: bool) -> String {
         let mut script = String::new();
-        script.push_str(";; Aegis Sovereign Desktop Seatbelt Policy v2.7.0\n");
+        script.push_str(";; Aegis Sovereign Desktop Seatbelt Policy v2.8.0\n");
         script.push_str("(version 1)\n");
         script.push_str("(deny default)\n\n");
 

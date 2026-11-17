@@ -2444,6 +2444,55 @@ export class AegisBridge {
     verification: { is_member: boolean; root_hash_hex: string; tree_depth: number; protocol: string; error?: string; };
     privacy: string;
   }>> { return this.invoke('zk_merkle_membership_verify'); }
+
+  // ── v2.8.0: Threshold BLS, PQ Ratchet, Token Fuzzer & Hardware KMS ──
+  public async aggregateThresholdSignatures(threshold = 3, total = 5, message = 'SETTLEMENT_BATCH_FEDWIRE_77491'): Promise<IpcResponse<{
+    aggregatedSignature: { aggregated_signature_hex: string; participant_ids: number[]; message_hash_hex: string; group_public_key_hex: string; };
+    isValid: boolean;
+    thresholdRequired: number;
+    totalSigners: number;
+    algorithm: string;
+  }>> { return this.invoke('threshold_bls_aggregate_verify', { threshold, total, message }); }
+
+  public async exchangePqRatchetMessage(sessionId = 'ratchet-live-sec-01'): Promise<IpcResponse<{
+    sessionId: string;
+    epoch0Message: any;
+    epoch0Decrypted: string;
+    epoch1Message: any;
+    epoch1Decrypted: string;
+    ratchetStatus: string;
+  }>> { return this.invoke('pq_ratchet_exchange', { sessionId }); }
+
+  public async runTokenFuzzerAudit(iterations = 50): Promise<IpcResponse<{
+    fuzzCampaignReport: {
+      total_mutations_executed: number;
+      malformed_rejections_confirmed: number;
+      anomalies_detected: number;
+      critical_failures: number;
+      campaign_fingerprint_hex: string;
+      anomalies: any[];
+    };
+    protocol: string;
+  }>> { return this.invoke('token_fuzzer_run', { iterations }); }
+
+  public async envelopeEncryptDecryptKms(
+    keyId = 'puf-root-kek-01',
+    plaintext = 'ENVELOPE_PROTECTED_MASTER_CREDENTIAL',
+    pcrPolicy = 'c0ffee0123456789abcdef0123456789abcdef0123456789abcdef0123456789'
+  ): Promise<IpcResponse<{
+    envelope: {
+      key_id: string;
+      encrypted_dek_hex: string;
+      dek_nonce_hex: string;
+      ciphertext_hex: string;
+      payload_nonce_hex: string;
+      pcr_policy_digest: string;
+      created_timestamp_secs: number;
+    };
+    decryptedPlaintext: string;
+    isPcrEnforced: boolean;
+    architecture: string;
+  }>> { return this.invoke('hardware_kms_envelope_encrypt_decrypt', { keyId, plaintext, pcrPolicy }); }
 }
 
 export const aegis = new AegisBridge();
